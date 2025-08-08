@@ -3,19 +3,20 @@
 ## a script for pulling all iav_serotype assigned H1N1 reads (.fastq)
 ## aligning them to an H1N1 reference with minimap2
 ## samtools sort and index the bam files
-## use bcftools to get vcf files
+## use ivar to get tsv files
 
 POOLID=$1
-
+OUTPUT_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/${POOLID}"
 
 if [ ! -d ${POOLID} ] ; then
-	mkdir ${POOLID}
+	mkdir -p ${OUTPUT_DIR}
 fi
 
 source /cmmr/prod/envParams/condanewenv.init && conda activate crm_pangenome
 
 REF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/H1N1_reference.fasta"
 R1_LIST=$( find /gpfs1/projects/Pools/EsViritu/${POOLID} -type f -name "*H1N1.R1.fastq" )
+GFF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/gff/GCA_039113225.1_ASM3911322v1_genomic.gff"
 
 
 if [ ! -z "$R1_LIST" ] ; then
@@ -32,19 +33,25 @@ if [ ! -z "$R1_LIST" ] ; then
 		SAMPLE=$( echo $R1_BASE | cut -d "." -f 1 )
 
 		## minimap2
-        /gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/minimap2-2.30_x64-linux/minimap2 -ax sr $REF $READ1 $READ2 > ${TMPDIR}/${SAMPLE}.sam 
+        /gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/minimap2-2.30_x64-linux/minimap2 -ax sr $REF $READ1 $READ2 > ${OUTPUT_DIR}/${SAMPLE}.sam 
 
         ## samtools sort and index
-        samtools view -@ 48 -bS  ${TMPDIR}/${SAMPLE}.sam > ${TMPDIR}/${SAMPLE}.${POOLID}.bam
-		samtools sort -@ 48 -o ${POOLID}/${SAMPLE}.${POOLID}.sort.bam ${TMPDIR}/${SAMPLE}.${POOLID}.bam
-        samtools index ${POOLID}/${SAMPLE}.${POOLID}.sort.bam
+        samtools view -@ 48 -bS  ${OUTPUT_DIR}/${SAMPLE}.sam > ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.bam
+		samtools sort -@ 48 -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.bam
+        samtools index ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam
 
-        ## bcftools to get vcf
-        BAM="${POOLID}/${SAMPLE}.${POOLID}.sort.bam"
-        # Create a VCF file for the sample
-        bcftools mpileup -Ou -f $REF $BAM | bcftools call -mv -Oz -o ${POOLID}/${SAMPLE}.vcf.gz
-        
-        # Index the VCF file
-        bcftools index ${POOLID}/${SAMPLE}.vcf.gz
+        BAM="${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam"
+
+		## mpileup and ivar to see variants from reference genome
+        samtools mpileup -A -d 0 -B -Q 0 -f $REF $BAM | \
+		ivar variants -p ${OUTPUT_DIR}/${SAMPLE} -t 0 -m 1 -r $REF -g $GFF
+
+		# keep only the non-empty tsv files
+		# need to consider that every tsv file has a header line
+		if [ $(wc -l < "${OUTPUT_DIR}/${SAMPLE}.tsv") -le 1 ]; then
+			rm -f "${OUTPUT_DIR}/${SAMPLE}.tsv"
+		else
+	    	echo "Variants found for ${SAMPLE}"
+		fi
 done
 fi

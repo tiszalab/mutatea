@@ -13,7 +13,7 @@ if [ ! -d ${POOLID} ] ; then
 	mkdir -p ${OUTPUT_DIR}
 fi
 
-source /cmmr/prod/envParams/condanewenv.init && conda activate crm_pangenome
+source /cmmr/prod/envParams/condanewenv.init && conda activate crm_flutatome
 
 REF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/H1N1_reference.fasta"
 R1_LIST=$( find /gpfs1/projects/Pools/EsViritu/${POOLID} -type f -name "*H1N1.R1.fastq" )
@@ -34,7 +34,7 @@ if [ ! -z "$R1_LIST" ] ; then
 		SAMPLE=$( echo $R1_BASE | cut -d "." -f 1 )
 
 		## minimap2
-        /gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/minimap2-2.30_x64-linux/minimap2 -ax sr $REF $READ1 $READ2 > ${OUTPUT_DIR}/${SAMPLE}.sam 
+        minimap2 -ax sr $REF $READ1 $READ2 > ${OUTPUT_DIR}/${SAMPLE}.sam 
 
         ## samtools sort and index
         samtools view -@ 48 -bS  ${OUTPUT_DIR}/${SAMPLE}.sam > ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.bam

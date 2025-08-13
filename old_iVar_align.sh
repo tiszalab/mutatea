@@ -46,8 +46,8 @@ if [ ! -z "$R1_LIST" ] ; then
         samtools mpileup -A -d 0 -B -Q 0 -f $REF $BAM | \
 		ivar variants -p ${OUTPUT_DIR}/${SAMPLE} -t 0 -m 1 -r $REF -g $GFF
 
-		# keep only the non-empty tsv files
-		# need to consider that every tsv file has a header line
+		## keep only the non-empty tsv files
+		## need to consider that every tsv file has a header line
 		if [ $(wc -l < "${OUTPUT_DIR}/${SAMPLE}.tsv") -le 1 ]; then
 			rm -f "${OUTPUT_DIR}/${SAMPLE}.tsv"
 		else

@@ -44,13 +44,17 @@ if [ ! -z "$R1_LIST" ] ; then
 
         BAM="${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam"
 
+		## create directory for filtered vcf files
+		mkdir -p ${OUTPUT_DIR}/filtered
+		
 		## lofreq to see variants from reference genome
-		## lofreq call -f $REF --sig 0.1 --force-overwrite -o ${OUTPUT_DIR}/${SAMPLE}.vcf $BAM
+		lofreq call -f $REF --no-default-filter --min-cov 1 --max-depth 1000000 --force-overwrite --verbose -o ${OUTPUT_DIR}/${SAMPLE}.raw.vcf $BAM
+		lofreq filter -i ${OUTPUT_DIR}/${SAMPLE}.raw.vcf --cov-min 1 --af-min 1 --verbose -o ${OUTPUT_DIR}/filtered/${SAMPLE}.vcf
 
 		# Create a VCF file for the sample
-        bcftools mpileup -Ou -f $REF -d 1000000 -q 0 -Q 0 -a DP,AD $BAM | bcftools view -Oz -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
+        ##bcftools mpileup -Ou -f $REF -d 1000000 -q 0 -Q 0 -a DP,AD $BAM | bcftools view -Oz -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
 		# Index the VCF file
-		bcftools index ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
+		##bcftools index ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
         
         ## varmint to convert vcf to tsv
 

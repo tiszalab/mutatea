@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 ## a script for pulling all iav_serotype assigned H1N1 reads (.fastq)
 ## aligning them to an H1N1 reference with minimap2
@@ -44,17 +45,22 @@ if [ ! -z "$R1_LIST" ] ; then
         BAM="${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam"
 
 		## lofreq to see variants from reference genome
-        lofreq call -f $REF -o ${OUTPUT_DIR}/${SAMPLE}.vcf $BAM
+		## lofreq call -f $REF --sig 0.1 --force-overwrite -o ${OUTPUT_DIR}/${SAMPLE}.vcf $BAM
+
+		# Create a VCF file for the sample
+        bcftools mpileup -Ou -f $REF -d 1000000 -q 0 -Q 0 -a DP,AD $BAM | bcftools view -Oz -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
+		# Index the VCF file
+		bcftools index ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
         
         ## varmint to convert vcf to tsv
 
 
 		## keep only the non-empty tsv files
 		## need to consider that every tsv file has a header line
-		if [ $(wc -l < "${OUTPUT_DIR}/${SAMPLE}.tsv") -le 1 ]; then
-			rm -f "${OUTPUT_DIR}/${SAMPLE}.tsv"
-		else
-	    	echo "Variants found for ${SAMPLE}"
-		fi
+		##if [ $(wc -l < "${OUTPUT_DIR}/${SAMPLE}.tsv") -le 1 ]; then
+		##	rm -f "${OUTPUT_DIR}/${SAMPLE}.tsv"
+		##else
+	    ##	echo "Variants found for ${SAMPLE}"
+		##fi
 done
 fi

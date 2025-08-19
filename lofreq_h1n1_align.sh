@@ -50,7 +50,7 @@ if [ ! -z "$R1_LIST" ] ; then
 		## lofreq to see variants from reference genome
 		lofreq call -f $REF --no-default-filter --min-cov 1 --max-depth 1000000 --force-overwrite --verbose -o ${OUTPUT_DIR}/${SAMPLE}.raw.vcf $BAM
 		
-		# created a temporary file to filter the vcf file
+		# created a temporary folder so the filter step can overwrite the vcf
 		TMP=$(mktemp -u --suffix=.vcf)
 		lofreq filter -i ${OUTPUT_DIR}/${SAMPLE}.raw.vcf --cov-min 1 --af-min 1 --verbose -o "$TMP"
 		mv "$TMP" ${OUTPUT_DIR}/filtered/${SAMPLE}.vcf

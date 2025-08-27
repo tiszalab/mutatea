@@ -43,7 +43,9 @@ if [ ! -z "$R1_LIST" ] ; then
         BAM="${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam"
 
         # Create a VCF file for the sample
-        bcftools mpileup -Ou -f $REF -q 0 -Q 0 --min-BQ 0 --max-depth 1000000 -a DP,AD $BAM | bcftools view -Oz -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
+        bcftools mpileup -Ou -f $REF -q 0 -Q 0 -B -A --min-BQ 0 --max-depth 1000000 -a DP,AD $BAM | bcftools call -mv -Oz -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
+        
+        # bcftools view -Oz -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf.gz
         
         #bcftools norm -Oz -o ${OUTPUT_DIR}/${SAMPLE}.${POOLID}.vcf
         

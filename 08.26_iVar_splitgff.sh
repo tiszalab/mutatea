@@ -12,7 +12,7 @@ OUTPUT_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/${POOLID
 TSV_OUTPUT="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/${POOLID}/tsv_files"
 
 ## create the output directories if they do not already exist
-if [ ! -d ${POOLID} ] ; then
+if [ ! -d ${OUTPUT_DIR} ] ; then
 	mkdir -p ${OUTPUT_DIR}
 fi
 if [ ! -d ${TSV_OUTPUT} ] ; then
@@ -22,7 +22,7 @@ fi
 ## activate conda environment
 source /cmmr/prod/envParams/condanewenv.init && conda activate crm_flutatome
 
-REF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/FASTA/${VARIANT}_reference_clean.fasta"
+REF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/FASTA/${VARIANT}_reference_cleaned.fasta"
 
 ## directories for segmented GFF and FASTA files
 REF_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/FASTA/segmented"

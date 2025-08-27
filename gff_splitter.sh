@@ -3,17 +3,17 @@
 ## script for splitting a GFF file into non-overlapping segments to prevent gene stacking issues with iVar
 ## requires an input GFF file and an output path for the cleaned GFF
 
-OUTPUT_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/gff/segmented"
+VARIANT=$1
+ORIGINAL_GFF=$2
 
-if [ ! -d ${POOLID} ] ; then
+OUTPUT_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/gff/segmented"
+
+if [ ! -d ${OUTPUT_DIR} ] ; then
 	mkdir -p ${OUTPUT_DIR}
 fi
 
 ## activate conda environment
 source /cmmr/prod/envParams/condanewenv.init && conda activate crm_flutatome
-
-## load in file
-ORIGINAL_GFF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/gff/H1N1.gff"
 
 ## keep headers from original GFF
 HEADERS=$(grep "^#" "$ORIGINAL_GFF")

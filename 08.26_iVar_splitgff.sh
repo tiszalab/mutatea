@@ -4,11 +4,14 @@
 ## aligning them to an H1N1 reference with minimap2
 ## samtools sort and index the bam files
 ## use ivar to get tsv files
+## should run the fasta_splitter.sh script and gff_splitter.sh first to create segmented FASTA and GFF files
 
-POOLID=$1
-OUTPUT_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/${POOLID}"
-TSV_OUTPUT="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/${POOLID}/tsv_files"
+VARIANT=$1
+POOLID=$2 
+OUTPUT_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/${POOLID}"
+TSV_OUTPUT="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/${POOLID}/tsv_files"
 
+## create the output directories if they do not already exist
 if [ ! -d ${POOLID} ] ; then
 	mkdir -p ${OUTPUT_DIR}
 fi
@@ -19,14 +22,14 @@ fi
 ## activate conda environment
 source /cmmr/prod/envParams/condanewenv.init && conda activate crm_flutatome
 
-REF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/H1N1_reference_clean.fasta"
+REF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/FASTA/${VARIANT}_reference_clean.fasta"
 
 ## directories for segmented GFF and FASTA files
-REF_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/FASTA/segmented"
-GFF_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/H1N1_align/reference/gff/segmented"
+REF_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/FASTA/segmented"
+GFF_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/gff/segmented"
 
 ## load in reads
-R1_LIST=$( find /gpfs1/projects/Pools/EsViritu/${POOLID} -type f -name "*H1N1.R1.fastq" )
+R1_LIST=$( find /gpfs1/projects/Pools/EsViritu/${POOLID} -type f -name "*${VARIANT}.R1.fastq" )
 
 if [ ! -z "$R1_LIST" ] ; then
 

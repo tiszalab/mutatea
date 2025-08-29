@@ -6,10 +6,13 @@
 ## use ivar to get tsv files
 ## should run the fasta_splitter.sh script and gff_splitter.sh first to create segmented FASTA and GFF files
 
+## set variables
 VARIANT=$1
-POOLID=$2 
+POOLID=$2
+
+## set output directories
 OUTPUT_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/${POOLID}"
-TSV_OUTPUT="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/tsv_files"
+TSV_OUTPUT="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/${POOLID}/tsv_files"
 
 ## create the output directories if they do not already exist
 if [ ! -d ${OUTPUT_DIR} ] ; then
@@ -22,11 +25,9 @@ fi
 ## activate conda environment
 source /cmmr/prod/envParams/condanewenv.init && conda activate crm_flutatome
 
+## load in reference
 REF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/FASTA/${VARIANT}_reference_cleaned.fasta"
-
-## directories for segmented GFF and FASTA files
-REF_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/FASTA/segmented"
-GFF_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/gff/segmented"
+GFF="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align/reference/gff/${VARIANT}.gff"
 
 ## load in reads
 R1_LIST=$( find /gpfs1/projects/Pools/EsViritu/${POOLID} -type f -name "*${VARIANT}.R1.fastq" )
@@ -54,21 +55,12 @@ if [ ! -z "$R1_LIST" ] ; then
 
         BAM="${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam"
 
-		## determine which segment this bam uses and use the respective FASTA and GFF files
-		 samtools idxstats $BAM | awk '$3 > 0 {print $1}' | while read SEG ; do
-            SEG_REF="${REF_DIR}/${SEG}.fasta"
-            SEG_GFF="${GFF_DIR}/${SEG}.gff"
+		varmint --bam $BAM --ref $REF --gff $GFF --out "${TSV_OUTPUT}/${SAMPLE}.tsv"
 
-            if [[ -f $SEG_REF && -f $SEG_GFF ]]; then
-                samtools mpileup -A -d 0 -B -Q 0 -f $SEG_REF $BAM | \
-                ivar variants -p ${TSV_OUTPUT}/${SAMPLE} -t 0 -m 1 -r $SEG_REF -g $SEG_GFF
-
-                if [ $(wc -l < "${TSV_OUTPUT}/${SAMPLE}.tsv") -le 1 ]; then
-                    rm -f "${TSV_OUTPUT}/${SAMPLE}.tsv"
-                else
-                    echo "Variants found for ${SAMPLE} on $SEG"
-                fi
-            fi
-        done
+        if [ $(wc -l < "${TSV_OUTPUT}/${SAMPLE}.tsv") -le 1 ]; then
+            rm -f "${TSV_OUTPUT}/${SAMPLE}.tsv"
+        else
+            echo "Variants found for ${SAMPLE}"
+        fi
     done
 fi

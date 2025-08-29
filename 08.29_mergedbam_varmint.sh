@@ -10,18 +10,18 @@ POOLID=$2
 BASE_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align"
 OUTPUT_DIR="${BASE_DIR}/${POOLID}"
 MERGED_BAM_DIR="${BASE_DIR}/bam_merger_output/merged_bams"
-TSV_OUTPUT="${OUTPUT_DIR}/bam_merger_output/tsv_files"
+TSV_OUTPUT="${BASE_DIR}/bam_merger_output/tsv_files" 
 META_FILE="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/metadata_combined.csv"
 
 ## create the output directories if they do not already exist
 if [ ! -d ${OUTPUT_DIR} ] ; then
 	mkdir -p ${OUTPUT_DIR}
 fi
-if [ ! -d ${TSV_OUTPUT} ] ; then
-    mkdir -p ${TSV_OUTPUT}
-fi
 if [ ! -d ${MERGED_BAM_DIR} ] ; then
 	mkdir -p ${MERGED_BAM_DIR}
+fi
+if [ ! -d ${TSV_OUTPUT} ] ; then 
+    mkdir -p ${TSV_OUTPUT}
 fi
 
 ## activate conda environment
@@ -72,6 +72,7 @@ while IFS=',' read -r -a cols; do
 
     if [[ -f "${BAM_PATH}" ]]; then
         echo "${BAM_PATH}" >> "${LIST_FILE}"
+        sort -u "${LIST_FILE}" -o "${LIST_FILE}"  # remove duplicate entries
     fi
 done < <(tail -n +2 "${META_FILE}") ## skip header
 
@@ -88,7 +89,7 @@ done
 
 ## run varmint on the merged BAM files
 for MERGED_BAM in "${MERGED_BAM_DIR}"/*.bam; do
-    if [[ -f "${MERGED_BAM}" ]]; then  # ensure the BAM file exists
+    if [[ -f "${MERGED_BAM}" ]]; then  ## ensure the BAM file exists
         SAMPLE=$(basename "${MERGED_BAM}" .bam)
         TSV_OUTPUT_FILE="${TSV_OUTPUT}/${SAMPLE}.tsv"
 

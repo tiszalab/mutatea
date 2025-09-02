@@ -72,7 +72,7 @@ while IFS=',' read -r -a cols; do
 
     if [[ -f "${BAM_PATH}" ]]; then
         echo "${BAM_PATH}" >> "${LIST_FILE}"
-        sort -u "${LIST_FILE}" -o "${LIST_FILE}"  # remove duplicate entries
+        sort -u "${LIST_FILE}" -o "${LIST_FILE}"  ## remove duplicate entries
     fi
 done < <(tail -n +2 "${META_FILE}") ## skip header
 
@@ -84,6 +84,14 @@ for LIST_FILE in "${BASE_DIR}/bam_merger_output"/*.list; do
 
         echo "Merging BAMs for ${MERGE_KEY}"
         samtools merge -f "${MERGED_BAM}" -b "${LIST_FILE}"
+    fi
+done
+
+## sort and index the merged BAM files
+for MERGED_BAM in "${MERGED_BAM_DIR}"/*.bam; do
+    if [[ -f "${MERGED_BAM}" ]]; then   ## ensure the BAM file exists
+        samtools sort -@ 48 -o "${MERGED_BAM_DIR}/${MERGED_BAM}.sort.bam" "${MERGED_BAM_DIR}/${MERGED_BAM}"
+        samtools index "${MERGED_BAM_DIR}/${MERGED_BAM}.sort.bam"
     fi
 done
 
@@ -101,10 +109,6 @@ for MERGED_BAM in "${MERGED_BAM_DIR}"/*.bam; do
             rm -f "${TSV_OUTPUT_FILE}"
         elif [[ -f "${TSV_OUTPUT_FILE}" ]]; then
             echo "Variants found for ${SAMPLE}"
-        else
-            echo "WARNING: No TSV file generated for ${SAMPLE}" >&2
         fi
-    else
-        echo "WARNING: Merged BAM file not found: ${MERGED_BAM}" >&2
     fi
 done

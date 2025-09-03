@@ -48,7 +48,12 @@ if [ ! -z "$R1_LIST" ]; then
         samtools sort -@ 48 -o "${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam" "${OUTPUT_DIR}/${SAMPLE}.${POOLID}.bam"
         samtools index "${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam"
     done
+else 
+    ## remove empty POOLID folders
+    echo "No R1 files found for POOLID: ${POOLID}"
+    rmdir "${OUTPUT_DIR}" 2>dev/null || true
 fi
+
 
 ## merge BAM files by metadata
 ## get column numbers from metadata CSV
@@ -84,12 +89,8 @@ for LIST_FILE in "${BASE_DIR}/bam_merger_output"/*.list; do
 
         echo "Merging BAMs for ${MERGE_KEY}"
         samtools merge -f "${MERGED_BAM}" -b "${LIST_FILE}"
-    fi
-done
 
-## sort and index the merged BAM files
-for MERGED_BAM in "${MERGED_BAM_DIR}"/*.bam; do
-    if [[ -f "${MERGED_BAM}" ]]; then   ## ensure the BAM file exists
+        ## sort and index the merged BAM files
         SORTED_BAM="${MERGED_BAM%.bam}.sort.bam"  ## set the variable for the sorted BAM file path
         samtools sort -@ 48 -o "${SORTED_BAM}" "${MERGED_BAM}"
         samtools index "${SORTED_BAM}"
@@ -97,13 +98,13 @@ for MERGED_BAM in "${MERGED_BAM_DIR}"/*.bam; do
 done
 
 ## run varmint on the merged BAM files
-for MERGED_BAM in "${MERGED_BAM_DIR}"/*.bam; do
-    if [[ -f "${MERGED_BAM}" ]]; then  ## ensure the BAM file exists
-        SAMPLE=$(basename "${MERGED_BAM}" .bam)
+for SORTED_BAM in "${MERGED_BAM_DIR}"/*.sort.bam; do
+    if [[ -f "${SORTED_BAM}" ]]; then  ## ensure the sorted BAM file exists
+        SAMPLE=$(basename "${SORTED_BAM}" .sort.bam)
         TSV_OUTPUT_FILE="${TSV_OUTPUT}/${SAMPLE}.tsv"
 
         ## run varmint
-        varmint --bam "${MERGED_BAM}" --ref "${REF}" --gff "${GFF}" --out "${TSV_OUTPUT_FILE}"
+        varmint --bam "${SORTED_BAM}" --ref "${REF}" --gff "${GFF}" --out "${TSV_OUTPUT_FILE}"
 
         ## check if TSV file exists and is not empty
         if [[ -f "${TSV_OUTPUT_FILE}" && $(wc -l < "${TSV_OUTPUT_FILE}") -le 1 ]]; then

@@ -64,7 +64,7 @@ while IFS=',' read -r -a cols; do
     POOLID=$(echo "${cols[$POOLID_COL]}" | xargs)
 
     ## set path to BAM files
-    BAM_PATH="${BASE_DIR}/${POOLID}/${SAMPLE}.${POOLID}.sort.bam"
+    BAM_PATH="${BASE_DIR}/pools/${POOLID}/${SAMPLE}.${POOLID}.sort.bam"
 
     ## want each list file to be named by the month and region combination it is being grouped by
     MERGE_KEY="${DATE}.${REGION}"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## script for aligning reads, merging BAM files, and varmint to capture variants
-## after running this script, run 09.04_multiple_pool_loop_varmint.sh to run varmint on all the merged BAM files
+## after running this script, run 09.04_varmint.sh to capture variants from merged BAM files
 
 ## set variables
 VARIANT=$1
@@ -13,16 +13,17 @@ OUTPUT_DIR="${BASE_DIR}/pools/${POOLID}"
 MERGED_BAM_DIR="${BASE_DIR}/bam_merger_output/merged_bams"
 TSV_OUTPUT="${BASE_DIR}/bam_merger_output/tsv_files" 
 META_FILE="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/metadata_combined.csv"
+LIST_OUTPUT="${BASE_DIR}/bam_merger_output/lists" 
 
 ## create the output directories if they do not already exist
-if [ ! -d ${OUTPUT_DIR} ] ; then
-	mkdir -p ${OUTPUT_DIR}
-fi
 if [ ! -d ${MERGED_BAM_DIR} ] ; then
 	mkdir -p ${MERGED_BAM_DIR}
 fi
 if [ ! -d ${TSV_OUTPUT} ] ; then 
     mkdir -p ${TSV_OUTPUT}
+fi
+if [ ! -d ${LIST_OUTPUT} ] ; then 
+    mkdir -p ${LIST_OUTPUT}
 fi
 
 ## activate conda environment
@@ -36,6 +37,7 @@ GFF="${BASE_DIR}/reference/gff/${VARIANT}.gff"
 R1_LIST=$(find /gpfs1/projects/Pools/EsViritu/${POOLID} -type f -name "*${VARIANT}.R1.fastq")
 
 if [ ! -z "$R1_LIST" ]; then
+    mkdir -p "$OUTPUT_DIR"
     echo "$R1_LIST" | while read READ1; do
         READ2=$(echo "$READ1" | sed 's/R1.fastq/R2.fastq/g')
         R1_BASE=$(basename "$READ1")
@@ -50,9 +52,7 @@ if [ ! -z "$R1_LIST" ]; then
         samtools index "${OUTPUT_DIR}/${SAMPLE}.${POOLID}.sort.bam"
     done
 else 
-    ## remove empty POOLID folders
-    echo "No R1 files found for POOLID: ${POOLID}"
-    rmdir "${OUTPUT_DIR}" 2>dev/null || true
+    echo "No R1 files found for ${VARIANT} in ${POOLID}"
 fi
 
 
@@ -74,7 +74,7 @@ while IFS=',' read -r -a cols; do
 
     ## want each list file to be named by the month and region combination it is being grouped by
     MERGE_KEY="${DATE}.${REGION}"
-    LIST_FILE="${BASE_DIR}/bam_merger_output/${MERGE_KEY}.list"
+    LIST_FILE="${LIST_OUTPUT}/${MERGE_KEY}.list"
 
     if [[ -f "${BAM_PATH}" ]]; then
         echo "${BAM_PATH}" >> "${LIST_FILE}"
@@ -83,7 +83,7 @@ while IFS=',' read -r -a cols; do
 done < <(tail -n +2 "${META_FILE}") ## skip header
 
 ## merge BAMs for each month-region combination
-for LIST_FILE in "${BASE_DIR}/bam_merger_output"/*.list; do
+for LIST_FILE in "${LIST_OUTPUT}"/*.list; do
     if [[ -f "${LIST_FILE}" ]]; then
         MERGE_KEY=$(basename "${LIST_FILE}" .list)
         MERGED_BAM="${MERGED_BAM_DIR}/${MERGE_KEY}.bam"

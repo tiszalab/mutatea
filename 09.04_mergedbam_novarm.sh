@@ -1,6 +1,7 @@
 #!/bin/bash
 
 ## script for aligning reads, merging BAM files, and varmint to capture variants
+## after running this script, run 09.04_multiple_pool_loop_varmint.sh to run varmint on all the merged BAM files
 
 ## set variables
 VARIANT=$1
@@ -97,20 +98,4 @@ for LIST_FILE in "${BASE_DIR}/bam_merger_output"/*.list; do
     fi
 done
 
-## run varmint on the merged BAM files
-for SORTED_BAM in "${MERGED_BAM_DIR}"/*.sort.bam; do
-    if [[ -f "${SORTED_BAM}" ]]; then  ## ensure the sorted BAM file exists
-        SAMPLE=$(basename "${SORTED_BAM}" .sort.bam)
-        TSV_OUTPUT_FILE="${TSV_OUTPUT}/${SAMPLE}.tsv"
-
-        ## run varmint
-        varmint --bam "${SORTED_BAM}" --ref "${REF}" --gff "${GFF}" --out "${TSV_OUTPUT_FILE}"
-
-        ## check if TSV file exists and is not empty
-        if [[ -f "${TSV_OUTPUT_FILE}" && $(wc -l < "${TSV_OUTPUT_FILE}") -le 1 ]]; then
-            rm -f "${TSV_OUTPUT_FILE}"
-        elif [[ -f "${TSV_OUTPUT_FILE}" ]]; then
-            echo "Variants found for ${SAMPLE}"
-        fi
-    fi
-done
+## then run 09.04_multiple_pool_loop_varmint.sh to run varmint on all the merged BAM files

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 ## script for aligning reads, merging BAM files, and varmint to capture variants
+## need to preprocess with metadata in R to add region and date information
 ## after running this script, run 09.04_varmint.sh to capture variants from merged BAM files
 
 ## set variables

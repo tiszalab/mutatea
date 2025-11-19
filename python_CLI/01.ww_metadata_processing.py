@@ -65,12 +65,12 @@ earliest_date = metadata["Date"].min()
 latest_date = metadata["Date"].max()
 print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range")
 
-query = (
-    '"Influenza A virus"[Organism] '
-    'AND "Homo sapiens"[Host] '
-    'AND Texas[Location] '
-    f'AND {earliest_date.strftime("%m/%d/%Y")}[Collection Date] : {latest_date.strftime("%m/%d/%Y")}[Collection Date] '
-    'AND "complete genome"'
-)
+# request flu subtype
+subtype = input("Enter the flu subtype you want to analyze (e.g. H1N1, H3N2, H5N1): ").strip() 
 
-print(f"Use this NCBI Virus query: {query}")
+# reformat dates for NCBI Virus URL (specifically need to remove the spaces so the url works)
+start_str = earliest_date.strftime("%Y-%m-%dT00:00:00.00Z")
+end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
+
+# offer NCBI link
+print(f"Here is the link to download the clinical FASTA and the metadata in csv format: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")

@@ -1,0 +1,57 @@
+---
+title: "08.29_flu_metadata"
+output: html_document
+date: "2025-08-29"
+---
+
+# load packages
+```{r setup, include=FALSE}
+library(readxl)
+library(data.table)
+library(readr)
+```
+
+# load in all xlsx files from the folder
+```{r}
+#file.list <- list.files(path = "~/Downloads/OneDrive_1_8-28-2025", pattern = "\\.xlsx", full.names = TRUE)
+# changed file path since I had to redownload it
+
+
+md.list <- lapply(file.list, read_excel)
+```
+
+# combine all the metadata into one large data frame
+```{r}
+metadata_combined <- rbindlist(md.list, idcol = "id", fill=TRUE)
+```
+
+# see the unique cities
+```{r}
+city_region <- data.frame(City = unique(metadata_combined$City))
+```
+
+# compared county maps versus the texas health region maps to add regions to cities
+```{r}
+city_region['Region'] <- c("6_5S", "9_10", "1", "11", "2_3", "6_5S", "6_5S", "6_5S", "7", "11", "7", "2_3", "4_5N", "4_5N", "2_3", "6_5S")
+```
+
+# added a column to metadata with the region of each city
+```{r}
+metadata_combined <- merge(metadata_combined, city_region, by = "City", all.x = TRUE)
+```
+
+# created a column for the date format I want
+```{r}
+metadata_combined$Date <- as.Date(metadata_combined$Date)
+metadata_combined$Month_Year <- format(metadata_combined$Date, "%m.%Y")
+```
+
+# exported the metadata combined
+```{r}
+write_tsv(metadata_combined, "/Users/camillemazurek2025/Downloads/metadata_combined.tsv")
+```
+
+```{r}
+length(unique(metadata_combined$Month_Year))
+```
+

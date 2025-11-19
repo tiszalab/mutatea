@@ -13,9 +13,8 @@ library(readr)
 
 # load in all xlsx files from the folder
 ```{r}
-#file.list <- list.files(path = "~/Downloads/OneDrive_1_8-28-2025", pattern = "\\.xlsx", full.names = TRUE)
-# changed file path since I had to redownload it
-
+# I have the onedrive folder synced to my computer
+file.list <- list.files(path = "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata", pattern = "\\.xlsx", full.names = TRUE)
 
 md.list <- lapply(file.list, read_excel)
 ```
@@ -28,6 +27,7 @@ metadata_combined <- rbindlist(md.list, idcol = "id", fill=TRUE)
 # see the unique cities
 ```{r}
 city_region <- data.frame(City = unique(metadata_combined$City))
+
 ```
 
 # compared county maps versus the texas health region maps to add regions to cities

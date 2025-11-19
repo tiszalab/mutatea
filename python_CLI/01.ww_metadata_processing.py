@@ -59,3 +59,18 @@ metadata = metadata[
 
 # export metadata as tsv
 metadata.to_csv("/Users/camillemazurek2025/Downloads/metadata_combined.csv", sep=",", index=False)
+
+# print the time range of the wastewater samples
+earliest_date = metadata["Date"].min()
+latest_date = metadata["Date"].max()
+print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range")
+
+query = (
+    '"Influenza A virus"[Organism] '
+    'AND "Homo sapiens"[Host] '
+    'AND Texas[Location] '
+    f'AND {earliest_date.strftime("%m/%d/%Y")}[Collection Date] : {latest_date.strftime("%m/%d/%Y")}[Collection Date] '
+    'AND "complete genome"'
+)
+
+print(f"Use this NCBI Virus query: {query}")

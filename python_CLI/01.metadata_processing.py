@@ -5,6 +5,8 @@ print("Please check the module_requirements.txt file and install any missing mod
 import pandas as pd
 import glob
 import os
+import gzip
+import shutil
 
 ########## WASTEWATER METADATA PROCESSING ##########
 
@@ -164,6 +166,89 @@ print(f"\nExporting the processed clinical metadata as {subtype}_clinical_md_my.
 clinical_metadata.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
 
 
+
+
+########## CHOOSE RELEVANT LINEAR REFERENCE GENOME ##########
+
+# offer the same reference genomes I've been using
+default_ref = input("Do you want to use the default reference genome? (y/n): ").strip()
+while default_ref not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+    default_ref = input("Please enter either y or n: ").strip()
+if default_ref.lower() in ["y", "Y", "yes", "Yes"]:
+    # crm: chatgpt helped me realize my subtype needs to be lowercase
+    if subtype.lower() == "h1n1":
+        print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
+    elif subtype.lower() == "h3n2":
+        print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/301/835/GCA_039301835.1_ASM3930183v1/")
+    elif subtype.lower() == "h5n1":
+        print("Note that H5N1 is not common in the United States, you may want to use a different reference genome: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
+
+# offer the option to use their own reference genome
+#### crm: maybe let them see the genomes +- 6 months of the earliest date in the time range
+else:
+    print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Genome&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
+    print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \n You will need to download the GFF and FASTA of the selected genome")
+
+print("\n Download the files for genomic.gff.gz and genomic.fna.gz")
+
+
+
+
+
+
+
+########## PROCESS FILES OF REFERENCE GENOME ##########
+# load in reference fasta
+path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip()
+
+# added the .fna option in case the user unzips the file themselves
+# crm: chatgpt helped me realize I needed to put an "and" between the file type options
+while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(".fna")) or (not os.path.isfile(path_ref_fasta)):
+    print("Error: please enter a valid existing file path that ends in .fna.gz or .fna")
+    path_ref_fasta = input("Enter the file path of your reference fasta, make sure the file name ends in fna.gz or fna: ").strip()
+
+# unzip if the file path ends in fna.gz
+if path_ref_fasta.endswith(".fna.gz"):
+
+    # set the output path as the same place as the input path but without the .gz extension
+    ref_fasta = path_ref_fasta[:-3]
+
+    ## crm: chatgpt recommended using shutil
+    # unzip the fna.gz file to a new FASTA file in the same place as the input file
+    with gzip.open(path_ref_fasta, "rb") as f_in, open(ref_fasta, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    print(f"\nUnzipped FASTA to: {ref_fasta}\n")
+else:
+    # the file is already unzipped if the file name ends in .fna
+    ref_fasta = path_ref_fasta
+    print(f"\nFASTA file is already unzipped: {ref_fasta}\n")
+
+# load in reference gff
+path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip()
+# added the .gff option in case the user unzips the file themselves
+while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_fasta.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
+    print("Error: please enter a valid existing file path that ends in .gff.gz or .gff")
+    path_ref_gff = input("Enter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip()
+
+# unzip if the file path ends in gff.gz
+if path_ref_gff.endswith(".gff.gz"):
+
+    # set the output path as the same place as the input path but without the .gz extension
+    ref_gff = path_ref_gff[:-3]
+
+    ## crm: chatgpt recommended using shutil
+    # unzip the gff.gz file to a new gff file in the same place as the input file
+    with gzip.open(path_ref_gff, "rb") as f_in, open(ref_gff, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    print(f"\nUnzipped GFF to: {ref_gff}\n")
+else:
+    # the file is already unzipped if the file name ends in .gff
+    ref_gff = path_ref_gff
+    print(f"\nGFF file is already unzipped: {ref_gff}\n")
+
+
+
+
 ########## LOAD IN WASTEWATER FASTA FILES ##########
 
 
@@ -215,6 +300,3 @@ clinical_fasta = pd.read_csv(clinical_fasta_path, header=None, names=["Sequence"
 #clinical_fasta_by_month.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
 
 
-########## CHOOSE RELEVANT LINEAR REFERENCE GENOME ##########
-print(f"You will want to pick a reference genome from the beginning of your time range, which is {start_str} \n You need to the download the GFF and FASTA of the selected genome")
-print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")

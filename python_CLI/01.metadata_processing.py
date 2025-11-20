@@ -153,3 +153,68 @@ clinical_metadata = pd.read_csv(clinical_metadata_path)
 clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
 clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
 
+# export metadata as tsv
+## crm: set to run before submitting
+# clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip() 
+# while clinical_md_filepath not in os.listdir():
+#    clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip()
+# clinical_metadata.to_csv(f"{clinical_md_filepath}/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
+
+print(f"\nExporting the processed clinical metadata as {subtype}_clinical_md_my.tsv\n")
+clinical_metadata.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
+
+
+########## LOAD IN WASTEWATER FASTA FILES ##########
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########## SPLIT CLINICAL FASTA BY MONTH ##########
+# request file path of clinical fasta
+clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
+
+# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+clinical_fasta_path = clinical_fasta_path.strip(" '")
+
+# add test to confirm they gave the path of a fasta
+while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
+    print("Error: please enter a valid existing file path that ends in .fasta")
+    clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
+
+# load in clinical fasta
+clinical_fasta = pd.read_csv(clinical_fasta_path, header=None, names=["Sequence"])
+
+
+
+
+
+
+
+# split clinical fasta by month
+#clinical_fasta_by_month = clinical_fasta.groupby("Month_Year")
+
+# export clinical fasta by month
+## crm: set to run before submitting
+# clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip() 
+# while clinical_fasta_by_month_filepath not in os.listdir():
+#    clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip()
+# clinical_fasta_by_month.to_csv(f"{clinical_fasta_by_month_filepath}/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
+
+#print(f"\nExporting the processed clinical fasta by month as {subtype}_clinical_fasta_by_month.tsv\n")
+#clinical_fasta_by_month.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
+
+
+########## CHOOSE RELEVANT LINEAR REFERENCE GENOME ##########
+print(f"You will want to pick a reference genome from the beginning of your time range, which is {start_str} \n You need to the download the GFF and FASTA of the selected genome")
+print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")

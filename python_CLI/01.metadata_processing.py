@@ -1,9 +1,10 @@
+# Confirm the user has all required modules installed
+print("Please check the module_requirements.txt file and install any missing modules with pip install -r module_requirements.txt")
+
 # load modules
 import pandas as pd
 import glob
 import os
-from tkinter import Tk, filedialog
-
 
 ########## WASTEWATER METADATA PROCESSING ##########
 
@@ -15,6 +16,8 @@ from tkinter import Tk, filedialog
 ## crm: need to set to run before submitting
 # while metadata_folder not in os.listdir():
 #    metadata_folder = input("Enter the file path of your metadata xlsx files: ").strip()
+## remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+#metadata_folder = metadata_folder.strip(" '\"")
 
 metadata_folder="/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
 metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
@@ -126,46 +129,27 @@ end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
 
 # offer NCBI link and instructions for getting clinical data
 print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
-print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version")
-
+print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
 
 
 
 ########## CLINICAL METADATA PROCESSING ##########
-
 # request file path of clinical metadata
-#clinical_metadata_path = input("Enter the file path of your clinical metadata csv: ").strip()
+clinical_metadata_path = input("After downloading the clinical metadata, please enter the file path of your clinical metadata csv: ").strip()
+
+# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+clinical_metadata_path = clinical_metadata_path.strip(" '\"")
 
 # add test to confirm they gave the path of a csv
-#while (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
-#    print("Error: please enter a valid existing file path that ends in .csv")
-#    clinical_metadata_path = input("Enter the file path of your clinical metadata csv: ").strip()
+while (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
+    print("Error: please enter a valid existing file path that ends in .csv")
+    clinical_metadata_path = input("Enter the file path of your clinical metadata csv: ").strip()
+
 
 # load in clinical metadata
-#clinical_metadata = pd.read_csv(clinical_metadata_path)
-    
-
-# hide the root Tk window
-root = Tk()
-root.withdraw()
-
-# open file picker
-clinical_metadata_path = filedialog.askopenfilename(
-    title="Select your clinical metadata CSV",
-    filetypes=[("CSV files", "*.csv")]
-)
-
-# user cancelled
-if not clinical_metadata_path:
-    raise SystemExit("No file selected. Exiting.")
-
-# just in case, validate
-if (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
-    raise ValueError("Selected file is not a valid .csv")
-
 clinical_metadata = pd.read_csv(clinical_metadata_path)
 
-
-# after loading clinical metadata into a DataFrame called clinical_metadata
+# reformat dates in clinical metadata
 clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
 clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
+

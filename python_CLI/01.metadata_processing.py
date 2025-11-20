@@ -2,6 +2,10 @@
 import pandas as pd
 import glob
 import os
+from tkinter import Tk, filedialog
+
+
+########## WASTEWATER METADATA PROCESSING ##########
 
 # load in metadata
 # request file path of metadata
@@ -27,7 +31,7 @@ metadata=pd.concat(md_list, ignore_index=True)
 region_request = input("Do you want your data split by public health region? (y/n): ").strip() 
 while region_request not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     subtype = input("Please enter either y or n: ").strip()
-if region_request.lower() == "y" or "Y" or "yes" or "Yes":
+if region_request.lower() in ["y", "Y", "yes", "Yes"]:
     city_region = {
         "Houston, TX": "6_5S",
         "El Paso, TX": "9_10",
@@ -55,7 +59,6 @@ if region_request.lower() == "y" or "Y" or "yes" or "Yes":
         print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
     else:
         print("\nAll cities were assigned to public health regions\n")
-    
 else:
     metadata["Region"] = "All"
 
@@ -64,7 +67,7 @@ else:
 metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
 
 # organize the metadata in a specific way
-if region_request.lower() == "y" or "Y" or "yes" or "Yes":
+if region_request.lower() in ["y", "Y", "yes", "Yes"]:
     metadata = metadata[
         [
             "City",
@@ -114,7 +117,7 @@ latest_date = metadata["Date"].max()
 time_match = input("Do you want to know the time range of the wastewater samples? (y/n): ").strip() 
 while time_match not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     time_match = input("Please enter either y or n: ").strip()
-if time_match.lower() == "y" or "Y" or "yes" or "Yes":
+if time_match.lower()  in ["y", "Y", "yes", "Yes"]:
     print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range\n")
 
 # reformat dates for NCBI Virus URL (specifically need to remove the spaces so the url works)
@@ -124,3 +127,45 @@ end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
 # offer NCBI link and instructions for getting clinical data
 print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
 print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version")
+
+
+
+
+########## CLINICAL METADATA PROCESSING ##########
+
+# request file path of clinical metadata
+#clinical_metadata_path = input("Enter the file path of your clinical metadata csv: ").strip()
+
+# add test to confirm they gave the path of a csv
+#while (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
+#    print("Error: please enter a valid existing file path that ends in .csv")
+#    clinical_metadata_path = input("Enter the file path of your clinical metadata csv: ").strip()
+
+# load in clinical metadata
+#clinical_metadata = pd.read_csv(clinical_metadata_path)
+    
+
+# hide the root Tk window
+root = Tk()
+root.withdraw()
+
+# open file picker
+clinical_metadata_path = filedialog.askopenfilename(
+    title="Select your clinical metadata CSV",
+    filetypes=[("CSV files", "*.csv")]
+)
+
+# user cancelled
+if not clinical_metadata_path:
+    raise SystemExit("No file selected. Exiting.")
+
+# just in case, validate
+if (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
+    raise ValueError("Selected file is not a valid .csv")
+
+clinical_metadata = pd.read_csv(clinical_metadata_path)
+
+
+# after loading clinical metadata into a DataFrame called clinical_metadata
+clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
+clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")

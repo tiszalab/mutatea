@@ -7,6 +7,8 @@ import glob
 import os
 import gzip
 import shutil
+import subprocess
+
 
 # let the user know what this pipeline does and the files required
 ### crm: adjust the output line depending on what I get done
@@ -43,7 +45,7 @@ metadata=pd.concat(md_list, ignore_index=True)
 
 # create a dictionary of expected cities and their public health regions
 # ask user if they want their wastewater data split by public health region
-region_request = input("Do you want your wastewater data split by public health region? This can be useful for later visualization of how these mutations are spreading (y/n): ").strip() 
+region_request = input("Do you also want your wastewater data split by public health region? This can be useful for later visualization of how these mutations are spreading (y/n): ").strip() 
 while region_request not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     subtype = input("Please enter either y or n: ").strip()
 if region_request.lower() in ["y", "Y", "yes", "Yes"]:
@@ -283,8 +285,37 @@ else:
 ### crm: I don't think I actually need to do this? Need to confirm
 
 
-########## LOAD IN WASTEWATER FASTA FILES ##########
+########## LOAD IN WASTEWATER READS ##########
+print("\nNow we will align the wastewater reads to the reference genome and merge BAMs by month.\nIf you chose to also split the wastewater data by public health region, that will also be done here.")
 
+## crm: maybe I should move the setup of the base directory up so the processed metadata files, unzipped reference gff, unzipped reference fasta, and alignment files are all in the same place
+# ask user for alignment base directory (where you put reference and pools)
+base_dir = input(
+    "Create a base directory to catch the outputted alignment files"
+    f"(default: /Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align): "
+).strip()
+if base_dir == "":
+    base_dir = f"/Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align"
+
+# ask user for one or more PoolIDs to process
+pool_ids = input(
+    "Enter one or more PoolIDs to process (comma-separated, matching the metadata PoolID column): "
+).strip().split(",")
+
+shell_script = "/Users/camillemazurek2025/flu_mutatome_pipelines/09.04_mergedbam_novarm.sh"
+
+for raw_pool in pool_ids:
+    poolid = raw_pool.strip()
+    if not poolid:
+        continue
+    print(f"\nRunning alignment and BAM merging for subtype {subtype} and pool {poolid}...\n")
+    try:
+        subprocess.run(
+            ["bash", shell_script, subtype, poolid],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error running script for pool {poolid}: {e}")
 
 
 

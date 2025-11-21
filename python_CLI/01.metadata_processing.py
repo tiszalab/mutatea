@@ -279,10 +279,8 @@ else:
     ref_gff = path_ref_gff
     print(f"\nGFF file is already unzipped: {ref_gff}\n")
 
-
-
 ## crm: need to clean the fasta headers to match those of the gff
-### crm: I don't think I actually need to do this
+### crm: I don't think I actually need to do this? Need to confirm
 
 
 ########## LOAD IN WASTEWATER FASTA FILES ##########

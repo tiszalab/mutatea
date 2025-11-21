@@ -8,7 +8,17 @@ import os
 import gzip
 import shutil
 
+# let the user know what this pipeline does and the files required
+### crm: adjust the output line depending on what I get done
+## crm: clean this intro line, it's messy
+print("\nThis is a pipeline for taking reads of different serotypes of Influenza A in Texas wastewater data and aligning them to a reference genome to output a tsv of the nonsynonymous mutations occurring in each source. \nRequired inputs include: \n - wastewater metadata \n - wastewater FASTA files \n - reference FASTA \n - reference GFF\nThis pipeline will walk you through getting these files and processing them\n")
+
 ########## WASTEWATER METADATA PROCESSING ##########
+
+# ask if the user also wants to process clinical data
+run_clinical = input("Will you also want to process Influenza A reads from Texas clinical data of the same time range as the inputted wastewater data? (y/n): ").strip()
+while run_clinical not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+    run_clinical = input("Please enter either y or n: ").strip()
 
 # load in metadata
 # request file path of metadata
@@ -32,8 +42,8 @@ md_list=[pd.read_excel(file) for file in metadata_files]
 metadata=pd.concat(md_list, ignore_index=True)
 
 # create a dictionary of expected cities and their public health regions
-# ask user if they want their data split by public health region
-region_request = input("Do you want your data split by public health region? (y/n): ").strip() 
+# ask user if they want their wastewater data split by public health region
+region_request = input("Do you want your wastewater data split by public health region? This can be useful for later visualization of how these mutations are spreading (y/n): ").strip() 
 while region_request not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     subtype = input("Please enter either y or n: ").strip()
 if region_request.lower() in ["y", "Y", "yes", "Yes"]:
@@ -63,7 +73,7 @@ if region_request.lower() in ["y", "Y", "yes", "Yes"]:
     if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
         print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
     else:
-        print("\nAll cities were assigned to public health regions\n")
+        print("\nAll cities in the metadata were successfully assigned to public health regions!\n")
 else:
     metadata["Region"] = "All"
 
@@ -125,45 +135,61 @@ while time_match not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
 if time_match.lower()  in ["y", "Y", "yes", "Yes"]:
     print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range\n")
 
+
+
+
+
 # reformat dates for NCBI Virus URL (specifically need to remove the spaces so the url works)
 start_str = earliest_date.strftime("%Y-%m-%dT00:00:00.00Z")
 end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
 
-# offer NCBI link and instructions for getting clinical data
-print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
-print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
+# offer NCBI link and instructions for getting clinical files if the user doesn't already have them downloaded
+if run_clinical.lower() in ["y", "yes"]:
+    have_clinical_files = input("Do you already have the clinical metadata (csv) and clinical reads (FASTA) downloaded? (y/n): ").strip()
+    while have_clinical_files not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+        have_clinical_files = input("Please enter either y or n: ").strip()
 
+    if have_clinical_files.lower() in ["n", "no"]:
+        want_ncbi_help = input("Do you want an NCBI link and instructions for downloading the clinical metadata and FASTA? (y/n): ").strip()
+        while want_ncbi_help not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+            want_ncbi_help = input("Please enter either y or n: ").strip()
+
+        if want_ncbi_help.lower() in ["y", "yes"]:
+            print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
+            print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
 
 
 ########## CLINICAL METADATA PROCESSING ##########
-# request file path of clinical metadata
-clinical_metadata_path = input("After downloading the clinical metadata, please enter the file path of your clinical metadata csv: ").strip()
+# added this if statement so clinical data is only processed if the user said yes
+if run_clinical.lower() in ["y", "yes"]:
+    # request file path of clinical metadata
+    clinical_metadata_path = input("Please enter the file path of your clinical metadata csv: ").strip()
 
-# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
-clinical_metadata_path = clinical_metadata_path.strip(" '\"")
+    # remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+    clinical_metadata_path = clinical_metadata_path.strip(" '\"")
 
-# add test to confirm they gave the path of a csv
-while (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
-    print("Error: please enter a valid existing file path that ends in .csv")
-    clinical_metadata_path = input("Enter the file path of your clinical metadata csv: ").strip()
+    # add test to confirm they gave the path of a csv
+    while (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
+        print("Error: please enter a valid existing file path that ends in .csv")
+        clinical_metadata_path = input("Please enter the file path of your clinical metadata csv: ").strip()
 
 
-# load in clinical metadata
-clinical_metadata = pd.read_csv(clinical_metadata_path)
+    # load in clinical metadata
+    clinical_metadata = pd.read_csv(clinical_metadata_path)
 
-# reformat dates in clinical metadata
-clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
-clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
+    # reformat dates in clinical metadata
+    clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
+    clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
 
-# export metadata as tsv
-## crm: set to run before submitting
-# clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip() 
-# while clinical_md_filepath not in os.listdir():
-#    clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip()
-# clinical_metadata.to_csv(f"{clinical_md_filepath}/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
+    # export metadata as tsv
+    ## crm: set to run before submitting
+    # clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip() 
+    # while clinical_md_filepath not in os.listdir():
+    #    clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip()
+    # clinical_metadata.to_csv(f"{clinical_md_filepath}/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
 
-print(f"\nExporting the processed clinical metadata as {subtype}_clinical_md_my.tsv\n")
-clinical_metadata.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
+    print(f"\nExporting the processed clinical metadata as {subtype}_clinical_md_my.tsv\n")
+    clinical_metadata.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
 
 
 
@@ -201,6 +227,9 @@ print("\n Download the files for genomic.gff.gz and genomic.fna.gz")
 # load in reference fasta
 path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip()
 
+# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+path_ref_fasta = path_ref_fasta.strip(" '\"")
+
 # added the .fna option in case the user unzips the file themselves
 # crm: chatgpt helped me realize I needed to put an "and" between the file type options
 while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(".fna")) or (not os.path.isfile(path_ref_fasta)):
@@ -225,6 +254,10 @@ else:
 
 # load in reference gff
 path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip()
+
+# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+path_ref_gff = path_ref_gff.strip(" '\"")
+
 # added the .gff option in case the user unzips the file themselves
 while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_fasta.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
     print("Error: please enter a valid existing file path that ends in .gff.gz or .gff")
@@ -248,6 +281,9 @@ else:
 
 
 
+## crm: need to clean the fasta headers to match those of the gff
+### crm: I don't think I actually need to do this
+
 
 ########## LOAD IN WASTEWATER FASTA FILES ##########
 
@@ -266,37 +302,39 @@ else:
 
 
 ########## SPLIT CLINICAL FASTA BY MONTH ##########
-# request file path of clinical fasta
-clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
+# need to include if statement so clinical data is only processed if the user said yes
+if run_clinical.lower() in ["y", "yes"]:
+    # request file path of clinical fasta
+    clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
 
-# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
-clinical_fasta_path = clinical_fasta_path.strip(" '")
+    # remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+    clinical_fasta_path = clinical_fasta_path.strip(" '")
 
-# add test to confirm they gave the path of a fasta
-while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
-    print("Error: please enter a valid existing file path that ends in .fasta")
-    clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
+    # add test to confirm they gave the path of a fasta
+    while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
+        print("Error: please enter a valid existing file path that ends in .fasta")
+        clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
 
-# load in clinical fasta
-clinical_fasta = pd.read_csv(clinical_fasta_path, header=None, names=["Sequence"])
-
-
-
-
+    # load in clinical fasta
+    clinical_fasta = pd.read_csv(clinical_fasta_path, header=None, names=["Sequence"])
 
 
 
-# split clinical fasta by month
-#clinical_fasta_by_month = clinical_fasta.groupby("Month_Year")
 
-# export clinical fasta by month
-## crm: set to run before submitting
-# clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip() 
-# while clinical_fasta_by_month_filepath not in os.listdir():
-#    clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip()
-# clinical_fasta_by_month.to_csv(f"{clinical_fasta_by_month_filepath}/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
 
-#print(f"\nExporting the processed clinical fasta by month as {subtype}_clinical_fasta_by_month.tsv\n")
-#clinical_fasta_by_month.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
+
+
+    # split clinical fasta by month
+    #clinical_fasta_by_month = clinical_fasta.groupby("Month_Year")
+
+    # export clinical fasta by month
+    ## crm: set to run before submitting
+    # clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip() 
+    # while clinical_fasta_by_month_filepath not in os.listdir():
+    #    clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip()
+    # clinical_fasta_by_month.to_csv(f"{clinical_fasta_by_month_filepath}/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
+
+    #print(f"\nExporting the processed clinical fasta by month as {subtype}_clinical_fasta_by_month.tsv\n")
+    #clinical_fasta_by_month.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
 
 

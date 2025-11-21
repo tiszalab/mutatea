@@ -27,7 +27,6 @@ metadata_combined <- rbindlist(md.list, idcol = "id", fill=TRUE)
 # see the unique cities
 ```{r}
 city_region <- data.frame(City = unique(metadata_combined$City))
-
 ```
 
 # compared county maps versus the texas health region maps to add regions to cities

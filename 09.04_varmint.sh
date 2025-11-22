@@ -24,7 +24,7 @@ if [ ! -d ${TSV_OUTPUT} ] ; then
 fi
 
 ## load in reference files
-REF="${BASE_DIR}/reference/FASTA/${VARIANT}_reference_cleaned.fasta"
+REF="${BASE_DIR}/reference/FASTA/${VARIANT}_reference.fasta"
 GFF="${BASE_DIR}/reference/gff/${VARIANT}.gff"
 
 ## run varmint on the merged BAM files

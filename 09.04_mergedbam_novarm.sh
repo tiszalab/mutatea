@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## script for aligning reads, merging BAM files, and varmint to capture variants
+## script for aligning reads and merging BAM files from multiple pools based on metadata information
 ## need to preprocess with metadata in R to add region and date information
 ## after running this script, run 09.04_varmint.sh to capture variants from merged BAM files
 
@@ -27,7 +27,7 @@ fi
 source /cmmr/prod/envParams/condanewenv.init && conda activate crm_flutatome
 
 ## load in reference files
-REF="${BASE_DIR}/reference/FASTA/${VARIANT}_reference_cleaned.fasta"
+REF="${BASE_DIR}/reference/FASTA/${VARIANT}_reference.fasta"
 GFF="${BASE_DIR}/reference/gff/${VARIANT}.gff"
 
 ## create BAM files

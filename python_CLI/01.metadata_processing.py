@@ -23,14 +23,35 @@ while subtype not in ["H1N1", "H3N2", "H5N1"]:
     subtype = input("Please enter one of the following flu subtypes (H1N1, H3N2, or H5N1): ").strip()
 
 
-# ask user where they want their base directory (where the reference files and alignment files will be saved )
-base_dir = input(
-    "Create a base directory to save the processed input files and the outputted alignment files"
-    f"(default: /Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align): "
-    
+# ask user where they want their output directory (where the processed input files, outputted alignment files, and tsv of mutations will be saved )
+# default output_path
+output_path_dedault = f"/Users/camillemazurek2025/python_CLI"
+
+output_path = input(
+    "Create a directory to save the processed input files, the outputted alignment files, and the tsv of mutations"
+    f"(default: {output_path_dedault}): "
 ).strip()
-if base_dir == "":
-    base_dir = f"/Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align"
+
+if output_path == "":
+    output_path = f"/Users/camillemazurek2025/python_CLI/{subtype}_align"
+
+# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+output_path = output_path.strip(" '\"")
+
+while not os.path.isdir(output_path):
+    print("Error: please enter a valid existing directory path")
+    output_path = input(
+        "Create a directory to save the processed input files, the outputted alignment files, and the tsv of mutations: "
+    ).strip()
+    if output_path == "":
+        output_path = f"/Users/camillemazurek2025/python_CLI/{subtype}_align"
+
+# create output directory called {subtype}_align
+output_dir = os.path.join(output_path, f"{subtype}_align")
+
+# create the output directory if it doesn't exist
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 
 

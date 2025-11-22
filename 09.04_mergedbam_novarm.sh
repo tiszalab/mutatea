@@ -12,16 +12,12 @@ POOLID=$2
 BASE_DIR="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/${VARIANT}_align"
 OUTPUT_DIR="${BASE_DIR}/pools/${POOLID}"
 MERGED_BAM_DIR="${BASE_DIR}/bam_merger_output/merged_bams"
-TSV_OUTPUT="${BASE_DIR}/bam_merger_output/tsv_files" 
 META_FILE="/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/metadata_combined.csv"
 LIST_OUTPUT="${BASE_DIR}/bam_merger_output/lists" 
 
 ## create the output directories if they do not already exist
 if [ ! -d ${MERGED_BAM_DIR} ] ; then
 	mkdir -p ${MERGED_BAM_DIR}
-fi
-if [ ! -d ${TSV_OUTPUT} ] ; then 
-    mkdir -p ${TSV_OUTPUT}
 fi
 if [ ! -d ${LIST_OUTPUT} ] ; then 
     mkdir -p ${LIST_OUTPUT}

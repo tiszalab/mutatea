@@ -47,7 +47,7 @@ metadata_combined$Month_Year <- format(metadata_combined$Date, "%m.%Y")
 
 # exported the metadata combined
 ```{r}
-write_tsv(metadata_combined, "/Users/camillemazurek2025/Downloads/metadata_combined.tsv")
+write_tsv(metadata_combined, "/Users/camillemazurek2025/Downloads/wastewater_metadata_combined.tsv")
 ```
 
 ```{r}

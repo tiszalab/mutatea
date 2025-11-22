@@ -15,6 +15,25 @@ import subprocess
 ## crm: clean this intro line, it's messy
 print("\nThis is a pipeline for taking reads of different serotypes of Influenza A in Texas wastewater data and aligning them to a reference genome to output a tsv of the nonsynonymous mutations occurring in each source. \nRequired inputs include: \n - wastewater metadata \n - wastewater FASTA files \n - reference FASTA \n - reference GFF\nThis pipeline will walk you through getting these files and processing them\n")
 
+# request flu subtype
+subtype = input("Enter the flu subtype you want to analyze (H1N1, H3N2, or H5N1): ").strip() 
+
+# add in test to reprompt the user if it's not one of the set flu subtypes
+while subtype not in ["H1N1", "H3N2", "H5N1"]:
+    subtype = input("Please enter one of the following flu subtypes (H1N1, H3N2, or H5N1): ").strip()
+
+
+# ask user where they want their base directory (where the reference files and alignment files will be saved )
+base_dir = input(
+    "Create a base directory to save the processed input files and the outputted alignment files"
+    f"(default: /Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align): "
+    
+).strip()
+if base_dir == "":
+    base_dir = f"/Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align"
+
+
+
 ########## WASTEWATER METADATA PROCESSING ##########
 
 # ask if the user also wants to process clinical data
@@ -121,12 +140,6 @@ else:
 
 metadata.to_csv("/Users/camillemazurek2025/Downloads/metadata_combined.csv", sep=",", index=False)
 
-# request flu subtype
-subtype = input("Enter the flu subtype you want to analyze (H1N1, H3N2, or H5N1): ").strip() 
-
-# add in test to reprompt the user if it's not one of the set flu subtypes
-while subtype not in ["H1N1", "H3N2", "H5N1"]:
-    subtype = input("Please enter one of the following flu subtypes (H1N1, H3N2, or H5N1): ").strip()
 
 # print the time range of the wastewater samples
 earliest_date = metadata["Date"].min()
@@ -288,14 +301,9 @@ else:
 ########## LOAD IN WASTEWATER READS ##########
 print("\nNow we will align the wastewater reads to the reference genome and merge BAMs by month.\nIf you chose to also split the wastewater data by public health region, that will also be done here.")
 
-## crm: maybe I should move the setup of the base directory up so the processed metadata files, unzipped reference gff, unzipped reference fasta, and alignment files are all in the same place
-# ask user for alignment base directory (where you put reference and pools)
-base_dir = input(
-    "Create a base directory to catch the outputted alignment files"
-    f"(default: /Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align): "
-).strip()
-if base_dir == "":
-    base_dir = f"/Users/camillemazurek2025/flu_mutatome_pipelines/python_CLI/{subtype}_align"
+
+
+
 
 # ask user for one or more PoolIDs to process
 pool_ids = input(

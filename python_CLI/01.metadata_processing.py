@@ -29,7 +29,7 @@ output_path_default = f"/Users/camillemazurek2025/python_CLI"
 
 output_path = input(
     "\nCreate a directory to save the processed input files, the outputted alignment files, and the tsv of mutations\n"
-    f"(The default will be: {output_path_default}/{subtype}_align):"
+    f"(If you hit enter, you can choose the default: {output_path_default}/{subtype}_align):"
 ).strip()
 
 
@@ -85,8 +85,8 @@ md_list=[pd.read_excel(file) for file in metadata_files]
 metadata=pd.concat(md_list, ignore_index=True)
 
 # create a dictionary of expected cities and their public health regions
-# ask user if they want their wastewater data split by public health region
-region_request = input("\nDo you also want your wastewater data split by public health region? This can be useful for later visualization of how mutations are spreading (y/n): ").strip() 
+# ask user if they want their wastewater data labelled by public health region
+region_request = input("\nDo you also want your wastewater data labelled by public health region? This can be useful for later visualization of how mutations are spreading (y/n): ").strip() 
 while region_request not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     subtype = input("Please enter either y or n: ").strip()
 if region_request.lower() in ["y", "Y", "yes", "Yes"]:
@@ -296,7 +296,7 @@ path_ref_gff = path_ref_gff.strip(" '\"")
 # added the .gff option in case the user unzips the file themselves
 while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_fasta.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
     print("Error: please enter a valid existing file path that ends in .gff.gz or .gff")
-    path_ref_gff = input("Enter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip()
+    path_ref_gff = input("\nEnter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip()
 
 # unzip if the file path ends in gff.gz
 if path_ref_gff.endswith(".gff.gz"):

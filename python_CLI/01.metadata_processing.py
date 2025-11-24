@@ -25,23 +25,23 @@ while subtype not in ["H1N1", "H3N2", "H5N1"]:
 
 # ask user where they want their output directory (where the processed input files, outputted alignment files, and tsv of mutations will be saved )
 # default output_path
-output_path_dedault = f"/Users/camillemazurek2025/python_CLI"
+output_path_default = f"/Users/camillemazurek2025/python_CLI"
 
 output_path = input(
-    "Create a directory to save the processed input files, the outputted alignment files, and the tsv of mutations"
-    f"(default is: {output_path_dedault}/{subtype}_align): "
+    "\nCreate a directory to save the processed input files, the outputted alignment files, and the tsv of mutations\n"
+    f"(The default will be: {output_path_default}/{subtype}_align):"
 ).strip()
 
 
 ## crm: make sure you can explain the difference between output_path and output_dir here, looks repetitive
 if output_path == "":
-    output_path = f"{output_path_dedault}/{subtype}_align"
+    output_path = f"{output_path_default}/{subtype}_align"
 
 # remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
 output_path = output_path.strip(" '\"")
 
 # create output directory called {subtype}_align
-output_dir = os.path.join(output_path, f"{subtype}_align")
+output_dir = os.path.join(output_path)
 
 # create the output directory if it doesn't exist
 if not os.path.exists(output_dir):
@@ -50,9 +50,16 @@ if not os.path.exists(output_dir):
 
 
 ########## WASTEWATER METADATA PROCESSING ##########
+# create a subfolder in the output directory for the cleaned metadata files
+metadata_dir = os.path.join(output_dir, "metadata_files")
+
+# create the output directory if it doesn't exist
+if not os.path.exists(metadata_dir):
+    os.makedirs(metadata_dir)
+
 
 # ask if the user also wants to process clinical data
-run_clinical = input("Will you also want to process Influenza A reads from Texas clinical data of the same time range as the inputted wastewater data? (y/n): ").strip()
+run_clinical = input("\nWill you also want to process Influenza A reads from Texas clinical data of the same time range as the inputted wastewater data? (y/n): ").strip()
 while run_clinical not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     run_clinical = input("Please enter either y or n: ").strip()
 
@@ -79,7 +86,7 @@ metadata=pd.concat(md_list, ignore_index=True)
 
 # create a dictionary of expected cities and their public health regions
 # ask user if they want their wastewater data split by public health region
-region_request = input("Do you also want your wastewater data split by public health region? This can be useful for later visualization of how these mutations are spreading (y/n): ").strip() 
+region_request = input("\nDo you also want your wastewater data split by public health region? This can be useful for later visualization of how mutations are spreading (y/n): ").strip() 
 while region_request not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     subtype = input("Please enter either y or n: ").strip()
 if region_request.lower() in ["y", "Y", "yes", "Yes"]:
@@ -109,7 +116,7 @@ if region_request.lower() in ["y", "Y", "yes", "Yes"]:
     if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
         print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
     else:
-        print("\nAll cities in the metadata were successfully assigned to public health regions!\n")
+        print("All cities in the metadata were successfully assigned to public health regions!")
 else:
     metadata["Region"] = "All"
 
@@ -147,27 +154,17 @@ else:
     ]
 
 # export metadata as tsv
-## crm: set to run before submitting
-# md_filepath = input("Enter the file path where you want your processed metadata saved: ").strip() 
-# while md_filepath not in os.listdir():
-#    md_filepath = input("Enter the file path where you want your processed metadata saved: ").strip()
-# metadata.to_csv(f"{md_filepath}/metadata_combined.csv", sep=",", index=False)
-
-metadata.to_csv("/Users/camillemazurek2025/Downloads/metadata_combined.csv", sep=",", index=False)
+metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=",", index=False)
 
 
 # print the time range of the wastewater samples
 earliest_date = metadata["Date"].min()
 latest_date = metadata["Date"].max()
-time_match = input("Do you want to know the time range of the wastewater samples? (y/n): ").strip() 
+time_match = input("\nDo you want to know the time range of the wastewater samples? (y/n): ").strip() 
 while time_match not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     time_match = input("Please enter either y or n: ").strip()
 if time_match.lower()  in ["y", "Y", "yes", "Yes"]:
-    print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range\n")
-
-
-
-
+    print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range")
 
 # reformat dates for NCBI Virus URL (specifically need to remove the spaces so the url works)
 start_str = earliest_date.strftime("%Y-%m-%dT00:00:00.00Z")
@@ -175,12 +172,12 @@ end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
 
 # offer NCBI link and instructions for getting clinical files if the user doesn't already have them downloaded
 if run_clinical.lower() in ["y", "yes"]:
-    have_clinical_files = input("Do you already have the clinical metadata (csv) and clinical reads (FASTA) downloaded? (y/n): ").strip()
+    have_clinical_files = input("\nDo you already have the clinical metadata (csv) and clinical reads (FASTA) downloaded? (y/n): ").strip()
     while have_clinical_files not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
         have_clinical_files = input("Please enter either y or n: ").strip()
 
     if have_clinical_files.lower() in ["n", "no"]:
-        want_ncbi_help = input("Do you want an NCBI link and instructions for downloading the clinical metadata and FASTA? (y/n): ").strip()
+        want_ncbi_help = input("\nDo you want an NCBI link and instructions for downloading the clinical metadata and FASTA? (y/n): ").strip()
         while want_ncbi_help not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
             want_ncbi_help = input("Please enter either y or n: ").strip()
 
@@ -189,11 +186,13 @@ if run_clinical.lower() in ["y", "yes"]:
             print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
 
 
+
+
 ########## CLINICAL METADATA PROCESSING ##########
 # added this if statement so clinical data is only processed if the user said yes
 if run_clinical.lower() in ["y", "yes"]:
     # request file path of clinical metadata
-    clinical_metadata_path = input("Please enter the file path of your clinical metadata csv: ").strip()
+    clinical_metadata_path = input("\nPlease enter the file path of your clinical metadata csv: ").strip()
 
     # remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
     clinical_metadata_path = clinical_metadata_path.strip(" '\"")
@@ -212,32 +211,23 @@ if run_clinical.lower() in ["y", "yes"]:
     clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
 
     # export metadata as tsv
-    ## crm: set to run before submitting
-    # clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip() 
-    # while clinical_md_filepath not in os.listdir():
-    #    clinical_md_filepath = input("Enter the file path where you want your processed clinical metadata saved: ").strip()
-    # clinical_metadata.to_csv(f"{clinical_md_filepath}/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
-
-    print(f"\nExporting the processed clinical metadata as {subtype}_clinical_md_my.tsv\n")
-    clinical_metadata.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_md_my.tsv", sep="\t", index=False)
-
-
+    clinical_metadata.to_csv(f"{metadata_dir}/metadata_clinical_{subtype}.tsv", sep="\t", index=False)
 
 
 ########## CHOOSE RELEVANT LINEAR REFERENCE GENOME ##########
 
 # offer the same reference genomes I've been using
-default_ref = input("Do you want to use the default reference genome? (y/n): ").strip()
+default_ref = input("\nDo you want to use the default reference genome? (y/n): ").strip()
 while default_ref not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
     default_ref = input("Please enter either y or n: ").strip()
 if default_ref.lower() in ["y", "Y", "yes", "Yes"]:
-    # crm: chatgpt helped me realize my subtype needs to be lowercase
+    # crm: chatgpt helped me troubleshoot this part (subtype needs to be lowercase)
     if subtype.lower() == "h1n1":
         print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
     elif subtype.lower() == "h3n2":
         print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/301/835/GCA_039301835.1_ASM3930183v1/")
     elif subtype.lower() == "h5n1":
-        print("Note that H5N1 is not common in the United States, you may want to use a different reference genome: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
+        print("Note that H5N1 is not common in the United States, this is the reference genome I found that was closest: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
 
 # offer the option to use their own reference genome
 #### crm: maybe let them see the genomes +- 6 months of the earliest date in the time range
@@ -245,7 +235,7 @@ else:
     print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Genome&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
     print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \n You will need to download the GFF and FASTA of the selected genome")
 
-print("\n Download the files for genomic.gff.gz and genomic.fna.gz")
+print("\nDownload the files for genomic.gff.gz and genomic.fna.gz")
 
 
 
@@ -254,6 +244,13 @@ print("\n Download the files for genomic.gff.gz and genomic.fna.gz")
 
 
 ########## PROCESS FILES OF REFERENCE GENOME ##########
+# create a subfolder in the output directory for the cleaned reference files
+reference_dir = os.path.join(output_dir, "reference_files")
+
+# create the output directory if it doesn't exist
+if not os.path.exists(reference_dir):
+    os.makedirs(reference_dir)
+
 # load in reference fasta
 path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip()
 
@@ -269,9 +266,9 @@ while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(
 # unzip if the file path ends in fna.gz
 if path_ref_fasta.endswith(".fna.gz"):
 
-    ### crm: want to correct this to download to output_dir
     # set the output path as the same place as the input path but without the .gz extension
-    ref_fasta = path_ref_fasta[:-3]
+    fasta_name = os.path.basename(path_ref_fasta[:-3])
+    ref_fasta = os.path.join(reference_dir, fasta_name)
 
     ## crm: chatgpt recommended using shutil
     # unzip the fna.gz file to a new FASTA file in the same place as the input file
@@ -280,8 +277,15 @@ if path_ref_fasta.endswith(".fna.gz"):
     print(f"\nUnzipped FASTA to: {ref_fasta}\n")
 else:
     # the file is already unzipped if the file name ends in .fna
-    ref_fasta = path_ref_fasta
+    fasta_name = os.path.basename(path_ref_fasta)
+    ref_fasta = os.path.join(reference_dir, fasta_name)
+    if path_ref_fasta != ref_fasta:
+        shutil.copy(path_ref_fasta, ref_fasta)
     print(f"\nFASTA file is already unzipped: {ref_fasta}\n")
+
+
+
+
 
 # load in reference gff
 path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip()
@@ -296,10 +300,12 @@ while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_fasta.endswith(".
 
 # unzip if the file path ends in gff.gz
 if path_ref_gff.endswith(".gff.gz"):
+    
 
     ### crm: want to correct this to download to output_dir
     # set the output path as the same place as the input path but without the .gz extension
-    ref_gff = path_ref_gff[:-3]
+    gff_name = os.path.basename(path_ref_gff[:-3])
+    ref_gff = os.path.join(reference_dir, gff_name)
 
     ## crm: chatgpt recommended using shutil
     # unzip the gff.gz file to a new gff file in the same place as the input file
@@ -308,48 +314,12 @@ if path_ref_gff.endswith(".gff.gz"):
     print(f"\nUnzipped GFF to: {ref_gff}\n")
 else:
     # the file is already unzipped if the file name ends in .gff
-    ref_gff = path_ref_gff
+    gff_name = os.path.basename(path_ref_gff)
+    ref_gff = os.path.join(reference_dir, gff_name)
+    ## crm: know the mechanism for the shutil copy line
+    if path_ref_gff != ref_gff:
+        shutil.copy(path_ref_gff, ref_gff)
     print(f"\nGFF file is already unzipped: {ref_gff}\n")
-
-
-########## LOAD IN WASTEWATER READS ##########
-print("\nNow we will align the wastewater reads to the reference genome and merge BAMs by month.\nIf you chose to also split the wastewater data by public health region, that will also be done here.")
-
-
-
-
-
-# ask user for one or more PoolIDs to process
-pool_ids = input(
-    "Enter one or more PoolIDs to process (comma-separated, matching the metadata PoolID column): "
-).strip().split(",")
-
-shell_script = "/Users/camillemazurek2025/flu_mutatome_pipelines/09.04_mergedbam_novarm.sh"
-
-for raw_pool in pool_ids:
-    poolid = raw_pool.strip()
-    if not poolid:
-        continue
-    print(f"\nRunning alignment and BAM merging for subtype {subtype} and pool {poolid}...\n")
-    try:
-        subprocess.run(
-            ["bash", shell_script, subtype, poolid],
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Error running script for pool {poolid}: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ########## SPLIT CLINICAL FASTA BY MONTH ##########
@@ -389,3 +359,32 @@ if run_clinical.lower() in ["y", "yes"]:
     #clinical_fasta_by_month.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
 
 
+
+
+
+########## LOAD IN WASTEWATER READS ##########
+print("\nNow we will align the wastewater reads to the reference genome and merge BAMs by month.\nIf you chose to also split the wastewater data by public health region, that will also be done here.")
+
+
+
+
+
+# ask user for one or more PoolIDs to process
+pool_ids = input(
+    "Enter one or more PoolIDs to process (comma-separated, matching the metadata PoolID column): "
+).strip().split(",")
+
+shell_script = "/Users/camillemazurek2025/flu_mutatome_pipelines/09.04_mergedbam_novarm.sh"
+
+for raw_pool in pool_ids:
+    poolid = raw_pool.strip()
+    if not poolid:
+        continue
+    print(f"\nRunning alignment and BAM merging for subtype {subtype} and pool {poolid}...\n")
+    try:
+        subprocess.run(
+            ["bash", shell_script, subtype, poolid],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error running script for pool {poolid}: {e}")

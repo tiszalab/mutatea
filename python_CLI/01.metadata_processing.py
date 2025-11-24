@@ -8,7 +8,8 @@ import os
 import gzip
 import shutil
 import subprocess
-
+from Bio import SeqIO
+from pathlib import Path
 
 # let the user know what this pipeline does and the files required
 ### crm: adjust the output line depending on what I get done
@@ -323,11 +324,42 @@ else:
 
 
 ########## SPLIT CLINICAL FASTA BY MONTH ##########
-# need to include if statement so clinical data is only processed if the user said yes
+
+# creating monthly clinical lists to split the clinical fasta later
+if run_clinical.lower() in ["y", "yes"]:
+    # create a subfolder in the output directory for the monthly clinical lists that will be created to sort the clinical fasta later
+    clinical_output = os.path.join(output_dir, "clinical_output")
+
+    # create the output directory if it doesn't exist
+    if not os.path.exists(clinical_output):
+        os.makedirs(clinical_output)
+
+     # create a subfolder in the output directory for the monthly clinical lists that will be created to sort the clinical fasta later
+    clinical_lists = os.path.join(clinical_output, "monthly_lists")
+
+    # create the output directory if it doesn't exist
+    if not os.path.exists(clinical_lists):
+        os.makedirs(clinical_lists)
+    
+    # crm: got this from chatgpt
+    for month, group in clinical_metadata.groupby("Month_Year"):
+        out_path = Path(clinical_lists) / f"{month}_list.txt"
+        group["Accession"].to_csv(out_path, index=False, header=False)
+        print(f"Found and sorted accessions for {month}")
+
+
+    # create a subfolder in the output directory for the monthly clinical fastas that will be created later (wouldn't work when in the following loop)
+    clinical_fasta = os.path.join(clinical_output, "monthly_fasta")
+    # create the output directory if it doesn't exist
+    if not os.path.exists(clinical_fasta):
+        os.makedirs(clinical_fasta)
+
+# then load in the clinical fasta and split by the monthly lists
 if run_clinical.lower() in ["y", "yes"]:
     # request file path of clinical fasta
     clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
 
+    ### crm: confirm every section with a file path input has the line removing unneccessary quotes
     # remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
     clinical_fasta_path = clinical_fasta_path.strip(" '")
 
@@ -336,28 +368,31 @@ if run_clinical.lower() in ["y", "yes"]:
         print("Error: please enter a valid existing file path that ends in .fasta")
         clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
 
-    # load in clinical fasta
-    clinical_fasta = pd.read_csv(clinical_fasta_path, header=None, names=["Sequence"])
+    # crm need reference, chatgpt helped me with this
+    # load clinical fasta as a dictionary with the accessiona as the key
+    records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
 
+    # loop through the monthly lists and split the clinical fasta
+    # for every txt file in my clinical_lists directory
+    for list_file in Path(clinical_lists).glob("*.txt"):
+        # read in the list
+        with open(list_file) as f:
+            accessions = f.read().splitlines()
+        
+        # crm: got idea from chatgpt
+        # accessions for the respective month
+        month_accessions = [records_by_id[a] for a in accessions if a in records_by_id]
 
+        # get the month_year from the file name of the list
+        month_year = list_file.name.split("_")[0]
+        
+        #### crm: need to confirm this is the right way to do this
+        # create the output directory if it doesn't exist
+        clinical_monthly_fasta = f"{clinical_fasta}/{month_year}.fasta"
+        # CRM: chatgpt told me to remove the os.path.exists check because it was creating a directory instead of a file
 
-
-
-
-
-    # split clinical fasta by month
-    #clinical_fasta_by_month = clinical_fasta.groupby("Month_Year")
-
-    # export clinical fasta by month
-    ## crm: set to run before submitting
-    # clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip() 
-    # while clinical_fasta_by_month_filepath not in os.listdir():
-    #    clinical_fasta_by_month_filepath = input("Enter the file path where you want your processed clinical fasta by month saved: ").strip()
-    # clinical_fasta_by_month.to_csv(f"{clinical_fasta_by_month_filepath}/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
-
-    #print(f"\nExporting the processed clinical fasta by month as {subtype}_clinical_fasta_by_month.tsv\n")
-    #clinical_fasta_by_month.to_csv(f"/Users/camillemazurek2025/Downloads/{subtype}_clinical_fasta_by_month.tsv", sep="\t", index=False)
-
+        # export clinical fasta by month
+        SeqIO.write(month_accessions, clinical_monthly_fasta, "fasta")
 
 
 

@@ -29,22 +29,16 @@ output_path_dedault = f"/Users/camillemazurek2025/python_CLI"
 
 output_path = input(
     "Create a directory to save the processed input files, the outputted alignment files, and the tsv of mutations"
-    f"(default: {output_path_dedault}): "
+    f"(default is: {output_path_dedault}/{subtype}_align): "
 ).strip()
 
+
+## crm: make sure you can explain the difference between output_path and output_dir here, looks repetitive
 if output_path == "":
-    output_path = f"/Users/camillemazurek2025/python_CLI/{subtype}_align"
+    output_path = f"{output_path_dedault}/{subtype}_align"
 
 # remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
 output_path = output_path.strip(" '\"")
-
-while not os.path.isdir(output_path):
-    print("Error: please enter a valid existing directory path")
-    output_path = input(
-        "Create a directory to save the processed input files, the outputted alignment files, and the tsv of mutations: "
-    ).strip()
-    if output_path == "":
-        output_path = f"/Users/camillemazurek2025/python_CLI/{subtype}_align"
 
 # create output directory called {subtype}_align
 output_dir = os.path.join(output_path, f"{subtype}_align")
@@ -275,6 +269,7 @@ while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(
 # unzip if the file path ends in fna.gz
 if path_ref_fasta.endswith(".fna.gz"):
 
+    ### crm: want to correct this to download to output_dir
     # set the output path as the same place as the input path but without the .gz extension
     ref_fasta = path_ref_fasta[:-3]
 
@@ -302,6 +297,7 @@ while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_fasta.endswith(".
 # unzip if the file path ends in gff.gz
 if path_ref_gff.endswith(".gff.gz"):
 
+    ### crm: want to correct this to download to output_dir
     # set the output path as the same place as the input path but without the .gz extension
     ref_gff = path_ref_gff[:-3]
 
@@ -314,9 +310,6 @@ else:
     # the file is already unzipped if the file name ends in .gff
     ref_gff = path_ref_gff
     print(f"\nGFF file is already unzipped: {ref_gff}\n")
-
-## crm: need to clean the fasta headers to match those of the gff
-### crm: I don't think I actually need to do this? Need to confirm
 
 
 ########## LOAD IN WASTEWATER READS ##########

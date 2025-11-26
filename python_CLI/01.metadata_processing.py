@@ -8,7 +8,6 @@ import glob
 import os
 import gzip
 import shutil
-import subprocess
 from Bio import SeqIO
 from pathlib import Path
 

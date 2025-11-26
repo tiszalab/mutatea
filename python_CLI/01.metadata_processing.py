@@ -14,7 +14,7 @@ from pathlib import Path
 # let the user know what this pipeline does and the files required
 ### crm: adjust the output line depending on what I get done
 ## crm: clean this intro line, it's messy
-print("\nThis is a pipeline for taking reads of different serotypes of Influenza A in Texas wastewater data and aligning them to a reference genome to output a tsv of the nonsynonymous mutations occurring in each source. \nRequired inputs include: \n - wastewater metadata \n - wastewater FASTA files \n - reference FASTA \n - reference GFF\nThis pipeline will walk you through getting these files and processing them\n")
+print("\nThis is a pipeline for processing different serotypes of Influenza A in wastewater data, choosing a reference genome, and (optionally) pulling and processing matched clinical data. \nRequired inputs include: \n - wastewater metadata \n - reference FASTA \n - reference GFF\nThis pipeline will walk you through getting these files and processing them\n")
 
 # request flu subtype
 subtype = input("Enter the flu subtype you want to analyze (H1N1, H3N2, or H5N1): ").strip() 
@@ -24,17 +24,18 @@ while subtype not in ["H1N1", "H3N2", "H5N1"]:
     subtype = input("Please enter one of the following flu subtypes (H1N1, H3N2, or H5N1): ").strip()
 
 
-# ask user where they want their output directory (where the processed input files, outputted alignment files, and tsv of mutations will be saved )
+# ask user where they want their output directory (where the processed input files and outputted alignment files will be saved)
 # default output_path
-output_path_default = f"/Users/camillemazurek2025/python_CLI"
+## crm: got idea from? put your reference here
+output_path_default = os.path.expanduser("~/Downloads/python_CLI")
 
 output_path = input(
-    "\nCreate a directory to save the processed input files, the outputted alignment files, and the tsv of mutations\n"
+    "\nCreate a directory to save the processed input files and the outputted alignment files\n"
     f"(If you hit enter, you can choose the default: {output_path_default}/{subtype}_align):"
 ).strip()
 
-
 ## crm: make sure you can explain the difference between output_path and output_dir here, looks repetitive
+## crm: created a default output path for myself
 if output_path == "":
     output_path = f"{output_path_default}/{subtype}_align"
 
@@ -61,21 +62,27 @@ if not os.path.exists(metadata_dir):
 
 # ask if the user also wants to process clinical data
 run_clinical = input("\nWill you also want to process Influenza A reads from Texas clinical data of the same time range as the inputted wastewater data? (y/n): ").strip()
-while run_clinical not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+while run_clinical not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
     run_clinical = input("Please enter either y or n: ").strip()
 
-# load in metadata
-# request file path of metadata
-## crm: need to add the input for metadata folder later
-# metadata_folder = input("Enter the file path of your metadata xlsx files: ").strip()
-# add test to see if this is a valid file path
-## crm: need to set to run before submitting
-# while metadata_folder not in os.listdir():
-#    metadata_folder = input("Enter the file path of your metadata xlsx files: ").strip()
-## remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
-#metadata_folder = metadata_folder.strip(" '\"")
+## crm: adding in default for myself
+if run_clinical == "":
+    run_clinical = "y"
 
-metadata_folder="/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
+
+# request file path of metadata
+metadata_folder = input("\nEnter the file path of your folder containing the metadata xlsx files: ").strip()
+
+## remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+metadata_folder = metadata_folder.strip(" '\"")
+
+while not os.path.exists(metadata_folder):
+    metadata_folder = input("Enter the file path of your folder containing the metadata xlsx files:").strip()
+    metadata_folder = metadata_folder.strip(" '\"")
+
+# crm: test to see if I can remove hard-coded file path
+# metadata_folder="/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
+# CRM: pull out the xlsx files from the folder path given
 metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
 
 # load in metadata files
@@ -88,8 +95,13 @@ metadata=pd.concat(md_list, ignore_index=True)
 # create a dictionary of expected cities and their public health regions
 # ask user if they want their wastewater data labelled by public health region
 region_request = input("\nDo you also want your wastewater data labelled by public health region? This can be useful for later visualization of how mutations are spreading (y/n): ").strip() 
-while region_request not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+while region_request not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
     subtype = input("Please enter either y or n: ").strip()
+
+## crm: adding in default for myself
+if region_request == "":
+    region_request = "y"
+
 if region_request.lower() in ["y", "Y", "yes", "Yes"]:
     city_region = {
         "Houston, TX": "6_5S",
@@ -162,8 +174,13 @@ metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=",", ind
 earliest_date = metadata["Date"].min()
 latest_date = metadata["Date"].max()
 time_match = input("\nDo you want to know the time range of the wastewater samples? (y/n): ").strip() 
-while time_match not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+while time_match not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
     time_match = input("Please enter either y or n: ").strip()
+
+## crm: adding in default for myself
+if time_match == "":
+    time_match = "n"
+
 if time_match.lower()  in ["y", "Y", "yes", "Yes"]:
     print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range")
 
@@ -174,13 +191,21 @@ end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
 # offer NCBI link and instructions for getting clinical files if the user doesn't already have them downloaded
 if run_clinical.lower() in ["y", "yes"]:
     have_clinical_files = input("\nDo you already have the clinical metadata (csv) and clinical reads (FASTA) downloaded? (y/n): ").strip()
-    while have_clinical_files not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+    while have_clinical_files not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
         have_clinical_files = input("Please enter either y or n: ").strip()
+    
+    ## crm: adding in default for myself
+    if have_clinical_files == "":
+        have_clinical_files = "y"
 
     if have_clinical_files.lower() in ["n", "no"]:
         want_ncbi_help = input("\nDo you want an NCBI link and instructions for downloading the clinical metadata and FASTA? (y/n): ").strip()
-        while want_ncbi_help not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+        while want_ncbi_help not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
             want_ncbi_help = input("Please enter either y or n: ").strip()
+        
+        ## crm: adding in default for myself
+        if want_ncbi_help == "":
+            want_ncbi_help = "n"
 
         if want_ncbi_help.lower() in ["y", "yes"]:
             print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
@@ -219,8 +244,13 @@ if run_clinical.lower() in ["y", "yes"]:
 
 # offer the same reference genomes I've been using
 default_ref = input("\nDo you want to use the default reference genome? (y/n): ").strip()
-while default_ref not in ["y", "Y", "yes", "Yes", "n", "N", "no", "No"]:
+while default_ref not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
     default_ref = input("Please enter either y or n: ").strip()
+
+## crm: adding in default for myself
+    if default_ref == "":
+        default_ref = "y"
+
 if default_ref.lower() in ["y", "Y", "yes", "Yes"]:
     # crm: chatgpt helped me troubleshoot this part (subtype needs to be lowercase)
     if subtype.lower() == "h1n1":
@@ -237,9 +267,6 @@ else:
     print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \n You will need to download the GFF and FASTA of the selected genome")
 
 print("\nDownload the files for genomic.gff.gz and genomic.fna.gz")
-
-
-
 
 
 
@@ -393,33 +420,3 @@ if run_clinical.lower() in ["y", "yes"]:
 
         # export clinical fasta by month
         SeqIO.write(month_accessions, clinical_monthly_fasta, "fasta")
-
-
-
-
-########## LOAD IN WASTEWATER READS ##########
-print("\nNow we will align the wastewater reads to the reference genome and merge BAMs by month.\nIf you chose to also split the wastewater data by public health region, that will also be done here.")
-
-
-
-
-
-# ask user for one or more PoolIDs to process
-pool_ids = input(
-    "Enter one or more PoolIDs to process (comma-separated, matching the metadata PoolID column): "
-).strip().split(",")
-
-shell_script = "/Users/camillemazurek2025/flu_mutatome_pipelines/09.04_mergedbam_novarm.sh"
-
-for raw_pool in pool_ids:
-    poolid = raw_pool.strip()
-    if not poolid:
-        continue
-    print(f"\nRunning alignment and BAM merging for subtype {subtype} and pool {poolid}...\n")
-    try:
-        subprocess.run(
-            ["bash", shell_script, subtype, poolid],
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Error running script for pool {poolid}: {e}")

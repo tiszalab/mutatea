@@ -1,3 +1,4 @@
+###################### SETUP ######################
 # Confirm the user has all required modules installed
 print("Please check the module_requirements.txt file and install any missing modules with pip install -r module_requirements.txt")
 
@@ -13,16 +14,14 @@ from pathlib import Path
 
 # let the user know what this pipeline does and the files required
 ### crm: adjust the output line depending on what I get done
-## crm: clean this intro line, it's messy
 print("\nThis is a pipeline for processing different serotypes of Influenza A in wastewater data, choosing a reference genome, and (optionally) pulling and processing matched clinical data. \nRequired inputs include: \n - wastewater metadata \n - reference FASTA \n - reference GFF\nThis pipeline will walk you through getting these files and processing them\n")
 
 # request flu subtype
 subtype = input("Enter the flu subtype you want to analyze (H1N1, H3N2, or H5N1): ").strip() 
 
-# add in test to reprompt the user if it's not one of the set flu subtypes
+# reprompt the user if it's not one of the set flu subtypes
 while subtype not in ["H1N1", "H3N2", "H5N1"]:
     subtype = input("Please enter one of the following flu subtypes (H1N1, H3N2, or H5N1): ").strip()
-
 
 # ask user where they want their output directory (where the processed input files and outputted alignment files will be saved)
 # default output_path
@@ -31,17 +30,18 @@ output_path_default = os.path.expanduser("~/Downloads/python_CLI")
 
 output_path = input(
     "\nCreate a directory to save the processed input files and the outputted alignment files\n"
-    f"(If you hit enter, you can choose the default: {output_path_default}/{subtype}_align):"
-).strip()
+    f"(If you hit enter, you can choose the default: {output_path_default}/{subtype}_align): ").strip()
+
+# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
+output_path = output_path.strip(" '\"")
 
 ## crm: make sure you can explain the difference between output_path and output_dir here, looks repetitive
 ## crm: created a default output path for myself
 if output_path == "":
     output_path = f"{output_path_default}/{subtype}_align"
+    output_path = output_path.strip(" '\"")
 
-# remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
-output_path = output_path.strip(" '\"")
-
+# crm: how did you come up with os.path.join? need reference
 # create output directory called {subtype}_align
 output_dir = os.path.join(output_path)
 
@@ -51,14 +51,13 @@ if not os.path.exists(output_dir):
 
 
 
-########## WASTEWATER METADATA PROCESSING ##########
+###################### WASTEWATER METADATA PROCESSING ######################
 # create a subfolder in the output directory for the cleaned metadata files
 metadata_dir = os.path.join(output_dir, "metadata_files")
 
 # create the output directory if it doesn't exist
 if not os.path.exists(metadata_dir):
     os.makedirs(metadata_dir)
-
 
 # ask if the user also wants to process clinical data
 run_clinical = input("\nWill you also want to process Influenza A reads from Texas clinical data of the same time range as the inputted wastewater data? (y/n): ").strip()
@@ -68,7 +67,6 @@ while run_clinical not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
 ## crm: adding in default for myself
 if run_clinical == "":
     run_clinical = "y"
-
 
 # request file path of metadata
 metadata_folder = input("\nEnter the file path of your folder containing the metadata xlsx files: ").strip()
@@ -133,7 +131,6 @@ if region_request.lower() in ["y", "Y", "yes", "Yes"]:
 else:
     metadata["Region"] = "All"
 
-
 # add a column for month_year to the metadata
 metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
 
@@ -169,7 +166,6 @@ else:
 # export metadata as tsv
 metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=",", index=False)
 
-
 # print the time range of the wastewater samples
 earliest_date = metadata["Date"].min()
 latest_date = metadata["Date"].max()
@@ -179,10 +175,12 @@ while time_match not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
 
 ## crm: adding in default for myself
 if time_match == "":
-    time_match = "n"
+    time_match = "y"
 
-if time_match.lower()  in ["y", "Y", "yes", "Yes"]:
-    print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}, you should use clinical data that matches this time range")
+if time_match.lower() in ["y", "Y", "yes", "Yes"]:
+    print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}")
+    if run_clinical.lower() in ["y", "yes"]:
+        print("You should try to use clinical data that matches this time range")
 
 # reformat dates for NCBI Virus URL (specifically need to remove the spaces so the url works)
 start_str = earliest_date.strftime("%Y-%m-%dT00:00:00.00Z")
@@ -213,8 +211,7 @@ if run_clinical.lower() in ["y", "yes"]:
 
 
 
-
-########## CLINICAL METADATA PROCESSING ##########
+###################### CLINICAL METADATA PROCESSING ######################
 # added this if statement so clinical data is only processed if the user said yes
 if run_clinical.lower() in ["y", "yes"]:
     # request file path of clinical metadata
@@ -225,9 +222,8 @@ if run_clinical.lower() in ["y", "yes"]:
 
     # add test to confirm they gave the path of a csv
     while (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
-        print("Error: please enter a valid existing file path that ends in .csv")
         clinical_metadata_path = input("Please enter the file path of your clinical metadata csv: ").strip()
-
+        clinical_metadata_path = clinical_metadata_path.strip(" '\"")
 
     # load in clinical metadata
     clinical_metadata = pd.read_csv(clinical_metadata_path)
@@ -240,8 +236,8 @@ if run_clinical.lower() in ["y", "yes"]:
     clinical_metadata.to_csv(f"{metadata_dir}/metadata_clinical_{subtype}.tsv", sep="\t", index=False)
 
 
-########## CHOOSE RELEVANT LINEAR REFERENCE GENOME ##########
 
+###################### CHOOSE RELEVANT LINEAR REFERENCE GENOME ######################
 # offer the same reference genomes I've been using
 default_ref = input("\nDo you want to use the default reference genome? (y/n): ").strip()
 while default_ref not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
@@ -252,7 +248,7 @@ while default_ref not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
         default_ref = "y"
 
 if default_ref.lower() in ["y", "Y", "yes", "Yes"]:
-    # crm: chatgpt helped me troubleshoot this part (subtype needs to be lowercase)
+    # crm: chatgpt helped me troubleshoot this part (subtype needed to be lowercase)
     if subtype.lower() == "h1n1":
         print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
     elif subtype.lower() == "h3n2":
@@ -264,14 +260,14 @@ if default_ref.lower() in ["y", "Y", "yes", "Yes"]:
 #### crm: maybe let them see the genomes +- 6 months of the earliest date in the time range
 else:
     print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Genome&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
-    print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \n You will need to download the GFF and FASTA of the selected genome")
+    print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \nYou will need to download the GFF and FASTA of the selected genome")
 
+# tell user to download the required files for the reference genome
 print("\nDownload the files for genomic.gff.gz and genomic.fna.gz")
 
 
 
-
-########## PROCESS FILES OF REFERENCE GENOME ##########
+###################### PROCESS FILES OF REFERENCE GENOME ######################
 # create a subfolder in the output directory for the cleaned reference files
 reference_dir = os.path.join(output_dir, "reference_files")
 
@@ -290,16 +286,17 @@ path_ref_fasta = path_ref_fasta.strip(" '\"")
 while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(".fna")) or (not os.path.isfile(path_ref_fasta)):
     print("Error: please enter a valid existing file path that ends in .fna.gz or .fna")
     path_ref_fasta = input("Enter the file path of your reference fasta, make sure the file name ends in fna.gz or fna: ").strip()
+    path_ref_fasta = path_ref_fasta.strip(" '\"")
 
 # unzip if the file path ends in fna.gz
 if path_ref_fasta.endswith(".fna.gz"):
 
-    # set the output path as the same place as the input path but without the .gz extension
+    # set the output path as the reference_files folder in the output directory
     fasta_name = os.path.basename(path_ref_fasta[:-3])
     ref_fasta = os.path.join(reference_dir, fasta_name)
 
     ## crm: chatgpt recommended using shutil
-    # unzip the fna.gz file to a new FASTA file in the same place as the input file
+    # unzip the fna.gz file to the output directory
     with gzip.open(path_ref_fasta, "rb") as f_in, open(ref_fasta, "wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
     print(f"\nUnzipped FASTA to: {ref_fasta}\n")
@@ -311,10 +308,6 @@ else:
         shutil.copy(path_ref_fasta, ref_fasta)
     print(f"\nFASTA file is already unzipped: {ref_fasta}\n")
 
-
-
-
-
 # load in reference gff
 path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip()
 
@@ -325,21 +318,21 @@ path_ref_gff = path_ref_gff.strip(" '\"")
 while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_fasta.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
     print("Error: please enter a valid existing file path that ends in .gff.gz or .gff")
     path_ref_gff = input("\nEnter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip()
+    path_ref_gff = path_ref_gff.strip(" '\"")
 
 # unzip if the file path ends in gff.gz
 if path_ref_gff.endswith(".gff.gz"):
-    
 
-    ### crm: want to correct this to download to output_dir
-    # set the output path as the same place as the input path but without the .gz extension
+    # set the output path to the reference_files folder in the output directory
     gff_name = os.path.basename(path_ref_gff[:-3])
     ref_gff = os.path.join(reference_dir, gff_name)
 
     ## crm: chatgpt recommended using shutil
-    # unzip the gff.gz file to a new gff file in the same place as the input file
+    # unzip the gff.gz file to the output directory
     with gzip.open(path_ref_gff, "rb") as f_in, open(ref_gff, "wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
     print(f"\nUnzipped GFF to: {ref_gff}\n")
+
 else:
     # the file is already unzipped if the file name ends in .gff
     gff_name = os.path.basename(path_ref_gff)
@@ -350,8 +343,7 @@ else:
     print(f"\nGFF file is already unzipped: {ref_gff}\n")
 
 
-########## SPLIT CLINICAL FASTA BY MONTH ##########
-
+###################### SPLIT CLINICAL FASTA BY MONTH ######################
 # creating monthly clinical lists to split the clinical fasta later
 if run_clinical.lower() in ["y", "yes"]:
     # create a subfolder in the output directory for the monthly clinical lists that will be created to sort the clinical fasta later
@@ -372,8 +364,7 @@ if run_clinical.lower() in ["y", "yes"]:
     for month, group in clinical_metadata.groupby("Month_Year"):
         out_path = Path(clinical_lists) / f"{month}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
-        print(f"Found and sorted accessions for {month}")
-
+    print(f"Sorted clinical {subtype} accessions by month")
 
     # create a subfolder in the output directory for the monthly clinical fastas that will be created later (wouldn't work when in the following loop)
     clinical_fasta = os.path.join(clinical_output, "monthly_fasta")
@@ -381,19 +372,20 @@ if run_clinical.lower() in ["y", "yes"]:
     if not os.path.exists(clinical_fasta):
         os.makedirs(clinical_fasta)
 
-# then load in the clinical fasta and split by the monthly lists
+# load in the clinical fasta and split by the monthly lists
 if run_clinical.lower() in ["y", "yes"]:
     # request file path of clinical fasta
     clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
 
     ### crm: confirm every section with a file path input has the line removing unneccessary quotes
     # remove quotes if they exist in the file path (was an issue when copying file path on MacOS)
-    clinical_fasta_path = clinical_fasta_path.strip(" '")
+    clinical_fasta_path = clinical_fasta_path.strip(" '\"")
 
     # add test to confirm they gave the path of a fasta
     while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
         print("Error: please enter a valid existing file path that ends in .fasta")
         clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
+        clinical_fasta_path = clinical_fasta_path.strip(" '\"")
 
     # crm need reference, chatgpt helped me with this
     # load clinical fasta as a dictionary with the accessiona as the key
@@ -413,10 +405,11 @@ if run_clinical.lower() in ["y", "yes"]:
         # get the month_year from the file name of the list
         month_year = list_file.name.split("_")[0]
         
-        #### crm: need to confirm this is the right way to do this
+        ## crm: chatgpt told me to remove my os.path.exists check because it was creating a directory instead of a file
         # create the output directory if it doesn't exist
         clinical_monthly_fasta = f"{clinical_fasta}/{month_year}.fasta"
-        # CRM: chatgpt told me to remove the os.path.exists check because it was creating a directory instead of a file
 
         # export clinical fasta by month
         SeqIO.write(month_accessions, clinical_monthly_fasta, "fasta")
+
+    print(f"\nThe clinical FASTA file of {subtype} has been split by month\n")

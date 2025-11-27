@@ -131,6 +131,11 @@ else:
 # add a column for month_year to the metadata
 metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
 
+# added this so I can send them test metadata instead of them running the whole dataset
+# issue is that the earlier metadata does not include a SiteCode column
+if "SiteCode" not in metadata.columns:
+    metadata["SiteCode"] = pd.NA
+
 # organization of the metadata depends on the user input
 if region_request.lower() in ["y", "Y", "yes", "Yes"]:
     metadata = metadata[

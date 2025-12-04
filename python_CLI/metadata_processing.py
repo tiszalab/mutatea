@@ -250,6 +250,20 @@ if run_clinical.lower() in ["y", "yes"]:
     clinical_metadata.to_csv(f"{metadata_dir}/metadata_clinical_{subtype}.tsv", sep="\t", index=False)
 
 
+# moved clinical fasta input line to improve run time
+    # request file path of clinical fasta
+    clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
+
+    # remove spaces, single quotes, and double quotes if they exist in the file path
+    clinical_fasta_path = clinical_fasta_path.strip(" '\"")
+
+    # add test to confirm they gave the path of a fasta
+    while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
+        print("Error: please enter a valid existing file path that ends in .fasta")
+        clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
+        clinical_fasta_path = clinical_fasta_path.strip(" '\"")
+
+
 
 ###################### CHOOSE RELEVANT LINEAR REFERENCE GENOME ######################
 # offer the same reference genomes I've been using
@@ -406,18 +420,6 @@ if run_clinical.lower() in ["y", "yes"]:
 
 # load in the clinical fasta and split by the monthly lists
 if run_clinical.lower() in ["y", "yes"]:
-    # request file path of clinical fasta
-    clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
-
-    # remove spaces, single quotes, and double quotes if they exist in the file path
-    clinical_fasta_path = clinical_fasta_path.strip(" '\"")
-
-    # add test to confirm they gave the path of a fasta
-    while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
-        print("Error: please enter a valid existing file path that ends in .fasta")
-        clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
-        clinical_fasta_path = clinical_fasta_path.strip(" '\"")
-
     # idea from https://stackoverflow.com/questions/51990373/loop-through-dictionary-to-match-dictionary-key-to-a-list-of-values-and-append-d
     # load clinical fasta as a dictionary with the accessiona as the key
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
@@ -447,11 +449,9 @@ if run_clinical.lower() in ["y", "yes"]:
 
 
 ###################### STATS FOR CRM ######################
-    # end timer
-    end_time = time.perf_counter()
+# end timer
+end_time = time.perf_counter()
 
-    # If I ran it (wastewater metadata was loaded from my default path), tell me how long my script took
-    if metadata_folder == "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata":
-        print(f"\nTime taken: {end_time - start_time:.2f} seconds\n")
-
-    
+# If I ran it (wastewater metadata was loaded from my default path), tell me how long my script took
+if metadata_folder == "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata":
+    print(f"\nTime taken: {end_time - start_time:.2f} seconds\n")

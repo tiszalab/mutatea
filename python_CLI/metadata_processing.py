@@ -10,6 +10,10 @@ import gzip
 import shutil
 from Bio import SeqIO
 from pathlib import Path
+import time
+
+# start timer
+start_time = time.perf_counter()
 
 # let the user know what this pipeline does and the files required
 print("\nThis is a pipeline for processing different serotypes of Influenza A in wastewater data, choosing a reference genome, and (optionally) pulling and processing matched clinical data. \nRequired inputs include: \n - wastewater metadata \n - reference FASTA \n - reference GFF\nThis pipeline will walk you through getting these files and processing them\n")
@@ -48,7 +52,6 @@ if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 
-
 ###################### WASTEWATER METADATA PROCESSING ######################
 # create a subfolder in the output directory for the cleaned metadata files
 metadata_dir = os.path.join(output_dir, "metadata_files")
@@ -68,6 +71,10 @@ if run_clinical == "":
 
 # request the file path of the metadata folder
 metadata_folder = input("\nEnter the file path of your folder containing the metadata xlsx files: ").strip()
+
+# added in default for myself
+if metadata_folder == "":
+    metadata_folder = "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
 
 # remove spaces, single quotes, and double quotes if they exist in the file path
 metadata_folder = metadata_folder.strip(" '\"")
@@ -251,11 +258,14 @@ while default_ref not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
     default_ref = input("Please enter either y or n: ").strip()
 
 # added in default for myself
-    if default_ref == "":
-        default_ref = "y"
+if default_ref == "":
+    default_ref = "y"
 
-# give the NCBI Virus link for the default reference genome of respective flu subtype
-if default_ref.lower() in ["y", "Y", "yes", "Yes"]:
+# create a subfolder in the output directory for the cleaned reference files (if it doesn't already exist)
+reference_dir = os.path.join(output_dir, "reference_files")
+
+# give the NCBI Virus link for the default reference genome of respective flu subtype if they don't have the files
+if not os.path.exists(reference_dir) and default_ref.lower() in ["y", "Y", "yes", "Yes"]:
     # chatgpt helped me troubleshoot this part (apparently the subtype needed to be lowercase)
     if subtype.lower() == "h1n1":
         print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
@@ -265,28 +275,39 @@ if default_ref.lower() in ["y", "Y", "yes", "Yes"]:
         print("Note that H5N1 is not common in the United States, this is the reference genome I found that was closest: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
 
 # offer the option to use their own reference genome and give them the NCBI Virus link
-else:
+elif default_ref.lower() not in ["y", "yes"]:
     print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Genome&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
     print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \nYou will need to download the GFF and FASTA of the selected genome")
 
 # tell the user which required files they need to download for the reference genome
-print("\nDownload the files for genomic.gff.gz and genomic.fna.gz")
+if not os.path.exists(reference_dir):
+    print("\nDownload the files for genomic.gff.gz and genomic.fna.gz")
 
 
 
 ###################### PROCESS FILES OF REFERENCE GENOME ######################
-# create a subfolder in the output directory for the cleaned reference files
-reference_dir = os.path.join(output_dir, "reference_files")
-
 # create the output directory if it doesn't exist
 if not os.path.exists(reference_dir):
     os.makedirs(reference_dir)
 
-# load in the reference fasta
-path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip()
+# try to auto-load existing reference files if the user wants the default reference
+if default_ref.lower() in ["y", "yes", "Y", "Yes"] and os.path.isdir(reference_dir):
+    existing_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))
+    existing_gff = glob.glob(os.path.join(reference_dir, "*.gff"))
 
-# remove spaces, single quotes, and double quotes if they exist in the file path
-path_ref_fasta = path_ref_fasta.strip(" '\"")
+    # if the user wants default reference files and they were used in a previous run, use them
+    if existing_fasta and existing_gff:
+        path_ref_fasta = existing_fasta[0].strip(" '\"")
+        path_ref_gff = existing_gff[0].strip(" '\"")
+        print(f"\nUsing existing reference FASTA: {path_ref_fasta}")
+        print(f"Using existing reference GFF: {path_ref_gff}")
+
+# load in the reference fasta
+if default_ref.lower() in ["n", "N", "No", "no"]:
+    path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip()
+
+    # remove spaces, single quotes, and double quotes if they exist in the file path
+    path_ref_fasta = path_ref_fasta.strip(" '\"")
 
 # added the .fna option in case the user unzips the file themselves
 # chatgpt helped me fix this issue, I needed to put an "and" between the file type options
@@ -316,13 +337,14 @@ else:
     print(f"\nFASTA file is already unzipped: {ref_fasta}\n")
 
 # load in reference gff
-path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip()
+if default_ref.lower() in ["y", "Y", "yes", "Yes", ""] and not os.path.exists(reference_dir):
+    path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip()
 
-# remove spaces, single quotes, and double quotes if they exist in the file path
-path_ref_gff = path_ref_gff.strip(" '\"")
+    # remove spaces, single quotes, and double quotes if they exist in the file path
+    path_ref_gff = path_ref_gff.strip(" '\"")
 
 # added the .gff option in case the user unzips the file themselves
-while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_fasta.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
+while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_gff.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
     print("Error: please enter a valid existing file path that ends in .gff.gz or .gff")
     path_ref_gff = input("\nEnter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip()
     path_ref_gff = path_ref_gff.strip(" '\"")
@@ -419,3 +441,10 @@ if run_clinical.lower() in ["y", "yes"]:
         SeqIO.write(month_accessions, clinical_monthly_fasta, "fasta")
 
     print(f"\nThe clinical FASTA file of {subtype} has been split by month\n")
+
+    # end timer
+    end_time = time.perf_counter()
+
+    # If I ran it (wastewater metadata was taken from my default path), tell me how long my script took
+    if metadata_folder == "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata":
+        print(f"\nTime taken: {end_time - start_time:.2f} seconds\n")

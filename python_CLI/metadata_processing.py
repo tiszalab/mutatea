@@ -22,8 +22,11 @@ print("\nThis is a pipeline for processing different serotypes of Influenza A in
 subtype = input("Enter the flu subtype you want to analyze (H1N1, H3N2, or H5N1): ").strip() 
 
 # reprompt the user if it's not one of the set flu subtypes
-while subtype not in ["H1N1", "H3N2", "H5N1"]:
+while subtype not in ["H1N1", "h1n1", "H3N2", "h3n2", "H5N1", "h5n1"]:
     subtype = input("Please enter one of the following flu subtypes (H1N1, H3N2, or H5N1): ").strip()
+
+# make sure all subtypes are uppercase for NCBI search, doesn't work if they are lowercase
+subtype = subtype.upper()
 
 # I got the idea to work with os.path from https://www.reddit.com/r/learnpython/comments/11xybcz/how_can_i_find_the_path_to_the_downloads_folder/
 # following os.path functions were chose with the information from https://docs.python.org/3/library/os.path.html
@@ -218,11 +221,14 @@ if run_clinical.lower() in ["y", "yes"]:
             want_ncbi_help = "n"
 
         # offer NCBI link and instructions for getting required clinical files if the user doesn't already have them
-        if want_ncbi_help.lower() in ["y", "yes"]:
+        if want_ncbi_help.lower() in ["y", "yes"] and subtype in ["H1N1", "H3N2"]:
             print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
             print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
-
-
+        elif want_ncbi_help.lower() in ["y", "yes"] and subtype == "H5N1":
+            print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&Region_s=North%20America")
+            print(f"\nThere is very little H5N1 in Texas, so this search is looking at sequences in North America in this time range")
+            print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
+        
 
 ###################### CLINICAL METADATA PROCESSING ######################
 # added this if statement so clinical data is only processed if the user said yes

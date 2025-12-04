@@ -332,6 +332,8 @@ else:
     # the file is already unzipped if the file name ends in .fna
     fasta_name = os.path.basename(path_ref_fasta)
     ref_fasta = os.path.join(reference_dir, fasta_name)
+
+    # tell user if the FASTA file is already unzipped
     if path_ref_fasta != ref_fasta:
         shutil.copy(path_ref_fasta, ref_fasta)
     print(f"\nFASTA file is already unzipped: {ref_fasta}\n")
@@ -382,7 +384,7 @@ if run_clinical.lower() in ["y", "yes"]:
     if not os.path.exists(clinical_output):
         os.makedirs(clinical_output)
 
-     # create a subfolder in the output directory for the monthly clinical lists that will be created to sort the clinical fasta later
+    # create a subfolder in the output directory for the monthly clinical lists that will be created to sort the clinical fasta later
     clinical_lists = os.path.join(clinical_output, "monthly_lists")
 
     # create the output directory if it doesn't exist
@@ -442,9 +444,14 @@ if run_clinical.lower() in ["y", "yes"]:
 
     print(f"\nThe clinical FASTA file of {subtype} has been split by month\n")
 
+
+
+###################### STATS FOR CRM ######################
     # end timer
     end_time = time.perf_counter()
 
-    # If I ran it (wastewater metadata was taken from my default path), tell me how long my script took
+    # If I ran it (wastewater metadata was loaded from my default path), tell me how long my script took
     if metadata_folder == "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata":
         print(f"\nTime taken: {end_time - start_time:.2f} seconds\n")
+
+    

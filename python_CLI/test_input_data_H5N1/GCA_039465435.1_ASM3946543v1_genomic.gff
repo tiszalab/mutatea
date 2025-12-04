@@ -1,0 +1,60 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+#!genome-build ASM3946543v1
+#!genome-build-accession NCBI_Assembly:GCA_039465435.1
+##sequence-region PP577947.1 1 2316
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577947.1	Genbank	region	1	2316	.	+	.	ID=PP577947.1:1..2316;Dbxref=taxon:11320;Name=1;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=1;serotype=H5N1;strain=A/Texas/37/2024
+PP577947.1	Genbank	gene	16	2295	.	+	.	ID=gene-PB2;Name=PB2;gbkey=Gene;gene=PB2;gene_biotype=protein_coding
+PP577947.1	Genbank	CDS	16	2295	.	+	0	ID=cds-WYN03024.1;Parent=gene-PB2;Dbxref=NCBI_GP:WYN03024.1;Name=WYN03024.1;gbkey=CDS;gene=PB2;product=polymerase PB2;protein_id=WYN03024.1
+##sequence-region PP577941.1 1 2316
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577941.1	Genbank	region	1	2316	.	+	.	ID=PP577941.1:1..2316;Dbxref=taxon:11320;Name=2;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=2;serotype=H5N1;strain=A/Texas/37/2024
+PP577941.1	Genbank	gene	13	2286	.	+	.	ID=gene-PB1;Name=PB1;gbkey=Gene;gene=PB1;gene_biotype=protein_coding
+PP577941.1	Genbank	CDS	13	2286	.	+	0	ID=cds-WYN03015.1;Parent=gene-PB1;Dbxref=NCBI_GP:WYN03015.1;Name=WYN03015.1;gbkey=CDS;gene=PB1;product=polymerase PB1;protein_id=WYN03015.1
+PP577941.1	Genbank	gene	107	379	.	+	.	ID=gene-PB1-F2;Name=PB1-F2;gbkey=Gene;gene=PB1-F2;gene_biotype=protein_coding
+PP577941.1	Genbank	CDS	107	379	.	+	0	ID=cds-WYN03016.1;Parent=gene-PB1-F2;Dbxref=NCBI_GP:WYN03016.1;Name=WYN03016.1;gbkey=CDS;gene=PB1-F2;product=PB1-F2 protein;protein_id=WYN03016.1
+##sequence-region PP577942.1 1 2208
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577942.1	Genbank	region	1	2208	.	+	.	ID=PP577942.1:1..2208;Dbxref=taxon:11320;Name=3;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=3;serotype=H5N1;strain=A/Texas/37/2024
+PP577942.1	Genbank	gene	13	2163	.	+	.	ID=gene-PA;Name=PA;gbkey=Gene;gene=PA;gene_biotype=protein_coding
+PP577942.1	Genbank	CDS	13	2163	.	+	0	ID=cds-WYN03017.1;Parent=gene-PA;Dbxref=NCBI_GP:WYN03017.1;Name=WYN03017.1;gbkey=CDS;gene=PA;product=polymerase PA;protein_id=WYN03017.1
+PP577942.1	Genbank	gene	13	772	.	+	.	ID=gene-PA-X;Name=PA-X;gbkey=Gene;gene=PA-X;gene_biotype=protein_coding
+PP577942.1	Genbank	CDS	13	582	.	+	0	ID=cds-WYN03018.1;Parent=gene-PA-X;Dbxref=NCBI_GP:WYN03018.1;Name=WYN03018.1;exception=ribosomal slippage;gbkey=CDS;gene=PA-X;product=PA-X protein;protein_id=WYN03018.1
+PP577942.1	Genbank	CDS	584	772	.	+	0	ID=cds-WYN03018.1;Parent=gene-PA-X;Dbxref=NCBI_GP:WYN03018.1;Name=WYN03018.1;exception=ribosomal slippage;gbkey=CDS;gene=PA-X;product=PA-X protein;protein_id=WYN03018.1
+##sequence-region PP577943.1 1 1751
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577943.1	Genbank	region	1	1751	.	+	.	ID=PP577943.1:1..1751;Dbxref=taxon:11320;Name=4;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=4;serotype=H5N1;strain=A/Texas/37/2024
+PP577943.1	Genbank	gene	17	1720	.	+	.	ID=gene-HA;Name=HA;gbkey=Gene;gene=HA;gene_biotype=protein_coding
+PP577943.1	Genbank	CDS	17	1720	.	+	0	ID=cds-WYN03019.1;Parent=gene-HA;Dbxref=NCBI_GP:WYN03019.1;Name=WYN03019.1;gbkey=CDS;gene=HA;product=hemagglutinin;protein_id=WYN03019.1
+PP577943.1	Genbank	signal_peptide_region_of_CDS	17	64	.	+	.	ID=id-WYN03019.1:1..16;Parent=cds-WYN03019.1;gbkey=Prot
+PP577943.1	Genbank	mature_protein_region_of_CDS	65	1051	.	+	.	ID=id-WYN03019.1:17..345;Parent=cds-WYN03019.1;gbkey=Prot;product=HA1
+PP577943.1	Genbank	mature_protein_region_of_CDS	1052	1717	.	+	.	ID=id-WYN03019.1:346..567;Parent=cds-WYN03019.1;gbkey=Prot;product=HA2
+##sequence-region PP577946.1 1 1540
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577946.1	Genbank	region	1	1540	.	+	.	ID=PP577946.1:1..1540;Dbxref=taxon:11320;Name=5;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=5;serotype=H5N1;strain=A/Texas/37/2024
+PP577946.1	Genbank	gene	34	1530	.	+	.	ID=gene-NP;Name=NP;gbkey=Gene;gene=NP;gene_biotype=protein_coding
+PP577946.1	Genbank	CDS	34	1530	.	+	0	ID=cds-WYN03023.1;Parent=gene-NP;Dbxref=NCBI_GP:WYN03023.1;Name=WYN03023.1;gbkey=CDS;gene=NP;product=nucleocapsid protein;protein_id=WYN03023.1
+##sequence-region PP577945.1 1 1433
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577945.1	Genbank	region	1	1433	.	+	.	ID=PP577945.1:1..1433;Dbxref=taxon:11320;Name=6;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=6;serotype=H5N1;strain=A/Texas/37/2024
+PP577945.1	Genbank	gene	9	1418	.	+	.	ID=gene-NA;Name=NA;gbkey=Gene;gene=NA;gene_biotype=protein_coding
+PP577945.1	Genbank	CDS	9	1418	.	+	0	ID=cds-WYN03022.1;Parent=gene-NA;Dbxref=NCBI_GP:WYN03022.1;Name=WYN03022.1;gbkey=CDS;gene=NA;product=neuraminidase;protein_id=WYN03022.1
+##sequence-region PP577944.1 1 1002
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577944.1	Genbank	region	1	1002	.	+	.	ID=PP577944.1:1..1002;Dbxref=taxon:11320;Name=7;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=7;serotype=H5N1;strain=A/Texas/37/2024
+PP577944.1	Genbank	gene	14	995	.	+	.	ID=gene-M2;Name=M2;gbkey=Gene;gene=M2;gene_biotype=protein_coding
+PP577944.1	Genbank	CDS	14	39	.	+	0	ID=cds-WYN03021.1;Parent=gene-M2;Dbxref=NCBI_GP:WYN03021.1;Name=WYN03021.1;gbkey=CDS;gene=M2;product=matrix protein 2;protein_id=WYN03021.1
+PP577944.1	Genbank	CDS	728	995	.	+	1	ID=cds-WYN03021.1;Parent=gene-M2;Dbxref=NCBI_GP:WYN03021.1;Name=WYN03021.1;gbkey=CDS;gene=M2;product=matrix protein 2;protein_id=WYN03021.1
+PP577944.1	Genbank	gene	14	772	.	+	.	ID=gene-M1;Name=M1;gbkey=Gene;gene=M1;gene_biotype=protein_coding
+PP577944.1	Genbank	CDS	14	772	.	+	0	ID=cds-WYN03020.1;Parent=gene-M1;Dbxref=NCBI_GP:WYN03020.1;Name=WYN03020.1;gbkey=CDS;gene=M1;product=matrix protein 1;protein_id=WYN03020.1
+##sequence-region PP577940.1 1 865
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=11320
+PP577940.1	Genbank	region	1	865	.	+	.	ID=PP577940.1:1..865;Dbxref=taxon:11320;Name=8;collection-date=28-Mar-2024;country=USA: Texas;gbkey=Src;mol_type=viral cRNA;nat-host=Homo sapiens;note=passage details:Original;segment=8;serotype=H5N1;strain=A/Texas/37/2024
+PP577940.1	Genbank	gene	15	852	.	+	.	ID=gene-NEP;Name=NEP;gbkey=Gene;gene=NEP;gene_biotype=protein_coding;gene_synonym=NS2
+PP577940.1	Genbank	CDS	15	44	.	+	0	ID=cds-WYN03014.1;Parent=gene-NEP;Dbxref=NCBI_GP:WYN03014.1;Name=WYN03014.1;Note=nonstructural protein 2;gbkey=CDS;gene=NEP;product=nuclear export protein;protein_id=WYN03014.1
+PP577940.1	Genbank	CDS	517	852	.	+	0	ID=cds-WYN03014.1;Parent=gene-NEP;Dbxref=NCBI_GP:WYN03014.1;Name=WYN03014.1;Note=nonstructural protein 2;gbkey=CDS;gene=NEP;product=nuclear export protein;protein_id=WYN03014.1
+PP577940.1	Genbank	gene	15	707	.	+	.	ID=gene-NS1;Name=NS1;gbkey=Gene;gene=NS1;gene_biotype=protein_coding
+PP577940.1	Genbank	CDS	15	707	.	+	0	ID=cds-WYN03013.1;Parent=gene-NS1;Dbxref=NCBI_GP:WYN03013.1;Name=WYN03013.1;gbkey=CDS;gene=NS1;product=nonstructural protein 1;protein_id=WYN03013.1
+###

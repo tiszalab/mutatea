@@ -36,15 +36,12 @@ output_path_default = os.path.expanduser("~/Downloads/python_CLI")
 # ask user where they want their output directory (where the processed input files and outputted alignment files will be saved)
 output_path = input(
     "\nCreate a directory to save the processed input files and the outputted alignment files\n"
-    f"(If you hit enter, you can choose the default: {output_path_default}/{subtype}_align): ").strip()
-
-# I had an issue with copying the filepath from MacOS where sometimes it would include a space or single quote
-# I got this idea from chatgpt: removes spaces, single quotes, and double quotes if they exist in the file path
-output_path = output_path.strip(" '\"")
+    f"(If you hit enter, you can choose the default: {output_path_default}/{subtype}_align): ").strip(" '\"")
 
 # created a default output path for myself
 if output_path == "":
     output_path = f"{output_path_default}/{subtype}_align"
+    ### crm: pretty sure I can remove these line here
     output_path = output_path.strip(" '\"")
 
 # create an output directory called {subtype}_align
@@ -73,19 +70,15 @@ if run_clinical == "":
     run_clinical = "y"
 
 # request the file path of the metadata folder
-metadata_folder = input("\nEnter the file path of your folder containing the metadata xlsx files: ").strip()
+metadata_folder = input("\nEnter the file path of your folder containing the metadata xlsx files: ").strip(" '\"")
 
 # added in default for myself
 if metadata_folder == "":
     metadata_folder = "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
 
-# remove spaces, single quotes, and double quotes if they exist in the file path
-metadata_folder = metadata_folder.strip(" '\"")
-
 # test to see if the metadata folder exists
 while not os.path.exists(metadata_folder):
-    metadata_folder = input("Enter the file path of your folder containing the metadata xlsx files:").strip()
-    metadata_folder = metadata_folder.strip(" '\"")
+    metadata_folder = input("Enter the file path of your folder containing the metadata xlsx files:").strip(" '\"")
 
 # pull out the xlsx files from the folder path given
 metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
@@ -234,15 +227,11 @@ if run_clinical.lower() in ["y", "yes"]:
 # added this if statement so clinical data is only processed if the user said yes
 if run_clinical.lower() in ["y", "yes"]:
     # request file path of clinical metadata
-    clinical_metadata_path = input("\nPlease enter the file path of your clinical metadata csv: ").strip()
-
-    # remove spaces, single quotes, and double quotes if they exist in the file path
-    clinical_metadata_path = clinical_metadata_path.strip(" '\"")
+    clinical_metadata_path = input("\nPlease enter the file path of your clinical metadata csv: ").strip(" '\"")
 
     # add test to confirm they gave the path of a csv
     while (not clinical_metadata_path.endswith(".csv")) or (not os.path.isfile(clinical_metadata_path)):
-        clinical_metadata_path = input("Please enter the file path of your clinical metadata csv: ").strip()
-        clinical_metadata_path = clinical_metadata_path.strip(" '\"")
+        clinical_metadata_path = input("Please enter the file path of your clinical metadata csv: ").strip(" '\"")
 
     # load in clinical metadata
     clinical_metadata = pd.read_csv(clinical_metadata_path)
@@ -258,16 +247,12 @@ if run_clinical.lower() in ["y", "yes"]:
 
 # moved clinical fasta input line to improve run time
     # request file path of clinical fasta
-    clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip()
-
-    # remove spaces, single quotes, and double quotes if they exist in the file path
-    clinical_fasta_path = clinical_fasta_path.strip(" '\"")
+    clinical_fasta_path = input("After downloading the clinical fasta, please enter the file path of your clinical fasta: ").strip(" '\"")
 
     # add test to confirm they gave the path of a fasta
     while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
         print("Error: please enter a valid existing file path that ends in .fasta")
-        clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip()
-        clinical_fasta_path = clinical_fasta_path.strip(" '\"")
+        clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip(" '\"")
 
 
 
@@ -312,6 +297,7 @@ if not os.path.exists(reference_dir):
 
 # try to auto-load existing reference files if the user wants the default reference
 if default_ref.lower() in ["y", "yes", "Y", "Yes"] and os.path.isdir(reference_dir):
+    # crm: I only load in unzipped versions because zipped files would not be in the output directory
     existing_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))
     existing_gff = glob.glob(os.path.join(reference_dir, "*.gff"))
 
@@ -320,21 +306,39 @@ if default_ref.lower() in ["y", "yes", "Y", "Yes"] and os.path.isdir(reference_d
         path_ref_fasta = existing_fasta[0].strip(" '\"")
         path_ref_gff = existing_gff[0].strip(" '\"")
         print(f"\nUsing existing reference FASTA: {path_ref_fasta}")
-        print(f"Using existing reference GFF: {path_ref_gff}")
+        print(f"\nUsing existing reference GFF: {path_ref_gff}")
 
+    # if only the fasta is downloaded
+    elif existing_fasta and not existing_gff:
+        path_ref_fasta = existing_fasta[0].strip(" '\"")
+        if subtype.lower() == "h1n1":
+            print("No gff was found in your folder, download the genomic.gff.gz from here: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
+        elif subtype.lower() == "h3n2":
+            print("No gff was found in your folder, download the genomic.gff.gz from here: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/301/835/GCA_039301835.1_ASM3930183v1/")
+        elif subtype.lower() == "h5n1":
+            print("No gff was found in your folder, download the genomic.gff.gz from here: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
+        path_ref_gff = input("After downloading the reference gff, please enter the file path of your gff.gz or gff: ").strip(" '\"")
+
+    # if only the gff is downloaded
+    elif existing_gff and not existing_fasta:
+        path_ref_gff = existing_gff[0].strip(" '\"")
+        if subtype.lower() == "h1n1":
+            print("No fna was found in your folder, download the genomic.fna.gz from here: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
+        elif subtype.lower() == "h3n2":
+            print("No fna was found in your folder, download the genomic.fna.gz from here: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/301/835/GCA_039301835.1_ASM3930183v1/")
+        elif subtype.lower() == "h5n1":
+            print("No fna was found in your folder, download the genomic.fna.gz from here: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
+        path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip(" '\"")
+        
 # load in the reference fasta
 if default_ref.lower() in ["n", "N", "No", "no"]:
-    path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip()
-
-    # remove spaces, single quotes, and double quotes if they exist in the file path
-    path_ref_fasta = path_ref_fasta.strip(" '\"")
+    path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip(" '\"")
 
 # added the .fna option in case the user unzips the file themselves
 # chatgpt helped me fix this issue, I needed to put an "and" between the file type options
 while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(".fna")) or (not os.path.isfile(path_ref_fasta)):
     print("Error: please enter a valid existing file path that ends in .fna.gz or .fna")
-    path_ref_fasta = input("Enter the file path of your reference fasta, make sure the file name ends in fna.gz or fna: ").strip()
-    path_ref_fasta = path_ref_fasta.strip(" '\"")
+    path_ref_fasta = input("Enter the file path of your reference fasta, make sure the file name ends in fna.gz or fna: ").strip(" '\"")
 
 # unzip if the file path ends in fna.gz
 if path_ref_fasta.endswith(".fna.gz"):
@@ -356,20 +360,16 @@ else:
     # tell user if the FASTA file is already unzipped
     if path_ref_fasta != ref_fasta:
         shutil.copy(path_ref_fasta, ref_fasta)
-    print(f"\nFASTA file is already unzipped: {ref_fasta}\n")
+    print(f"\nFASTA file is already unzipped")
 
 # load in reference gff
 if default_ref.lower() in ["y", "Y", "yes", "Yes", ""] and not os.path.exists(reference_dir):
-    path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip()
-
-    # remove spaces, single quotes, and double quotes if they exist in the file path
-    path_ref_gff = path_ref_gff.strip(" '\"")
+    path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip(" '\"")
 
 # added the .gff option in case the user unzips the file themselves
 while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_gff.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
     print("Error: please enter a valid existing file path that ends in .gff.gz or .gff")
-    path_ref_gff = input("\nEnter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip()
-    path_ref_gff = path_ref_gff.strip(" '\"")
+    path_ref_gff = input("\nEnter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip(" '\"")
 
 # unzip if the file path ends in gff.gz
 if path_ref_gff.endswith(".gff.gz"):
@@ -390,7 +390,7 @@ else:
     ref_gff = os.path.join(reference_dir, gff_name)
     if path_ref_gff != ref_gff:
         shutil.copy(path_ref_gff, ref_gff)
-    print(f"\nGFF file is already unzipped: {ref_gff}\n")
+    print(f"\nGFF file is already unzipped")
 
 
 
@@ -415,7 +415,7 @@ if run_clinical.lower() in ["y", "yes"]:
     for month, group in clinical_metadata.groupby("Month_Year"):
         out_path = Path(clinical_lists) / f"{month}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
-    print(f"Sorted clinical {subtype} accessions by month")
+    print(f"\nSorted clinical {subtype} accessions by month")
 
     # create a subfolder in the output directory for the monthly clinical fastas that will be created later
     clinical_fasta = os.path.join(clinical_output, "monthly_fasta")
@@ -450,7 +450,7 @@ if run_clinical.lower() in ["y", "yes"]:
         # export clinical fasta by month, idea from https://stackoverflow.com/questions/24156578/using-bio-seqio-to-write-single-line-fasta
         SeqIO.write(month_accessions, clinical_monthly_fasta, "fasta")
 
-    print(f"\nThe clinical FASTA file of {subtype} has been split by month\n")
+    print(f"\nThe clinical FASTA file of {subtype} has been split by month")
 
 
 

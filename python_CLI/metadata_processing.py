@@ -1,5 +1,4 @@
 ###################### SETUP ######################
-# test pull/push
 # Confirm the user has all required modules installed
 print("Please check the module_requirements.txt file and install any missing modules with pip install -r module_requirements.txt")
 
@@ -452,6 +451,16 @@ if run_clinical.lower() in ["y", "yes"]:
         SeqIO.write(month_accessions, clinical_monthly_fasta, "fasta")
 
     print(f"\nThe clinical FASTA file of {subtype} has been split by month")
+
+
+
+###################### FIND AND PULL WASTEWATER READS ######################
+
+
+
+
+
+
 
 
 

@@ -184,7 +184,7 @@ if time_match == "":
 
 # print the time range of the wastewater samples if the user requests it
 if time_match.lower() in ["y", "Y", "yes", "Yes"]:
-    print(f"The wastewater samples range from {earliest_date.strftime("%m/%d/%Y")} to {latest_date.strftime("%m/%d/%Y")}")
+    print(f"The wastewater samples range from {earliest_date.strftime('%m/%d/%Y')} to {latest_date.strftime('%m/%d/%Y')}")
     if run_clinical.lower() in ["y", "yes"]:
         print("You should try to use clinical data that matches this time range")
 

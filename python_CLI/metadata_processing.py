@@ -12,6 +12,8 @@ from Bio import SeqIO
 from pathlib import Path
 import time
 
+# crm: having error with import for pandas and Bio
+
 # start timer
 start_time = time.perf_counter()
 

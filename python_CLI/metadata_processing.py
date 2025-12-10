@@ -76,7 +76,7 @@ metadata_folder = input("\nEnter the file path of your folder containing the met
 # crm: use for VS code
 # added in default for myself
 if metadata_folder == "":
-    metadata_folder = "/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/flu_mutatome_pipelines/python_CLI/metadata"
+    metadata_folder = "/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/flu_mutatome_pipelines/python_CLI/wastewater_metadata"
 
 # test to see if the metadata folder exists
 while not os.path.exists(metadata_folder):

@@ -28,28 +28,24 @@ while subtype not in ["H1N1", "h1n1", "H3N2", "h3n2", "H5N1", "h5n1"]:
 # make sure all subtypes are uppercase for NCBI search, doesn't work if they are lowercase
 subtype = subtype.upper()
 
-# I got the idea to work with os.path from https://www.reddit.com/r/learnpython/comments/11xybcz/how_can_i_find_the_path_to_the_downloads_folder/
-# following os.path functions were chose with the information from https://docs.python.org/3/library/os.path.html
-# set default output_path
-output_path_default = os.path.expanduser("~/Downloads/python_CLI")
+# set default file path for output to be the folder where this python script is kept
+output_path_default = os.path.dirname(os.path.abspath(__file__))
 
 # ask user where they want their output directory (where the processed input files and outputted alignment files will be saved)
-output_path = input(
+default_output_dir = os.path.join(output_path_default, f"{subtype}_align")
+
+output_dir = input(
     "\nCreate a directory to save the processed input files and the outputted alignment files\n"
-    f"(If you hit enter, you can choose the default: {output_path_default}/{subtype}_align): ").strip(" '\"")
+    f"(If you hit enter, you can choose the default: {default_output_dir}): "
+).strip(" '\"")
 
 # created a default output path for myself
-if output_path == "":
-    output_path = f"{output_path_default}/{subtype}_align"
-    ### crm: pretty sure I can remove these line here
-    output_path = output_path.strip(" '\"")
+if output_dir == "":
+    output_dir = default_output_dir
 
-# create an output directory called {subtype}_align
-output_dir = os.path.join(output_path)
+# make sure the directory exists
+os.makedirs(output_dir, exist_ok=True)
 
-# create the output directory if it doesn't exist
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
 
 
 ###################### WASTEWATER METADATA PROCESSING ######################
@@ -72,9 +68,15 @@ if run_clinical == "":
 # request the file path of the metadata folder
 metadata_folder = input("\nEnter the file path of your folder containing the metadata xlsx files: ").strip(" '\"")
 
+# crm: hard coded path
+# added in default for myself
+#if metadata_folder == "":
+#    metadata_folder = "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
+
+# crm: use for VS code
 # added in default for myself
 if metadata_folder == "":
-    metadata_folder = "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
+    metadata_folder = "/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/flu_mutatome_pipelines/python_CLI/metadata"
 
 # test to see if the metadata folder exists
 while not os.path.exists(metadata_folder):

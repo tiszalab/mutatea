@@ -1,11 +1,13 @@
+#!/usr/bin/env python
+
 ###################### SETUP ######################
-# Confirm the user has all required modules installed
-print("Please check the module_requirements.txt file and install any missing modules with pip install -r module_requirements.txt")
 
 # load modules
+import argparse
 import pandas as pd
 import glob
-import os
+import sys, os
+import logging
 import gzip
 import shutil
 from Bio import SeqIO

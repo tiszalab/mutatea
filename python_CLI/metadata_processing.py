@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 ###################### SETUP ######################
-
 # load modules
 import argparse
 import pandas as pd
@@ -13,6 +12,24 @@ import shutil
 from Bio import SeqIO
 from pathlib import Path
 import time
+
+# load in functions from metadata_funcs
+try:
+    from .metadata_funcs import load_metadata, add_region, add_month_year, unzip_reference_files, split_clinical_fasta
+except:
+    from metadata_funcs import load_metadata, add_region, add_month_year, unzip_reference_files, split_clinical_fasta
+
+# convert string to boolean for argparse
+def str2bool(x):
+    if isinstance(x, bool):
+       return x
+    if x.lower() in ("yes", "y"):
+        return True
+    elif x.lower() in ('no', 'n'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 # start timer
 start_time = time.perf_counter()
@@ -455,3 +472,7 @@ end_time = time.perf_counter()
 # If I ran it (wastewater metadata was loaded from my default path), tell me how long my script took
 if metadata_folder == "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata":
     print(f"\nTime taken: {end_time - start_time:.2f} seconds\n")
+
+# crm: call the main function
+if __name__ == "__main__":
+    metadata_processing()

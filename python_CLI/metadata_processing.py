@@ -29,7 +29,7 @@ while subtype.upper() not in ["H1N1", "H3N2", "H5N1"]:
 output_path_default = os.path.dirname(os.path.abspath(__file__))
 
 # ask user where they want their output directory (where the processed input files and outputted alignment files will be saved)
-default_output_dir = os.path.join(output_path_default, f"{subtype}_align")
+default_output_dir = os.path.join(output_path_default, f"{subtype.upper()}_align")
 
 output_dir = input(
     "\nCreate a directory to save the processed input files and the outputted alignment files\n"
@@ -73,7 +73,7 @@ metadata_folder = input("\nEnter the file path of your folder containing the met
 # crm: use for VS code
 # added in default for myself
 if metadata_folder == "":
-    metadata_folder = "/gpfs1/projects/Tisza_Lab/crm_flu_mutatome/flu_mutatome_pipelines/python_CLI/wastewater_metadata"
+    metadata_folder = (f"{output_path_default}/wastewater_metadata")
 
 # test to see if the metadata folder exists
 while not os.path.exists(metadata_folder):
@@ -324,7 +324,6 @@ if default_ref.upper() in ["N", "NO"]:
     path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip(" '\"")
 
 # added the .fna option in case the user unzips the file themselves
-# chatgpt helped me fix this issue, I needed to put an "and" between the file type options
 while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(".fna")) or (not os.path.isfile(path_ref_fasta)):
     print("Error: please enter a valid existing file path that ends in .fna.gz or .fna")
     path_ref_fasta = input("Enter the file path of your reference fasta, make sure the file name ends in fna.gz or fna: ").strip(" '\"")
@@ -336,7 +335,6 @@ if path_ref_fasta.endswith(".fna.gz"):
     fasta_name = os.path.basename(path_ref_fasta[:-3])
     ref_fasta = os.path.join(reference_dir, fasta_name)
 
-    # chatgpt recommended using shutil to copy the content to the new file
     # unzip the fna.gz file to the output directory
     with gzip.open(path_ref_fasta, "rb") as f_in, open(ref_fasta, "wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
@@ -345,12 +343,9 @@ else:
     # the file is already unzipped if the file name ends in .fna
     fasta_name = os.path.basename(path_ref_fasta)
     ref_fasta = os.path.join(reference_dir, fasta_name)
-
-    # tell user if the FASTA file is already unzipped
     if path_ref_fasta != ref_fasta:
         shutil.copy(path_ref_fasta, ref_fasta)
-    print(f"\nFASTA file is already unzipped")
-
+    
 # load in reference gff
 if default_ref.upper() in ["Y", "YES"] and not os.path.exists(reference_dir):
     path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip(" '\"")
@@ -367,7 +362,6 @@ if path_ref_gff.endswith(".gff.gz"):
     gff_name = os.path.basename(path_ref_gff[:-3])
     ref_gff = os.path.join(reference_dir, gff_name)
 
-    # chatgpt recommended using shutil to copy the content to the new file
     # unzip the gff.gz file to the output directory
     with gzip.open(path_ref_gff, "rb") as f_in, open(ref_gff, "wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
@@ -379,7 +373,6 @@ else:
     ref_gff = os.path.join(reference_dir, gff_name)
     if path_ref_gff != ref_gff:
         shutil.copy(path_ref_gff, ref_gff)
-    print(f"\nGFF file is already unzipped")
 
 
 
@@ -400,7 +393,7 @@ if run_clinical.upper() in ["Y", "YES"]:
     if not os.path.exists(clinical_lists):
         os.makedirs(clinical_lists)
     
-    # chatgpt helped me with this loop, creates a list of accessions for each month
+    # creates a list of accessions for each month
     for month, group in clinical_metadata.groupby("Month_Year"):
         out_path = Path(clinical_lists) / f"{month}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
@@ -427,7 +420,7 @@ if run_clinical.upper() in ["Y", "YES"]:
         with open(list_file) as f:
             accessions = f.read().splitlines()
         
-        # get all accessions for each month, chatgpt helped me with this line 
+        # get all accessions for each month
         month_accessions = [records_by_id[a] for a in accessions if a in records_by_id]
 
         # get the month_year from the file name of the list

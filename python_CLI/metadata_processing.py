@@ -2,8 +2,6 @@
 # Confirm the user has all required modules installed
 print("Please check the module_requirements.txt file and install any missing modules with pip install -r module_requirements.txt")
 
-# test commit to see if custom hotkeys for windsurf
-
 # load modules
 import pandas as pd
 import glob
@@ -23,12 +21,9 @@ print("\nThis is a pipeline for processing different serotypes of Influenza A in
 # request flu subtype
 subtype = input("Enter the flu subtype you want to analyze (H1N1, H3N2, or H5N1): ").strip() 
 
-# reprompt the user if it's not one of the set flu subtypes
-while subtype not in ["H1N1", "h1n1", "H3N2", "h3n2", "H5N1", "h5n1"]:
+# reprompt the user if it's not one of the set flu subtypes, make sure all subtypes are uppercase for NCBI search
+while subtype.upper() not in ["H1N1", "H3N2", "H5N1"]:
     subtype = input("Please enter one of the following flu subtypes (H1N1, H3N2, or H5N1): ").strip()
-
-# make sure all subtypes are uppercase for NCBI search, doesn't work if they are lowercase
-subtype = subtype.upper()
 
 # set default file path for output to be the folder where this python script is kept
 output_path_default = os.path.dirname(os.path.abspath(__file__))
@@ -60,7 +55,7 @@ if not os.path.exists(metadata_dir):
 
 # ask if the user also wants to process clinical data
 run_clinical = input("\nWill you also want to process Influenza A reads from Texas clinical data of the same time range as the inputted wastewater data? (y/n): ").strip()
-while run_clinical not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
+while run_clinical.upper() not in ["Y", "YES", "", "N", "NO"]:
     run_clinical = input("Please enter either y or n: ").strip()
 
 # added in default for myself
@@ -96,15 +91,15 @@ metadata=pd.concat(md_list, ignore_index=True)
 
 # ask user if they want their wastewater data labelled by public health region
 region_request = input("\nDo you also want your wastewater data labelled by public health region? This can be useful for later visualization of how mutations are spreading (y/n): ").strip() 
-while region_request not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
+while region_request.upper() not in ["Y", "YES", "", "N", "NO"]:
     subtype = input("Please enter either y or n: ").strip()
 
 # added in default for myself
 if region_request == "":
-    region_request = "y"
+    region_request = "Y"
 
 # create a dictionary of expected cities and their public health regions
-if region_request.lower() in ["y", "Y", "yes", "Yes"]:
+if region_request.upper() in ["Y", "YES"]:
     city_region = {
         "Houston, TX": "6_5S",
         "El Paso, TX": "9_10",
@@ -144,7 +139,7 @@ if "SiteCode" not in metadata.columns:
     metadata["SiteCode"] = pd.NA
 
 # organization of the metadata depends on the user input
-if region_request.lower() in ["y", "Y", "yes", "Yes"]:
+if region_request.upper() in ["Y", "YES"]:
     metadata = metadata[
         [
             "City",
@@ -179,15 +174,15 @@ metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=",", ind
 earliest_date = metadata["Date"].min()
 latest_date = metadata["Date"].max()
 time_match = input("\nDo you want to know the time range of the wastewater samples? (y/n): ").strip() 
-while time_match not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
+while time_match.upper() not in ["Y", "YES", "", "N", "NO"]:
     time_match = input("Please enter either y or n: ").strip()
 
 # added in default for myself
 if time_match == "":
-    time_match = "y"
+    time_match = "Y"
 
 # print the time range of the wastewater samples if the user requests it
-if time_match.lower() in ["y", "Y", "yes", "Yes"]:
+if time_match.upper() in ["Y", "YES"]:
     print(f"The wastewater samples range from {earliest_date.strftime('%m/%d/%Y')} to {latest_date.strftime('%m/%d/%Y')}")
     if run_clinical.lower() in ["y", "yes"]:
         print("You should try to use clinical data that matches this time range")
@@ -198,30 +193,30 @@ start_str = earliest_date.strftime("%Y-%m-%dT00:00:00.00Z")
 end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
 
 # offer NCBI link and instructions for getting clinical files if the user doesn't already have them downloaded
-if run_clinical.lower() in ["y", "yes"]:
+if run_clinical.upper() in ["Y", "YES"]:
     have_clinical_files = input("\nDo you already have the clinical metadata (csv) and clinical reads (FASTA) downloaded? (y/n): ").strip()
-    while have_clinical_files not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
+    while have_clinical_files.upper() not in ["Y", "YES", "", "N", "NO"]:
         have_clinical_files = input("Please enter either y or n: ").strip()
     
     # added in default for myself
     if have_clinical_files == "":
-        have_clinical_files = "y"
+        have_clinical_files = "Y"
 
     # ask if the user wants an NCBI link if they don't have the clinical files
-    if have_clinical_files.lower() in ["n", "no"]:
+    if have_clinical_files.upper() in ["N", "NO"]:
         want_ncbi_help = input("\nDo you want an NCBI Virus link and instructions for downloading the clinical metadata and FASTA? (y/n): ").strip()
-        while want_ncbi_help not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
+        while want_ncbi_help.upper() not in ["Y", "YES", "", "N", "NO"]:
             want_ncbi_help = input("Please enter either y or n: ").strip()
         
         # added in default for myself
         if want_ncbi_help == "":
-            want_ncbi_help = "n"
+            want_ncbi_help = "N"
 
         # offer NCBI link and instructions for getting required clinical files if the user doesn't already have them
-        if want_ncbi_help.lower() in ["y", "yes"] and subtype in ["H1N1", "H3N2"]:
+        if want_ncbi_help.upper() in ["Y", "YES"] and subtype in ["H1N1", "H3N2"]:
             print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
             print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
-        elif want_ncbi_help.lower() in ["y", "yes"] and subtype == "H5N1":
+        elif want_ncbi_help.upper() in ["Y", "YES"] and subtype == "H5N1":
             print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&Region_s=North%20America")
             print(f"\nThere is very little H5N1 in Texas, so this search is looking at sequences in North America in this time range")
             print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
@@ -229,7 +224,7 @@ if run_clinical.lower() in ["y", "yes"]:
 
 ###################### CLINICAL METADATA PROCESSING ######################
 # added this if statement so clinical data is only processed if the user said yes
-if run_clinical.lower() in ["y", "yes"]:
+if run_clinical.upper() in ["Y", "YES"]:
     # request file path of clinical metadata
     clinical_metadata_path = input("\nPlease enter the file path of your clinical metadata csv: ").strip(" '\"")
 
@@ -263,18 +258,18 @@ if run_clinical.lower() in ["y", "yes"]:
 ###################### CHOOSE RELEVANT LINEAR REFERENCE GENOME ######################
 # offer the same reference genomes I've been using
 default_ref = input("\nDo you want to use the default reference genome? (y/n): ").strip()
-while default_ref not in ["y", "Y", "yes", "Yes", "", "n", "N", "no", "No"]:
+while default_ref.upper() not in ["Y", "YES", "", "N", "NO"]:
     default_ref = input("Please enter either y or n: ").strip()
 
 # added in default for myself
 if default_ref == "":
-    default_ref = "y"
+    default_ref = "Y"
 
 # create a subfolder in the output directory for the cleaned reference files (if it doesn't already exist)
 reference_dir = os.path.join(output_dir, "reference_files")
 
 # give the NCBI Virus link for the default reference genome of respective flu subtype if they don't have the files
-if not os.path.exists(reference_dir) and default_ref.lower() in ["y", "Y", "yes", "Yes"]:
+if not os.path.exists(reference_dir) and default_ref.upper() in ["Y", "YES"]:
     # chatgpt helped me troubleshoot this part (apparently the subtype needed to be lowercase)
     if subtype.lower() == "h1n1":
         print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
@@ -284,7 +279,7 @@ if not os.path.exists(reference_dir) and default_ref.lower() in ["y", "Y", "yes"
         print("Note that H5N1 is not common in the United States, this is the reference genome I found that was closest: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
 
 # offer the option to use their own reference genome and give them the NCBI Virus link
-elif default_ref.lower() not in ["y", "yes"]:
+elif default_ref.upper() not in ["Y", "YES"]:
     print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Genome&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
     print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \nYou will need to download the GFF and FASTA of the selected genome")
 
@@ -300,7 +295,7 @@ if not os.path.exists(reference_dir):
     os.makedirs(reference_dir)
 
 # try to auto-load existing reference files if the user wants the default reference
-if default_ref.lower() in ["y", "yes", "Y", "Yes"] and os.path.isdir(reference_dir):
+if default_ref.upper() in ["Y", "YES"] and os.path.isdir(reference_dir):
     # crm: I only load in unzipped versions because zipped files would not be in the output directory
     existing_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))
     existing_gff = glob.glob(os.path.join(reference_dir, "*.gff"))
@@ -335,7 +330,7 @@ if default_ref.lower() in ["y", "yes", "Y", "Yes"] and os.path.isdir(reference_d
         path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip(" '\"")
         
 # load in the reference fasta
-if default_ref.lower() in ["n", "N", "No", "no"]:
+if default_ref.upper() in ["N", "NO"]:
     path_ref_fasta = input("After downloading the reference fasta, please enter the file path of your fna.gz or fna: ").strip(" '\"")
 
 # added the .fna option in case the user unzips the file themselves
@@ -367,7 +362,7 @@ else:
     print(f"\nFASTA file is already unzipped")
 
 # load in reference gff
-if default_ref.lower() in ["y", "Y", "yes", "Yes", ""] and not os.path.exists(reference_dir):
+if default_ref.upper() in ["Y", "YES"] and not os.path.exists(reference_dir):
     path_ref_gff = input("After downloading the reference gff, please enter the file path of your reference gff.gz or gff: ").strip(" '\"")
 
 # added the .gff option in case the user unzips the file themselves
@@ -400,7 +395,7 @@ else:
 
 ###################### SPLIT CLINICAL FASTA BY MONTH ######################
 # creating monthly clinical lists to split the clinical fasta later
-if run_clinical.lower() in ["y", "yes"]:
+if run_clinical.upper() in ["Y", "YES"]:
     # create a subfolder in the output directory for the monthly clinical lists that will be created to sort the clinical fasta later
     clinical_output = os.path.join(output_dir, "clinical_output")
 
@@ -429,7 +424,7 @@ if run_clinical.lower() in ["y", "yes"]:
         os.makedirs(clinical_fasta)
 
 # load in the clinical fasta and split by the monthly lists
-if run_clinical.lower() in ["y", "yes"]:
+if run_clinical.upper() in ["Y", "YES"]:
     # idea from https://stackoverflow.com/questions/51990373/loop-through-dictionary-to-match-dictionary-key-to-a-list-of-values-and-append-d
     # load clinical fasta as a dictionary with the accessiona as the key
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))

@@ -170,22 +170,12 @@ else:
 # export metadata as a tsv in the output directory 
 metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=",", index=False)
 
-# print the time range of the wastewater samples
+# find the time range of the wastewater samples
 earliest_date = metadata["Date"].min()
 latest_date = metadata["Date"].max()
-time_match = input("\nDo you want to know the time range of the wastewater samples? (y/n): ").strip() 
-while time_match.upper() not in ["Y", "YES", "", "N", "NO"]:
-    time_match = input("Please enter either y or n: ").strip()
 
-# added in default for myself
-if time_match == "":
-    time_match = "Y"
-
-# print the time range of the wastewater samples if the user requests it
-if time_match.upper() in ["Y", "YES"]:
-    print(f"The wastewater samples range from {earliest_date.strftime('%m/%d/%Y')} to {latest_date.strftime('%m/%d/%Y')}")
-    if run_clinical.lower() in ["y", "yes"]:
-        print("You should try to use clinical data that matches this time range")
+# print the time range of the wastewater samples
+print(f"The wastewater samples range from {earliest_date.strftime('%m/%d/%Y')} to {latest_date.strftime('%m/%d/%Y')}\nYou should try to use clinical data that matches this time range")
 
 # reformat dates for NCBI Virus URL (specifically need to remove the spaces so the url works)
 # I looked at how the dates were formatted in the email and used this website https://strftime.org/

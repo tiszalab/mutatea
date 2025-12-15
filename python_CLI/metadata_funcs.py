@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-
-###################### SETUP ######################
-# load modules
 import pandas as pd
 import gzip
 import shutil
@@ -12,41 +8,58 @@ import argparse
 import glob
 import os
 
-###################### SETUP ######################
-output_path_default = os.path.dirname(os.path.abspath(__file__))
 # load in and merge metadata files
-def load_metadata(metadata_folder):
-    if metadata_folder == "":
-        metadata_folder = f"{output_path_default}/wastewater_metadata"
-    return glob.glob(os.path.join(metadata_folder,"*.xlsx"))
+def load_metadata(metadata_folder:str):
+    try:
+        metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
+        md_list=[pd.read_excel(file) for file in metadata_files]
+        return metadata=pd.concat(md_list, ignore_index=True)
+    except:
+        
 
 # add month_year column to metadata
-def add_month_year(metadata):
+def add_month_year(metadata:str):
+    metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
 
 # optional: add public health region column to merged metadata
-def add_region(metadata):
+def add_region(metadata:str):
+    city_region = {
+        "Houston, TX": "6_5S",
+        "El Paso, TX": "9_10",
+        "Lubbock, TX": "1",
+        "Brownsville, TX": "11",
+        "Wichita Falls, TX": "2_3",
+        "Baytown, TX": "6_5S",
+        "Humble, TX": "6_5S",
+        "Missouri City, TX": "6_5S",
+        "Austin, TX": "7",
+        "Laredo, TX": "11",
+        "Waco, TX": "7",
+        "Fort Worth, TX": "2_3",
+        "Palestine, TX": "4_5N",
+        "Athens, TX": "4_5N",
+        "Dallas, TX": "2_3",
+        "DFW Airport, TX": "2_3",
+        "Katy, TX": "6_5S"
+    }
+    # use the dictionary to add a "Region" column to the metadata
+    metadata["Region"] = metadata["City"].map(city_region)
 
-
-# unzip reference files if needed
-def unzip_reference_files(path_ref_fasta, path_ref_gff):
-    if path_ref_fasta.endswith(".fna.gz"):
-        # set the output path as the reference_files folder in the output directory
-        fasta_name = os.path.basename(path_ref_fasta[:-3])
-        ref_fasta = os.path.join(reference_dir, fasta_name)
-        # unzip the fna.gz file to the output directory
-        with gzip.open(path_ref_fasta, "rb") as f_in, open(ref_fasta, "wb") as f_out:
-            shutil.copyfileobj(f_in, f_out)
-    elif path_ref_gff.endswith(".gff.gz"):
-        # set the output path as the reference_files folder in the output directory
-        gff_name = os.path.basename(path_ref_gff[:-3])
-        ref_gff = os.path.join(reference_dir, gff_name)
-        with gzip.open(path_ref_gff, "rb") as f_in, open(ref_gff, "wb") as f_out:
-            shutil.copyfileobj(f_in, f_out)
+    # add a warning for any unexpected cities, that way the user will know if they need to update the city_region dictionary
+    if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
+        print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
     else:
-        pass
-        # crm: need the reference files to be kept in the output directory in the reference_files subfolder
-        # not sure if I wrote this script so it only unzips the fasta OR the gff, need to confirm
+        print("All cities in the metadata were successfully assigned to public health regions!")
+
+
+# crm: feel like I could use the same function for both of these, need to check to remove redundancy
+# unzip reference files if needed
+def unzip_reference_fasta(path_ref_fasta:str, unzipref:str):
+    return Popen(['gunzip', '-c', path_ref_fasta, '>', unzipref], stdout=(unzipref, "w"), stderr=STDOUT)
+
+def unzip_reference_gff(path_ref_gff:str, unzipref:str):
+    return Popen(['gunzip', '-c', path_ref_gff, '>', unzipref], stdout=(unzipref, "w"), stderr=STDOUT)
 
 # split clinical fasta by month
-def split_clinical_fasta(clinical_fasta, output_dir):
-    return gunzip(clinical_fasta)
+def split_clinical_fasta(clinical_fasta:str, output_dir:str):
+

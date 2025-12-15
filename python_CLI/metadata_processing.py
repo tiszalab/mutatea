@@ -14,6 +14,7 @@ from pathlib import Path
 import time
 
 # load in functions from metadata_funcs
+# crm: make sure to update names of functions being imported as they change in metadata_funcs.py
 #try:
 #    from .metadata_funcs import load_metadata, add_region, add_month_year, unzip_reference_files, split_clinical_fasta
 #except:
@@ -129,6 +130,7 @@ if region_request.upper() in ["Y", "YES"]:
         "Palestine, TX": "4_5N",
         "Athens, TX": "4_5N",
         "Dallas, TX": "2_3",
+        "DFW Airport, TX": "2_3",
         "Katy, TX": "6_5S"
     }
 
@@ -188,42 +190,11 @@ earliest_date = metadata["Date"].min()
 latest_date = metadata["Date"].max()
 
 # print the time range of the wastewater samples
-print(f"The wastewater samples range from {earliest_date.strftime('%m/%d/%Y')} to {latest_date.strftime('%m/%d/%Y')}\nYou should try to use clinical data that matches this time range")
+print(f"The wastewater samples range from {earliest_date.strftime('%m/%d/%Y')} to {latest_date.strftime('%m/%d/%Y')}\, you should try to use clinical data that matches this time range")
 
-# reformat dates for NCBI Virus URL (specifically need to remove the spaces so the url works)
 # I looked at how the dates were formatted in the email and used this website https://strftime.org/
 start_str = earliest_date.strftime("%Y-%m-%dT00:00:00.00Z")
 end_str = latest_date.strftime("%Y-%m-%dT23:59:59.00Z")
-
-# offer NCBI link and instructions for getting clinical files if the user doesn't already have them downloaded
-if run_clinical.upper() in ["Y", "YES"]:
-    have_clinical_files = input("\nDo you already have the clinical metadata (csv) and clinical reads (FASTA) downloaded? (y/n): ").strip()
-    while have_clinical_files.upper() not in ["Y", "YES", "", "N", "NO"]:
-        have_clinical_files = input("Please enter either y or n: ").strip()
-    
-    # added in default for myself
-    if have_clinical_files == "":
-        have_clinical_files = "Y"
-
-    # ask if the user wants an NCBI link if they don't have the clinical files
-    if have_clinical_files.upper() in ["N", "NO"]:
-        want_ncbi_help = input("\nDo you want an NCBI Virus link and instructions for downloading the clinical metadata and FASTA? (y/n): ").strip()
-        while want_ncbi_help.upper() not in ["Y", "YES", "", "N", "NO"]:
-            want_ncbi_help = input("Please enter either y or n: ").strip()
-        
-        # added in default for myself
-        if want_ncbi_help == "":
-            want_ncbi_help = "N"
-
-        # offer NCBI link and instructions for getting required clinical files if the user doesn't already have them
-        if want_ncbi_help.upper() in ["Y", "YES"] and subtype in ["H1N1", "H3N2"]:
-            print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
-            print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
-        elif want_ncbi_help.upper() in ["Y", "YES"] and subtype == "H5N1":
-            print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Nucleotide&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&Region_s=North%20America")
-            print(f"\nThere is very little H5N1 in Texas, so this search is looking at sequences in North America in this time range")
-            print(f"\nYou will need to:\n - Download all records as a nucleotide FASTA \n - Download the metadata as a csv and select all, making sure to include the accession with version \n")
-        
 
 ###################### CLINICAL METADATA PROCESSING ######################
 # added this if statement so clinical data is only processed if the user said yes
@@ -239,7 +210,6 @@ if run_clinical.upper() in ["Y", "YES"]:
     clinical_metadata = pd.read_csv(clinical_metadata_path)
 
     # reformat dates in clinical metadata
-    # idea from https://pandas.pydata.org/docs/reference/api/pandas.to_datetime.html
     clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
     clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
 
@@ -253,7 +223,7 @@ if run_clinical.upper() in ["Y", "YES"]:
 
     # add test to confirm they gave the path of a fasta
     while (not clinical_fasta_path.endswith(".fasta")) or (not os.path.isfile(clinical_fasta_path)):
-        print("Error: please enter a valid existing file path that ends in .fasta")
+        print("Error: please enter a valid file path that ends in .fasta")
         clinical_fasta_path = input("Enter the file path of your clinical fasta: ").strip(" '\"")
 
 
@@ -273,24 +243,12 @@ reference_dir = os.path.join(output_dir, "reference_files")
 
 # give the NCBI Virus link for the default reference genome of respective flu subtype if they don't have the files
 if not os.path.exists(reference_dir) and default_ref.upper() in ["Y", "YES"]:
-    # chatgpt helped me troubleshoot this part (apparently the subtype needed to be lowercase)
     if subtype.lower() == "h1n1":
         print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/308/895/GCA_039308895.1_ASM3930889v1/")
     elif subtype.lower() == "h3n2":
         print("https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/301/835/GCA_039301835.1_ASM3930183v1/")
     elif subtype.lower() == "h5n1":
         print("Note that H5N1 is not common in the United States, this is the reference genome I found that was closest: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/039/465/435/GCA_039465435.1_ASM3946543v1/")
-
-# offer the option to use their own reference genome and give them the NCBI Virus link
-elif default_ref.upper() not in ["Y", "YES"]:
-    print(f"\nHere is the link: https://www.ncbi.nlm.nih.gov/labs/virus/vssi/#/virus?SeqType_s=Genome&HostLineage_ss=Homo%20sapiens%20(human),%20taxid:9606&GenomeCompleteness_s=complete&VirusLineage_ss=Influenza%20A%20virus,%20taxid:11320&CollectionDate_dr={start_str}%20TO%20{end_str}&Serotype_s={subtype}&USAState_s=TX")
-    print(f"You will want to pick a reference genome from around the beginning of your time range, which is {start_str} \nYou will need to download the GFF and FASTA of the selected genome")
-
-# tell the user which required files they need to download for the reference genome
-if not os.path.exists(reference_dir):
-    print("\nDownload the files for genomic.gff.gz and genomic.fna.gz")
-
-
 
 ###################### PROCESS FILES OF REFERENCE GENOME ######################
 # create the output directory if it doesn't exist
@@ -338,7 +296,7 @@ if default_ref.upper() in ["N", "NO"]:
 
 # added the .fna option in case the user unzips the file themselves
 while (not path_ref_fasta.endswith(".fna.gz")) and (not path_ref_fasta.endswith(".fna")) or (not os.path.isfile(path_ref_fasta)):
-    print("Error: please enter a valid existing file path that ends in .fna.gz or .fna")
+    print("Error: please enter a valid file path that ends in .fna.gz or .fna")
     path_ref_fasta = input("Enter the file path of your reference fasta, make sure the file name ends in fna.gz or fna: ").strip(" '\"")
 
 # unzip if the file path ends in fna.gz
@@ -365,7 +323,7 @@ if default_ref.upper() in ["Y", "YES"] and not os.path.exists(reference_dir):
 
 # added the .gff option in case the user unzips the file themselves
 while (not path_ref_gff.endswith(".gff.gz")) and (not path_ref_gff.endswith(".gff")) or (not os.path.isfile(path_ref_gff)):
-    print("Error: please enter a valid existing file path that ends in .gff.gz or .gff")
+    print("Error: please enter a valid file path that ends in .gff.gz or .gff")
     path_ref_gff = input("\nEnter the file path of your reference gff, make sure the file name ends in gff.gz or gff: ").strip(" '\"")
 
 # unzip if the file path ends in gff.gz
@@ -467,6 +425,7 @@ end_time = time.perf_counter()
 if metadata_folder == "/mmfs1/home/u255582/CascadeProjects/flu_mutatome_pipelines/python_CLI/wastewater_metadata":
     print(f"\nTime taken: {end_time - start_time:.2f} seconds\n")
 
+# crm: keep getting error here saying "metadata_processing is not defined"
 # crm: call the main function
-if __name__ == "__main__":
-    metadata_processing()
+#if __name__ == "__main__":
+#    metadata_processing()

@@ -14,10 +14,10 @@ from pathlib import Path
 import time
 
 # load in functions from metadata_funcs
-try:
-    from .metadata_funcs import load_metadata, add_region, add_month_year, unzip_reference_files, split_clinical_fasta
-except:
-    from metadata_funcs import load_metadata, add_region, add_month_year, unzip_reference_files, split_clinical_fasta
+#try:
+#    from .metadata_funcs import load_metadata, add_region, add_month_year, unzip_reference_files, split_clinical_fasta
+#except:
+#    from metadata_funcs import load_metadata, add_region, add_month_year, unzip_reference_files, split_clinical_fasta
 
 # convert string to boolean for argparse
 def str2bool(x):
@@ -84,12 +84,6 @@ if run_clinical == "":
 # request the file path of the metadata folder
 metadata_folder = input("\nEnter the file path of your folder containing the metadata xlsx files: ").strip(" '\"")
 
-# crm: hard coded path
-# added in default for myself
-#if metadata_folder == "":
-#    metadata_folder = "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata"
-
-# crm: use for VS code
 # added in default for myself
 if metadata_folder == "":
     metadata_folder = (f"{output_path_default}/wastewater_metadata")
@@ -470,7 +464,7 @@ if run_clinical.upper() in ["Y", "YES"]:
 end_time = time.perf_counter()
 
 # If I ran it (wastewater metadata was loaded from my default path), tell me how long my script took
-if metadata_folder == "/Users/camillemazurek2025/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/data2/metadata":
+if metadata_folder == "/mmfs1/home/u255582/CascadeProjects/flu_mutatome_pipelines/python_CLI/wastewater_metadata":
     print(f"\nTime taken: {end_time - start_time:.2f} seconds\n")
 
 # crm: call the main function

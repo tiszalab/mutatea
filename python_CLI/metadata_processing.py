@@ -3,8 +3,6 @@
 ###################### SETUP ######################
 # load modules
 import argparse
-import pandas as pd
-import glob
 import sys, os
 import logging
 import gzip
@@ -134,7 +132,7 @@ if region_request.upper() in ["Y", "YES"]:
         "Katy, TX": "6_5S"
     }
 
-    # use the dictionary to add a "Region" column to themetadata
+    # use the dictionary to add a "Region" column to the metadata
     metadata["Region"] = metadata["City"].map(city_region)
 
     # add a warning for any unexpected cities, that way the user will know if they need to update the city_region dictionary

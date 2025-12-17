@@ -15,7 +15,6 @@ def load_merge_metadata(metadata_folder:str) -> pd.DataFrame:
     md_list=[pd.read_excel(file) for file in metadata_files]
     metadata=pd.concat(md_list, ignore_index=True)
     return metadata
-        
 
 # add month_year column to metadata
 def add_month_year(metadata:pd.DataFrame) -> pd.DataFrame:
@@ -77,26 +76,31 @@ def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False)
         ]
     return metadata[columns]
 
-
-# export the metadata as a csv to output path
-def export_metadata(metadata: pd.DataFrame, metadata_dir: str, sep: str = ",") -> None:
-    metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=sep, index=False)
-
 # get the time range from the metadata
 def get_date_range(metadata: pd.DataFrame) -> tuple:
     earliest_date = metadata["Date"].min()
     latest_date = metadata["Date"].max()
     return earliest_date, latest_date
 
+# export the metadata as a csv to output path
+def export_metadata(metadata: pd.DataFrame, metadata_dir: str, sep: str = ",") -> None:
+    metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=sep, index=False)
+
 # load in clinical metadata and add column for month_year
 def load_clinical_metadata(clinical_metadata_path: str) -> pd.DataFrame:
     clinical_metadata = pd.read_csv(clinical_metadata_path)
+    # make collection date a datetime object
     clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
+    # add month_year column to the clinical metadata
     clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
     return clinical_metadata
 
+# load in clinical fasta
+def load_clinical_fasta(clinical_fasta_path: str) -> list:
+    clinical_fasta = SeqIO.parse(clinical_fasta_path, "fasta")
+    return clinical_fasta
 
-###### crm: this is maybe? functional
+###### crm: this is maybe(?) functional
 # process reference files
 def process_reference_file(input_folder: str, reference_dir: str) -> list:
     # make sure reference_dir exists
@@ -144,7 +148,6 @@ def create_monthly_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
     for month, group in clinical_metadata.groupby("Month_Year"):
         out_path = Path(output_dir) / f"{month}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
-
 
 # split clinical FASTA file by monthly lists
 def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, output_dir: str) -> None:

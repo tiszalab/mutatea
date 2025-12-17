@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# test of github connection
+
 ###################### SETUP ######################
 # load modules
 import argparse

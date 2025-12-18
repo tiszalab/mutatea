@@ -61,7 +61,7 @@ def flu_cli():
     parser.add_argument("-o", "--output_dir", type=str, default=output_path_default, help="Path to chosen output directory")
 
     # argument to only split wastewater metadata by month
-    parser.add_argument("-my", "--month_only", type=str, help="Override default split of month and region, only splits wastewater metadata by month")
+    parser.add_argument("-my", "--month_only", type=str, help="Override default split of month and region, will only split the wastewater data by month")
 
     # argument to view time range covered by wastewater metadata
     parser.add_argument("-t", "--time_range", type=str, help="View time range covered by wastewater sample collection")
@@ -71,6 +71,9 @@ def flu_cli():
 
     # check if clinical files are included
     include_clinical = bool(args.clinical_files)
+
+    # check if region is included
+    include_region = not args.month_only
 
     # make directories
     dirs = create_output_directories(args.output_dir, include_clinical)

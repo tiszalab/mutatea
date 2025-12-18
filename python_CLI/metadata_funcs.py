@@ -162,11 +162,12 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         # get the month_year from the file name
         month_year = list_file.name.split("_")[0]
         # export clinical fasta by month
-        clinical_monthly_fasta = os.path.join(output_dir, f"{month_year}.fasta")
-        SeqIO.write(month_accessions, clinical_monthly_fasta, "fasta")
+        clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
+        SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
+# crm: confirm correct setup of the include_region input here
 # create output directories
-def create_output_directories(output_dir: str, include_clinical: bool = False) -> dict:
+def create_output_directories(output_dir: str, include_region:bool = True, include_clinical: bool = False) -> dict:
     dirs = {}
     # main output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -179,19 +180,83 @@ def create_output_directories(output_dir: str, include_clinical: bool = False) -
     reference_dir = os.path.join(output_dir, "reference_files")
     os.makedirs(reference_dir, exist_ok=True)
     dirs["reference"] = reference_dir
+    # create file directory for alignment files
+    alignment_dir = os.path.join(output_dir, "alignment_files")
+    os.makedirs(alignment_dir, exist_ok=True)
+    dirs["alignment"] = alignment_dir
+
+    # create subfolders in the alignment directory
+    # crm: we could also just not create the ww folder if no clinical analysis is done?
+    # crm confirm this is valid structure for include_clinical
+    wastewater_dir os.path.join(alignment_dir, "wastewater")
+    os.makedirs(wastewater_dir, exist_ok=True)
+    dirs["wastewater"] = wastewater_dir
+
+    # wastewater lists
+    wastewater_lists_dir os.path.join(wastewater_dir, "lists")
+    os.makedirs(wastewater_lists_dir, exist_ok=True)
+    dirs["lists"] = wastewater_lists_dir
+
+    # different structure depending on if region is included
+    if include_region:
+        # create subfolder for lists_month_region
+        wastewater_list_reg os.path.join(wastewater_lists_dir, "lists_month_reg")
+        os.makedirs(wastewater_list_reg, exist_ok=True)
+        dirs["lists_month_region"] = wastewater_list_reg
+        # create subfolder for lists_month
+        wastewater_list_month os.path.join(wastewater_lists_dir, "lists_month")
+        os.makedirs(wastewater_list_month, exist_ok=True)
+        dirs["lists_month"] = wastewater_list_month
+    else:
+        pass
+    # crm: check that pass works here, I only want to create those subfolders if region was included
+        
+    
+    # wastewater merged bams
+    wastewater_bams_dir os.path.join(wastewater_dir, "merged_bams")
+    os.makedirs(wastewater_bams_dir, exist_ok=True)
+    dirs["merged_bams"] = wastewater_bams_dir
+
+    # create merged_bams subfolders
+    # wastewater bams merged by month
+    wastewater_month_bams_dir os.path.join(wastewater_bams_dir, "merged_bams_month")        
+    os.makedirs(wastewater_month_bams_dir, exist_ok=True)
+    dirs["merged_bams_month"] = wastewater_month_bams_dir
+
+    # wastewater bams merged by month and region
+    if include_region:
+        wastewater_month_region_bams_dir os.path.join(wastewater_bams_dir, "merged_bams_month_region")
+        os.makedirs(wastewater_month_region_bams_dir, exist_ok=True)
+        dirs["merged_bams_month_region"] = wastewater_month_region_bams_dir
+        
+    # create subfolder for alignment files by pool
+    pools_dir os.path.join(wastewater_dir, "pools")
+    os.makedirs(pools_dir, exist_ok=True)
+    dirs["pools"] = pools_dir
 
     # optional: clinical directories
     if include_clinical:
         # parent folder for clinical output
-        clinical_output = os.path.join(output_dir, "clinical_output")
+        clinical_output = os.path.join(alignment_dir, "clinical_output")
         os.makedirs(clinical_output, exist_ok=True)
         dirs["clinical_output"] = clinical_output
         # folder for the lists of accessions by month
-        clinical_lists = os.path.join(clinical_output, "monthly_lists")
+        clinical_lists = os.path.join(clinical_output, "lists_month")
         os.makedirs(clinical_lists, exist_ok=True)
-        dirs["clinical_lists"] = clinical_lists
+        dirs["lists_month"] = clinical_lists
         # folder for the clinical fastas split by month
-        clinical_fasta = os.path.join(clinical_output, "monthly_fasta")
+        clinical_fasta = os.path.join(clinical_output, "fasta_month")
         os.makedirs(clinical_fasta, exist_ok=True)
-        dirs["clinical_fasta"] = clinical_fasta
+        dirs["fasta_month"] = clinical_fasta
+        # folder for the clinical bam files that were merged by month
+        clinical_bam = os.path.join(clinical_output, "bam_month")
+        os.makedirs(clinical_bam, exist_ok=True)
+        dirs["bam_month"] = clinical_bam            
+
+    # create tsv_output folder to later catch tsv files
+    tsv_output = os.path.join(output_dir, "tsv_output")
+    os.makedirs(tsv_output, exist_ok=True)
+    dirs["tsv_output"] = tsv_output
+
+    # create the directories I described
     return dirs

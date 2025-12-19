@@ -22,7 +22,7 @@ This is a framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2
 
 4. Use pip to install this command line tool, i.e.
 `cd python_CLI`
-`pip install .`
+`pip install -e .`
 
 5. Usage
 `flu_CLI -s <IAV_SUBTYPE> -m <WASTEWATER_METADATA_FILES> -r <WASTEWATER_READS> -ref <REFERENCE_FILES>'

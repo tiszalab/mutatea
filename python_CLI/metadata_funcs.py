@@ -105,19 +105,16 @@ def load_clinical_metadata(clinical_file_path: str) -> pd.DataFrame:
     return clinical_metadata
 
 # load in clinical fasta
-# crm: may not need all these different file path ending options idk
 def load_clinical_fasta(clinical_file_path: str) -> list:
     # find the fasta in the clinical_metadata_path
-    fasta_file = glob.glob(os.path.join(clinical_file_path, "*.fasta")) + glob.glob(os.path.join(clinical_file_path, "*.fa")) + glob.glob(os.path.join(clinical_file_path, "*.fna"))
+    fasta_file = glob.glob(os.path.join(clinical_file_path, "*.fasta"))
     # raise error if no fasta files were found
     if not fasta_file:
         raise FileNotFoundError(f"No fasta files found in {clinical_file_path}")
     # raise error if multiple fasta files were found
     if len(fasta_file)>1:
         raise ValueError(f"Multiple fasta files found in {clinical_file_path}")
-    # read in clinical fasta
-    clinical_fasta = SeqIO.parse(fasta_file[0], "fasta")
-    return clinical_fasta
+    return fasta_file[0]
 
 ###### crm: this is maybe(?) functional
 # process reference files
@@ -126,8 +123,11 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
     os.makedirs(reference_dir, exist_ok=True)
     output_paths=[]
 
-    # find all .gz files in the input folder and unzip into the reference_dir
-    gz_files = glob.glob(os.path.join(input_folder, "*.gz"))
+    # find all .fna.gz and .gff.gz files in the input folder and unzip into the reference_dir
+    gz_files = (
+        glob.glob(os.path.join(input_folder, "*fna.gz"))
+        + glob.glob(os.path.join(input_folder, "*gff.gz"))
+    )
     for gz_file in gz_files:
         # Get the output filename by removing .gz extension
         filename = os.path.basename(gz_file)[:-3]
@@ -138,7 +138,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
         output_paths.append(out_path)
 
     # copy any uncompressed reference files into the reference_dir
-    for pattern in ("*.fasta", "*.fa", "*.fna", "*.gff"):
+    for pattern in ("*.fna", "*.gff"):
         for src_path in glob.glob(os.path.join(input_folder, pattern)):
             filename = os.path.basename(src_path)
             out_path = os.path.join(reference_dir, filename)
@@ -154,11 +154,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
 
 # find existing .fna and .gff files in the reference directory
 def find_existing_reference_files(reference_dir: str) -> tuple:
-    existing_fasta = (
-        glob.glob(os.path.join(reference_dir, "*.fna"))
-        + glob.glob(os.path.join(reference_dir, "*.fasta"))
-        + glob.glob(os.path.join(reference_dir, "*.fa"))
-    )
+    existing_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))
     existing_gff = glob.glob(os.path.join(reference_dir, "*.gff"))
     return existing_fasta, existing_gff
 
@@ -229,7 +225,7 @@ def create_output_directories(output_dir: str, subtype: str, include_region:bool
         
     
     # wastewater merged bams
-    dirs["merged_bams"] = os.path.join(dirs["wastewater_lists_dir"], "merged_bams")
+    dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
     os.makedirs(dirs["merged_bams"], exist_ok=True)
 
     # create merged_bams subfolders

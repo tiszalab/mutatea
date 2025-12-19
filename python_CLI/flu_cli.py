@@ -118,6 +118,7 @@ def flu_cli():
     logger.info("\nReorganizing metadata columns")
     metadata = reorganize_metadata_columns(metadata, no_region=no_region)
     
+    # crm: messy, clean this up
     # optionally give the time range of the wastewater samples
     if args.time_range:
         logger.info(f"\nViewing the time range of the wastewater samples")
@@ -132,6 +133,9 @@ def flu_cli():
         logger.info("\nLoading in clinical metadata")
         clinical_metadata = load_clinical_metadata(args.clinical_files)
 
+        # export cleaned clinical metadata
+        logger.info(f"\nExporting the cleaned clinical metadata to {dirs['metadata_dir']}")
+        clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
     # crm: maybe move lower
     # load in clinical fasta
     if include_clinical:
@@ -146,8 +150,7 @@ def flu_cli():
     # split clinical fasta by monthly lists
     if include_clinical:
         logger.info("\nSplitting clinical FASTA by monthly lists")
-        split_clinical_fasta_by_month(args.clinical_files, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
-
+        split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
     # CRM: find existing reference files
 
     # process reference files

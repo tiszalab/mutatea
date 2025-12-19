@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flu_CLI"
+version = "0.1.0"
+authors = [
+  { name="Camille R Mazurek", email="camillemazurek23@gmail.com" },
+]
+description = "A framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2, and H5N1) between sources/cohorts."
+readme = "README.md"
+requires-python = ">=3.9"
+
+# CRM: I do not have a license rn
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas",
+    "biopython",
+    "openpyxl",
+]
+
+[project.scripts]  
+flu_CLI = "flu_CLI:flu_CLI"
+
+[project.urls]
+"Homepage" = "https://github.com/tiszalab/flu_mutatome_pipelines/python_CLI"

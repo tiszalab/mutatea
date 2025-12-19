@@ -189,6 +189,7 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
 def create_output_directories(output_dir: str, include_region:bool = True, include_clinical: bool = False) -> dict:
     dirs = {}
     # main output directory
+    dirs["output"] = output_dir
     os.makedirs(dirs["output"], exist_ok=True)
 
     # cleaned and merged metadata directory
@@ -252,20 +253,20 @@ def create_output_directories(output_dir: str, include_region:bool = True, inclu
         os.makedirs(dirs["clinical_output"], exist_ok=True)
 
         # folder for the lists of accessions by month
-        dirs["lists_month"] = os.path.join(dirs["clinical_output"], "lists_month")
-        os.makedirs(dirs["lists_month"], exist_ok=True)
+        dirs["clinical_lists_month"] = os.path.join(dirs["clinical_output"], "clinical_lists_month")
+        os.makedirs(dirs["clinical_lists_month"], exist_ok=True)
 
         # crm: want to later remove these clinical fasta files, could maybe save them to a temp dir?
         # folder for the clinical fastas split by month
-        dirs["fasta_month"] = os.path.join(dirs["clinical_output"], "fasta_month")
-        os.makedirs(dirs["fasta_month"], exist_ok=True)
+        dirs["clinical_fasta_month"] = os.path.join(dirs["clinical_output"], "clinical_fasta_month")
+        os.makedirs(dirs["clinical_fasta_month"], exist_ok=True)
 
         # folder for the clinical bam files that were merged by month
-        dirs["bam_month"] = os.path.join(dirs["clinical_output"], "bam_month")
-        os.makedirs(dirs["bam_month"], exist_ok=True)       
+        dirs["clinical_bam_month"] = os.path.join(dirs["clinical_output"], "clinical_bam_month")
+        os.makedirs(dirs["clinical_bam_month"], exist_ok=True)       
 
     # create tsv_output folder to later catch tsv files
-    dirs["tsv_output"] = os.path.join(dirs["output_dir"], "tsv_output")
+    dirs["tsv_output"] = os.path.join(output_dir, "tsv_output")
     os.makedirs(dirs["tsv_output"], exist_ok=True)
 
     # create the directories I described

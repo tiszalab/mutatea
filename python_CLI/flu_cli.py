@@ -34,7 +34,7 @@ def flu_cli():
     # start timer
     cli_start_time = time.perf_counter()
     # set default file path for output to the current working directory of the user
-    output_path_default = os.getcwd()
+    output_path_default = os.gesotcwd()
 
     # create parser and describe function of script
     parser = argparse.ArgumentParser(description="Process and align wastewater and clinical influenza A reads for mutation analysis.")
@@ -61,7 +61,7 @@ def flu_cli():
     parser.add_argument("-o", "--output_dir", type=str, default=output_path_default, help="Path to chosen output directory")
 
     # argument to only split wastewater metadata by month
-    parser.add_argument("-my", "--month_only", type=str, help="Override default split of month and region, will only split the wastewater data by month")
+    parser.add_argument("-my", "--month_only", action='store_true', help="Override default split of month and region, will only split the wastewater data by month")
 
     # argument to view time range covered by wastewater metadata
     parser.add_argument("-t", "--time_range", type=str, help="View time range covered by wastewater sample collection")

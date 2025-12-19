@@ -245,20 +245,20 @@ def create_output_directories(output_dir: str, subtype: str, include_region:bool
     # optional: clinical directories
     if include_clinical:
         # parent folder for clinical output
-        dirs["clinical_output"] = os.path.join(dirs["alignment_dir"], "clinical_output")
-        os.makedirs(dirs["clinical_output"], exist_ok=True)
+        dirs["clinical"] = os.path.join(dirs["alignment_dir"], "clinical")
+        os.makedirs(dirs["clinical"], exist_ok=True)
 
         # folder for the lists of accessions by month
-        dirs["clinical_lists_month"] = os.path.join(dirs["clinical_output"], "clinical_lists_month")
+        dirs["clinical_lists_month"] = os.path.join(dirs["clinical"], "clinical_lists_month")
         os.makedirs(dirs["clinical_lists_month"], exist_ok=True)
 
         # crm: want to later remove these clinical fasta files, could maybe save them to a temp dir?
         # folder for the clinical fastas split by month
-        dirs["clinical_fasta_month"] = os.path.join(dirs["clinical_output"], "clinical_fasta_month")
+        dirs["clinical_fasta_month"] = os.path.join(dirs["clinical"], "clinical_fasta_month")
         os.makedirs(dirs["clinical_fasta_month"], exist_ok=True)
 
         # folder for the clinical bam files that were merged by month
-        dirs["clinical_bam_month"] = os.path.join(dirs["clinical_output"], "clinical_bam_month")
+        dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
         os.makedirs(dirs["clinical_bam_month"], exist_ok=True)       
 
     # create tsv_output folder to later catch tsv files

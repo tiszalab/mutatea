@@ -124,8 +124,8 @@ def flu_cli():
         get_date_range(metadata)
 
     # export cleaned wastewater metadata
-    logger.info(f"\nExporting the cleaned wastewater metadata to {dirs['metadata_dir']}")
-    export_metadata(metadata, dirs["metadata_dir"])
+    logger.info(f"\nExporting the cleaned wastewater metadata to {dirs.metadata_dir}")
+    export_metadata(metadata, dirs.metadata_dir)
 
     # load in clinical metadata
     if include_clinical:
@@ -141,16 +141,16 @@ def flu_cli():
     # create monthly lists of accessions
     if include_clinical:
         logger.info("\nCreating monthly lists of accessions")
-        create_monthly_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
+        create_monthly_accession_lists(clinical_metadata, dirs.metadata_dir)
        
     # crm: I'm sure I don't want these files going to metadata_dir? want it to go to "clinical_lists"
     # split clinical fasta by monthly lists
     if include_clinical:
         logger.info("\nSplitting clinical FASTA by monthly lists")
-        split_clinical_fasta_by_month(args.clinical_files, dirs["clinical_lists_month"], dirs["fasta_month"])
+        split_clinical_fasta_by_month(args.clinical_files, dirs.metadata_dir)
 
     # CRM: find existing reference files
 
     # process reference files
     logger.info("\nProcessing reference files")
-    reference_files = process_reference_file(args.reference_files, dirs["reference_dir"])
+    reference_files = process_reference_file(args.reference_files, dirs.reference_dir)

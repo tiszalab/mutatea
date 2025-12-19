@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "flu_CLI"
 version = "0.1.0"
 authors = [
-  { name="Camille R Mazurek", email="camillemazurek23@gmail.com" },
+  { name="Camille R. Mazurek", email="camillemazurek23@gmail.com" },
 ]
 description = "A framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2, and H5N1) between sources/cohorts."
 readme = "README.md"
@@ -24,8 +24,11 @@ dependencies = [
     "openpyxl",
 ]
 
+[tool.setuptools]
+py-modules = ["flu_cli", "metadata_funcs"]
+
 [project.scripts]  
-flu_CLI = "flu_CLI:flu_CLI"
+flu_CLI = "flu_cli:flu_cli"
 
 [project.urls]
 "Homepage" = "https://github.com/tiszalab/flu_mutatome_pipelines/python_CLI"

@@ -34,7 +34,7 @@ def flu_cli():
     # start timer
     cli_start_time = time.perf_counter()
     # set default file path for output to the current working directory of the user
-    output_path_default = os.gesotcwd()
+    output_path_default = os.getcwd()
 
     # create parser and describe function of script
     parser = argparse.ArgumentParser(description="Process and align wastewater and clinical influenza A reads for mutation analysis.")

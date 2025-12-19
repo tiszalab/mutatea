@@ -14,9 +14,9 @@ import time
 # load in functions from metadata_funcs
 # crm: make sure to update names of functions being imported as they change in metadata_funcs.py
 try:
-    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, create_monthly_accession_lists, split_clinical_fasta_by_month, create_output_directories
+    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, create_output_directories
 except:
-    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, create_monthly_accession_lists, split_clinical_fasta_by_month, create_output_directories
+    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, create_output_directories
 
 # convert string to boolean for argparse
 def str2bool(x):
@@ -76,7 +76,7 @@ def flu_cli():
     include_region = not args.month_only
 
     # make directories
-    dirs = create_output_directories(args.output_dir, include_clinical)
+    dirs = create_output_directories(args.output_dir, include_region, include_clinical)
 
     # define logger
     logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ def flu_cli():
     logger.addHandler(stream_handler)
     
     # process wastewater metadata
-    logger.info("\nProcessing wastewater metadata from: {args.wastewater_metadata}")
+    logger.info(f"\nProcessing wastewater metadata from: {args.wastewater_metadata}")
     metadata = load_merge_metadata(args.wastewater_metadata)
     if metadata.empty:
         logger.error("No metadata files found in the specified directory.")
@@ -124,33 +124,33 @@ def flu_cli():
         get_date_range(metadata)
 
     # export cleaned wastewater metadata
-    logger.info(f"\nExporting the cleaned wastewater metadata to {dirs.metadata_dir}")
-    export_metadata(metadata, dirs.metadata_dir)
+    logger.info(f"\nExporting the cleaned wastewater metadata to {dirs['metadata_dir']}")
+    export_metadata(metadata, dirs["metadata_dir"])
 
     # load in clinical metadata
     if include_clinical:
         logger.info("\nLoading in clinical metadata")
         clinical_metadata = load_clinical_metadata(args.clinical_files)
 
-    # crm: move lower
+    # crm: maybe move lower
     # load in clinical fasta
     if include_clinical:
         logger.info("\nLoading in clinical FASTA")
-        clinical_metadata = load_clinical_metadata(args.clinical_files)
+        clinical_fasta = load_clinical_fasta(args.clinical_files)
 
     # create monthly lists of accessions
     if include_clinical:
         logger.info("\nCreating monthly lists of accessions")
-        create_monthly_accession_lists(clinical_metadata, dirs.metadata_dir)
+        create_monthly_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
        
-    # crm: why two dirs.metadata_dir?
+    # crm: I'm sure I don't want these files going to metadata_dir? want it to go to "clinical_lists"
     # split clinical fasta by monthly lists
     if include_clinical:
         logger.info("\nSplitting clinical FASTA by monthly lists")
-        split_clinical_fasta_by_month(args.clinical_files, dirs.metadata_dir, dirs.metadata_dir)
+        split_clinical_fasta_by_month(args.clinical_files, dirs["clinical_lists_month"], dirs["fasta_month"])
 
     # CRM: find existing reference files
 
     # process reference files
     logger.info("\nProcessing reference files")
-    reference_files = process_reference_file(args.reference_files, dirs.reference_dir)
+    reference_files = process_reference_file(args.reference_files, dirs["reference_dir"])

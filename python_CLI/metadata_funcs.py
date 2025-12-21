@@ -47,7 +47,6 @@ def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame
     }
     # use dictionary to add a "Region" column to the metadata
     metadata["Region"] = metadata["City"].map(city_region)
-
     # add a warning for any unexpected cities, that way the user will know if they need to update the city_region dictionary
     if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
         print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
@@ -61,7 +60,6 @@ def ensure_sitecode_column(metadata: pd.DataFrame) -> pd.DataFrame:
         metadata["SiteCode"] = pd.NA
     return metadata
 
-# crm: need to make sure this function works with default of region + month_year
 # reorganize metadata columns to have a default order
 def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False) -> pd.DataFrame:
     if no_region == False:
@@ -116,27 +114,24 @@ def load_clinical_fasta(clinical_file_path: str) -> list:
         raise ValueError(f"Multiple fasta files found in {clinical_file_path}")
     return fasta_file[0]
 
-###### crm: this is maybe(?) functional
 # process reference files
 def process_reference_file(input_folder: str, reference_dir: str) -> list:
     # make sure reference_dir exists
     os.makedirs(reference_dir, exist_ok=True)
     output_paths=[]
-
     # find all .fna.gz and .gff.gz files in the input folder and unzip into the reference_dir
     gz_files = (
         glob.glob(os.path.join(input_folder, "*fna.gz"))
         + glob.glob(os.path.join(input_folder, "*gff.gz"))
     )
+    # process zipped reference files
     for gz_file in gz_files:
-        # Get the output filename by removing .gz extension
         filename = os.path.basename(gz_file)[:-3]
         out_path = os.path.join(reference_dir, filename)
         with gzip.open(gz_file, "rb") as f_in, open(out_path, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
         print(f"\nUnzipped to: {out_path}\n")
         output_paths.append(out_path)
-
     # copy any uncompressed reference files into the reference_dir
     for pattern in ("*.fna", "*.gff"):
         for src_path in glob.glob(os.path.join(input_folder, pattern)):
@@ -180,32 +175,25 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
         SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
-# crm: confirm correct setup of the include_region input here
 # create output directories
 def create_output_directories(output_dir: str, subtype: str, include_region:bool = True, include_clinical: bool = False) -> dict:
     dirs = {}
     # main output directory with subtype-specific subfolder
     dirs["output"] = os.path.join(output_dir, f"{subtype}_align")
     os.makedirs(dirs["output"], exist_ok=True)
-
     # cleaned and merged metadata directory
     dirs["metadata_dir"] = os.path.join(dirs["output"], "metadata_files")
-    os.makedirs(dirs["metadata_dir"], exist_ok=True)
-    
+    os.makedirs(dirs["metadata_dir"], exist_ok=True)    
     # output file directory
     dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
     os.makedirs(dirs["reference_dir"], exist_ok=True)
-
     # create file directory for alignment files
     dirs["alignment_dir"] = os.path.join(dirs["output"], "alignment_files")
     os.makedirs(dirs["alignment_dir"], exist_ok=True)
-
     # create subfolders in the alignment directory
     # crm: we could also just not create the ww folder if no clinical analysis is done?
-    # crm confirm this is valid structure for include_clinical
     dirs["wastewater_dir"] = os.path.join(dirs["alignment_dir"], "wastewater")
     os.makedirs(dirs["wastewater_dir"], exist_ok=True)
-    
     # wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
     os.makedirs(dirs["wastewater_lists_dir"], exist_ok=True)
@@ -215,30 +203,26 @@ def create_output_directories(output_dir: str, subtype: str, include_region:bool
         # create subfolder for lists_month_region
         dirs["wastewater_list_reg"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month_reg")
         os.makedirs(dirs["wastewater_list_reg"], exist_ok=True)
-
         # create subfolder for lists_month
         dirs["wastewater_list_month"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month")
         os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
     else:
-        pass
-    # crm: check that pass works here, I only want to create those subfolders if region was included
-        
+        pass        
     
     # wastewater merged bams
     dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
     os.makedirs(dirs["merged_bams"], exist_ok=True)
 
-    # create merged_bams subfolders
-    # wastewater bams merged by month
+    # create subfolder: wastewater bams merged by month
     dirs["merged_bams_month"] = os.path.join(dirs["merged_bams"], "merged_bams_month")        
     os.makedirs(dirs["merged_bams_month"], exist_ok=True)
 
-    # wastewater bams merged by month and region
+    # create subfolder: wastewater bams merged by month and region
     if include_region:
         dirs["merged_bams_month_region"] = os.path.join(dirs["merged_bams"], "merged_bams_month_region")
         os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
         
-    # create subfolder for alignment files by pool
+    # create subfolder: alignment files by pool
     dirs["pools"] = os.path.join(dirs["wastewater_dir"], "pools")
     os.makedirs(dirs["pools"], exist_ok=True)
 
@@ -247,16 +231,14 @@ def create_output_directories(output_dir: str, subtype: str, include_region:bool
         # parent folder for clinical output
         dirs["clinical"] = os.path.join(dirs["alignment_dir"], "clinical")
         os.makedirs(dirs["clinical"], exist_ok=True)
-
         # folder for the lists of accessions by month
         dirs["clinical_lists_month"] = os.path.join(dirs["clinical"], "clinical_lists_month")
         os.makedirs(dirs["clinical_lists_month"], exist_ok=True)
 
-        # crm: want to later remove these clinical fasta files, could maybe save them to a temp dir?
+        ### crm: want to later remove these clinical fasta files, could maybe save them to a temp dir?
         # folder for the clinical fastas split by month
         dirs["clinical_fasta_month"] = os.path.join(dirs["clinical"], "clinical_fasta_month")
         os.makedirs(dirs["clinical_fasta_month"], exist_ok=True)
-
         # folder for the clinical bam files that were merged by month
         dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
         os.makedirs(dirs["clinical_bam_month"], exist_ok=True)       

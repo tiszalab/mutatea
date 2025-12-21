@@ -175,6 +175,16 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
         SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
+# crm: find wastewater reads from pools
+# def find_wastewater_reads
+    
+
+
+
+
+
+
+
 # create output directories
 def create_output_directories(output_dir: str, subtype: str, include_region:bool = True, include_clinical: bool = False) -> dict:
     dirs = {}

@@ -46,8 +46,9 @@ def flu_cli():
     # argument for file path to folder containing wastewater metadata files
     parser.add_argument("-m", "--wastewater_metadata", type=str, required=True, help="Path to folder containing wastewater metadata files")
 
-    # argument for file path to folders containing wastewater reads
+    # crm: currently set reads to DNR, will update after I can start accessing the reads
     # crm: add filter in help for formatting (e.g. subtype.R1.fastq)
+    # argument for file path to folders containing wastewater reads
     # parser.add_argument("-r", "--wastewater_reads", type=str, required=True, help="Path to the folders containing the wastewater reads")
 
     # argument for file path to folder containing reference files
@@ -69,12 +70,15 @@ def flu_cli():
     # parse arguments
     args = parser.parse_args()
 
+    ## boolean checks
     # check if clinical files are included
     include_clinical = bool(args.clinical_files)
 
     # check if region is included
     include_region = not args.month_only
 
+    ## create directories
+    # crm: want to remove this section and just have the output directories created as they are needed
     # make directories
     dirs = create_output_directories(args.output_dir, args.subtype, include_region, include_clinical)
 
@@ -85,10 +89,11 @@ def flu_cli():
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.DEBUG)
 
-    # crm: not sure if I need filehandler, but it would be put in this section fyi
+    # crm: not sure if I also need filehandler, but it would be put in this section fyi
 
     logger.addHandler(stream_handler)
     
+    ## process metadata files
     # process wastewater metadata
     logger.info(f"\nProcessing wastewater metadata from: {args.wastewater_metadata}")
     metadata = load_merge_metadata(args.wastewater_metadata)
@@ -136,6 +141,8 @@ def flu_cli():
         # export cleaned clinical metadata
         logger.info(f"\nExporting the cleaned clinical metadata to {dirs['metadata_dir']}")
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
+    
+    ## optional: process clinical fasta file
     # crm: maybe move lower
     # load in clinical fasta
     if include_clinical:
@@ -151,8 +158,11 @@ def flu_cli():
     if include_clinical:
         logger.info("\nSplitting clinical FASTA by monthly lists")
         split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
-    # CRM: find existing reference files
+    # CRM: would like to add in a "find existing reference files" function to metadata_funcs.py
 
-    # process reference files
+    ## process reference files
     logger.info("\nProcessing reference files")
     reference_files = process_reference_file(args.reference_files, dirs["reference_dir"])
+
+    # find wastewater reads from pools
+    

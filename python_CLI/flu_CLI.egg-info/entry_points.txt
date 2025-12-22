@@ -1,2 +1,0 @@
-[console_scripts]
-flu_CLI = flu_cli:flu_cli

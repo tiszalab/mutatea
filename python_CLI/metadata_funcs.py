@@ -5,6 +5,7 @@ from pathlib import Path
 from Bio import SeqIO
 import glob
 import os
+import re
 
 # crm: need filter to only merge files that have specific columns
 # load in and merge metadata files
@@ -147,6 +148,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
             output_paths.append(out_path)
     return output_paths
 
+# crm: need to find a way to make this override the "process_reference_file" function
 # find existing .fna and .gff files in the reference directory
 def find_existing_reference_files(reference_dir: str) -> tuple:
     existing_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))
@@ -175,25 +177,64 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
         SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
+# crm: not functional yet, work on this
 # find wastewater reads from pools for the subtype of interest
-def find_wastewater_reads(pool_dir: str, subtype: str, pool_id: str) -> list:
-    pattern = os.path.join(pool_dir, pool_id, f"{subtype}_R1.fastq")
-    return glob.glob(os.path.join(pool_dir, pattern))
+def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
+    # create empty dictionary to store reads by pool
+    reads_by_pool = {}
+    for pool_dir in glob.glob(os.path.join(pools_base_dir, "*")):
+        pool_id = os.path.basename(pool_dir)
+
+        # skip the folder if it is not a directory or doesn't match the naming of the pools
+        if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
+            continue
+        r1_files = glob.glob(os.path.join(pool_dir, "**", f"*{subtype}.R1.fastq"), recursive=True)
+
+        # create empty list for the paired reads
+        read_pairs=[]
+        # loop through all existing r1 reads to find their r2 read
+        if r1_files:
+            # crm: pretty sure r2 would be kept next to r1 (same pool)
+            for r1_file in r1_files:
+                r2_file = r1_file.replace("R1.fastq", "R2.fastq")
+
+                # make sure r2 actually exists
+                if os.path.exists(r2_file):
+                    read_pairs.append((r1_file, r2_file))
+                else:
+                    print(f"No R2 file found for {r1_file}")
+
+        # add them to the dictionary
+        if read_pairs:
+            reads_by_pool[pool_id] = read_pairs
+            # crm: prints how many read pairs were found for each pool, but maybe it's not necessary?
+            print(f"Found {len(read_pairs)} read pairs for pool {pool_id}")
+
+    # let user know if no reads were found for that subtype in that pool
+    if not reads_by_pool:
+        print(f"No R1 files were found for {subtype} in {pool_id}")
+
+    return reads_by_pool
 
 # align wastewater reads to reference files
-#def align_wastewater_reads() 
-# pipe minimap2 into samtools view then samtools sort, then index
+# def align_wastewater_reads() 
+## pipe minimap2 into samtools view then samtools sort, then index
 
 # use metadata to create merge_key lists for merging bam files (need to include_region as bool arg)
+# def create_merge_key_lists()
 
 # merge bam files using merge_key lists
+# def merge_wastewater_bams()
 
 # run varmint on merged bam files
+# def varmint_wastewater()
 
 # optional: if include clinical, then align fasta files to reference
 ## pipe minimap2 into samtools sort, then index
+# def align_clinical_reads()
 
 # optional: if include clinical, then run varmint on merged clinical bam files
+# def varmint()
 
 
 

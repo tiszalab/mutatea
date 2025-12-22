@@ -175,16 +175,30 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
         SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
-# crm: find wastewater reads from pools
-# def find_wastewater_reads
-    
+# find wastewater reads from pools for the subtype of interest
+def find_wastewater_reads(pool_dir: str, subtype: str, pool_id: str) -> list:
+    pattern = os.path.join(pool_dir, pool_id, f"{subtype}_R1.fastq")
+    return glob.glob(os.path.join(pool_dir, pattern))
+
+# align wastewater reads to reference files
+#def align_wastewater_reads() 
+# pipe minimap2 into samtools view then samtools sort, then index
+
+# use metadata to create merge_key lists for merging bam files (need to include_region as bool arg)
+
+# merge bam files using merge_key lists
+
+# run varmint on merged bam files
+
+# optional: if include clinical, then align fasta files to reference
+## pipe minimap2 into samtools sort, then index
+
+# optional: if include clinical, then run varmint on merged clinical bam files
 
 
 
 
-
-
-
+# crm: need to remove. I want to shuffle the directory creation lines into the flu_cli.py so no empty folders are created
 # create output directories
 def create_output_directories(output_dir: str, subtype: str, include_region:bool = True, include_clinical: bool = False) -> dict:
     dirs = {}

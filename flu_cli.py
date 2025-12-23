@@ -129,6 +129,10 @@ def flu_cli():
         logger.info(f"\nViewing the time range of the wastewater samples")
         get_date_range(metadata)
 
+    # create directory for cleaned and merged metadata
+    dirs["metadata_dir"] = os.path.join(dirs["output"], "metadata_files")
+    os.makedirs(dirs["metadata_dir"], exist_ok=True)
+
     # export cleaned wastewater metadata
     logger.info(f"\nExporting the cleaned wastewater metadata to {dirs['metadata_dir']}")
     export_metadata(metadata, dirs["metadata_dir"])
@@ -160,6 +164,10 @@ def flu_cli():
         split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
     # CRM: would like to add in a "find existing reference files" function to metadata_funcs.py
 
+    # create directory for unzipped reference files
+    dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
+    os.makedirs(dirs["reference_dir"], exist_ok=True)
+
     ## process reference files
     logger.info("\nProcessing reference files")
     reference_files = process_reference_file(args.reference_files, dirs["reference_dir"])
@@ -168,8 +176,36 @@ def flu_cli():
     logger.info("\nFinding wastewater reads from pools")
     wastewater_reads = find_wastewater_reads(args.wastewater_reads, args.subtype)
     
+    # create file directory for alignment files
+    dirs["alignment_dir"] = os.path.join(dirs["output"], "alignment_files")
+    os.makedirs(dirs["alignment_dir"], exist_ok=True)
+
+    # create subfolders in the alignment directory
+    # crm: we could also just not create the ww folder if no clinical analysis is done?
+    dirs["wastewater_dir"] = os.path.join(dirs["alignment_dir"], "wastewater")
+    os.makedirs(dirs["wastewater_dir"], exist_ok=True)
+
+    # create directory for pools
+    dirs["pools"] = os.path.join(dirs["wastewater_dir"], "pools")
+    os.makedirs(dirs["pools"], exist_ok=True)
+    
     # align wastewater reads to reference genome
     logger.info("\nAligning wastewater reads to reference genome")
     align_wastewater_reads(wastewater_reads, dirs["reference_dir"], dirs["pools"])
+
+    # create directory for wastewaterlists
+    dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
+    os.makedirs(dirs["wastewater_lists_dir"], exist_ok=True)
+
+    # create subfolders for wastewater lists
+    if include_region == True:
+        dirs["wastewater_list_month"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month")
+        os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
+        dirs["wastewater_list_region"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month_region")
+        os.makedirs(dirs["wastewater_list_region"], exist_ok=True)
+    else:
+        dirs["wastewater_list_month"] = dirs["wastewater_lists_dir"]
+        os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
+    
 
     

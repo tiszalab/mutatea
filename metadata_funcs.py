@@ -261,8 +261,33 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 print(f"Error processing {sample_name}: {e}")
                 continue
 
-# use metadata to create merge_key lists for merging bam files (need to include_region as bool arg)
-# def create_merge_key_lists()
+# use wastewater metadata to create merge_key lists for merging bam files (need to include_region as bool arg)
+def create_merge_key_lists(metadata: pd.DataFrame, output_dir: str, include_region: bool = True) -> None:
+    # create empty dictionary to store merge_key lists
+    merge_key_lists = {}
+    
+    # month: loop through the metadata and create merge_key lists
+    for month, group in metadata.groupby("Month_Year"):
+        merge_key_lists[month] = group["Sample_ID"].tolist()
+    
+    # create output directory for the merge_key lists
+    dirs["wastewater_list_month"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month")
+    os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
+
+    # then loop through the merge_key lists and create the lists
+    for month, merge_key_list in merge_key_lists.items():
+        out_path = os.path.join(dirs["wastewater_list_month"], f"{month}_list.txt")
+        with open(out_path, "w") as f:
+            f.write("\n".join(merge_key_list))
+        print(f"Created {out_path}")
+    
+    return merge_key_lists
+
+
+
+
+        
+    
 
 # merge bam files using merge_key lists
 # def merge_wastewater_bams()
@@ -287,22 +312,6 @@ def create_output_directories(output_dir: str, subtype: str, include_region:bool
     # main output directory with subtype-specific subfolder
     dirs["output"] = os.path.join(output_dir, f"{subtype}_align")
     os.makedirs(dirs["output"], exist_ok=True)
-    # cleaned and merged metadata directory
-    dirs["metadata_dir"] = os.path.join(dirs["output"], "metadata_files")
-    os.makedirs(dirs["metadata_dir"], exist_ok=True)    
-    # output file directory
-    dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
-    os.makedirs(dirs["reference_dir"], exist_ok=True)
-    # create file directory for alignment files
-    dirs["alignment_dir"] = os.path.join(dirs["output"], "alignment_files")
-    os.makedirs(dirs["alignment_dir"], exist_ok=True)
-    # create subfolders in the alignment directory
-    # crm: we could also just not create the ww folder if no clinical analysis is done?
-    dirs["wastewater_dir"] = os.path.join(dirs["alignment_dir"], "wastewater")
-    os.makedirs(dirs["wastewater_dir"], exist_ok=True)
-    # wastewater lists
-    dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
-    os.makedirs(dirs["wastewater_lists_dir"], exist_ok=True)
 
     # different structure depending on if region is included
     if include_region:

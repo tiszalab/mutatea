@@ -10,6 +10,7 @@ import shutil
 from Bio import SeqIO
 from pathlib import Path
 import time
+import tempfile
 
 # load in functions from metadata_funcs
 # crm: make sure to update names of functions being imported as they change in metadata_funcs.py

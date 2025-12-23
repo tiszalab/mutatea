@@ -15,9 +15,9 @@ import tempfile
 # load in functions from metadata_funcs
 # crm: make sure to update names of functions being imported as they change in metadata_funcs.py
 try:
-    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_output_directories
+    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads
 except:
-    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_output_directories
+    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads
 
 # convert string to boolean for argparse
 def str2bool(x):
@@ -77,10 +77,12 @@ def flu_cli():
     # check if region is included
     include_region = not args.month_only
 
-    ## create directories
-    # crm: want to remove this section and just have the output directories created as they are needed
-    # make directories
-    dirs = create_output_directories(args.output_dir, args.subtype, include_region, include_clinical)
+    # initialize directories dictionary
+    dirs = {}
+    
+    # create main output directory with subtype-specific subfolder
+    dirs["output"] = os.path.join(args.output_dir, f"{args.subtype}_align")
+    os.makedirs(dirs["output"], exist_ok=True)
 
     # define logger
     logger = logging.getLogger(__name__)
@@ -93,7 +95,7 @@ def flu_cli():
 
     logger.addHandler(stream_handler)
     
-    ## process metadata files
+    ############################## process metadata files ##############################
     # process wastewater metadata
     logger.info(f"\nProcessing wastewater metadata from: {args.wastewater_metadata}")
     metadata = load_merge_metadata(args.wastewater_metadata)
@@ -146,24 +148,7 @@ def flu_cli():
         logger.info(f"\nExporting the cleaned clinical metadata to {dirs['metadata_dir']}")
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
     
-    ## optional: process clinical fasta file
-    # crm: maybe move lower
-    # load in clinical fasta
-    if include_clinical:
-        logger.info("\nLoading in clinical FASTA")
-        clinical_fasta = load_clinical_fasta(args.clinical_files)
-
-    # create monthly lists of accessions
-    if include_clinical:
-        logger.info("\nCreating monthly lists of accessions")
-        create_monthly_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
-       
-    # split clinical fasta by monthly lists
-    if include_clinical:
-        logger.info("\nSplitting clinical FASTA by monthly lists")
-        split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
-    # CRM: would like to add in a "find existing reference files" function to metadata_funcs.py
-
+   
     # create directory for unzipped reference files
     dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
     os.makedirs(dirs["reference_dir"], exist_ok=True)
@@ -172,6 +157,7 @@ def flu_cli():
     logger.info("\nProcessing reference files")
     reference_files = process_reference_file(args.reference_files, dirs["reference_dir"])
 
+    ############################## process reads ##############################
     # find wastewater reads from pools
     logger.info("\nFinding wastewater reads from pools")
     wastewater_reads = find_wastewater_reads(args.wastewater_reads, args.subtype)
@@ -181,7 +167,6 @@ def flu_cli():
     os.makedirs(dirs["alignment_dir"], exist_ok=True)
 
     # create subfolders in the alignment directory
-    # crm: we could also just not create the ww folder if no clinical analysis is done?
     dirs["wastewater_dir"] = os.path.join(dirs["alignment_dir"], "wastewater")
     os.makedirs(dirs["wastewater_dir"], exist_ok=True)
 
@@ -193,7 +178,7 @@ def flu_cli():
     logger.info("\nAligning wastewater reads to reference genome")
     align_wastewater_reads(wastewater_reads, dirs["reference_dir"], dirs["pools"])
 
-    # create directory for wastewaterlists
+    # create directory for wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
     os.makedirs(dirs["wastewater_lists_dir"], exist_ok=True)
 
@@ -206,6 +191,71 @@ def flu_cli():
     else:
         dirs["wastewater_list_month"] = dirs["wastewater_lists_dir"]
         os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
+
+    # crm: set to DNR for now
+    # wastewater merged bams
+    #dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
+    #os.makedirs(dirs["merged_bams"], exist_ok=True)
+
+    # create subfolder: wastewater bams merged by month
+    dirs["merged_bams_month"] = os.path.join(dirs["merged_bams"], "merged_bams_month")        
+    os.makedirs(dirs["merged_bams_month"], exist_ok=True)
+
+    # crm: need to add function for merging bams by month
+
+    # create subfolder: wastewater bams merged by month and region
+    if include_region:
+        dirs["merged_bams_month_region"] = os.path.join(dirs["merged_bams"], "merged_bams_month_region")
+        os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
+
+    # crm: need to add function for merging bams by month and region (if region included)
     
+    # crm: set to DNR for now
+    # create tsv_output folder to later catch tsv files
+    #dirs["tsv_output"] = os.path.join(dirs["output"], "tsv_output")
+    #os.makedirs(dirs["tsv_output"], exist_ok=True)
+
+    # crm: need to add in varmint for wastewater
 
     
+
+    # process clinical files
+    if include_clinical:
+        # create folder for clinical output
+        dirs["clinical"] = os.path.join(dirs["alignment_dir"], "clinical")
+        os.makedirs(dirs["clinical"], exist_ok=True)
+
+        # load in clinical fasta
+        logger.info("\nLoading in clinical FASTA")
+        clinical_fasta = load_clinical_fasta(args.clinical_files)
+
+        # create folder for the lists of accessions by month
+        dirs["clinical_lists_month"] = os.path.join(dirs["clinical"], "clinical_lists_month")
+        os.makedirs(dirs["clinical_lists_month"], exist_ok=True)
+
+        # create monthly lists of accessions
+        logger.info("\nCreating monthly lists of accessions")
+        create_monthly_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
+
+        # crm: want to later remove these clinical fasta files, want to use tempfile to instead save them to a temp dir
+        # create folder for the clinical fastas split by month
+        dirs["clinical_fasta_month"] = os.path.join(dirs["clinical"], "clinical_fasta_month")
+        os.makedirs(dirs["clinical_fasta_month"], exist_ok=True)
+
+        # split clinical fasta by monthly lists
+        logger.info("\nSplitting clinical FASTA by monthly lists")
+        split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
+
+        # create folder for the clinical bam files that were merged by month
+        # dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
+        # os.makedirs(dirs["clinical_bam_month"], exist_ok=True)
+
+        # crm: add function to align clinical reads to reference
+        # crm: output should we sorted bam files
+
+        # crm: varmint for clinical bam files
+        # crm: output should be tsv files saved to tsv_output
+
+
+    # CRM: would like to add in a "find existing reference files" function to metadata_funcs.py
+        

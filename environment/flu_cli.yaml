@@ -8,3 +8,5 @@ dependencies:
   - pandas
   - biopython
   - openpyxl 
+  - minimap2
+  - samtools

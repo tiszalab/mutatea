@@ -6,6 +6,7 @@ from Bio import SeqIO
 import glob
 import os
 import re
+import subprocess
 
 # crm: need filter to only merge files that have specific columns
 # load in and merge metadata files
@@ -217,8 +218,48 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
     return reads_by_pool
 
 # align wastewater reads to reference files
-# def align_wastewater_reads() 
-## pipe minimap2 into samtools view then samtools sort, then index
+def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, threads: int = 4) -> dict:
+
+    # extract reference fasta from reference_files
+    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
+    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
+
+    # bam files by pool
+    bam_files_by_pool = {}
+
+    # loop through the reads_by_pool dictionary and align the reads to the reference
+    for pool_id, read_pairs in reads_by_pool.items():
+        # create output directory for each pool
+        pool_output_dir = os.path.join(pools, pool_id)
+        os.makedirs(pool_output_dir, exist_ok=True)
+
+
+        for read_pair in read_pairs:
+            r1_file, r2_file = read_pair
+
+            # get sample name from the filename of R1
+            sample_name= os.path.basename(r1_file).split(".")[0]
+
+            # create output BAM filename 
+            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+
+            # crm: need to add in a skip if the BAM is already created
+
+            # minimap2 | samtools view | samtools sort
+            print(f"Aligning {sample_name} from {pool_id} to the reference genome")
+
+            cmd = f"minimap2 -ax sr {reference_fasta} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+            try:
+                subprocess.run(cmd, shell=True, check=True, capture_output=True)
+                
+                # index the sorted bam files
+                subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+                print(f"Successfully aligned and indexed {sample_name}")
+            
+            # crm: not sure if this is the best way to do the error
+            except subprocess.CalledProcessError as e:
+                print(f"Error processing {sample_name}: {e}")
+                continue
 
 # use metadata to create merge_key lists for merging bam files (need to include_region as bool arg)
 # def create_merge_key_lists()

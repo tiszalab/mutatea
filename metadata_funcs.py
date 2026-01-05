@@ -246,6 +246,7 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
             # crm: need to add in a skip if the BAM is already created
 
             # minimap2 | samtools view | samtools sort
+            # crm: want to adjust this print line to print as each pool is aligned to the reference genome, not each sample
             print(f"Aligning {sample_name} from {pool_id} to the reference genome")
 
             cmd = f"minimap2 -ax sr {reference_fasta} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
@@ -254,6 +255,8 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 
                 # index the sorted bam files
                 subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+
+                # crm: do I need a print line here for every sample?
                 print(f"Successfully aligned and indexed {sample_name}")
             
             # crm: not sure if this is the best way to do the error
@@ -271,10 +274,6 @@ def create_merge_key_lists(metadata: pd.DataFrame, output_dir: str, include_regi
     # month: loop through the metadata and create merge_key lists
     for month, group in metadata.groupby("Month_Year"):
         merge_key_lists[month] = group["Sample_ID"].tolist()
-    
-    # create output directory for the merge_key lists
-    dirs["wastewater_list_month"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month")
-    os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
 
     # then loop through the merge_key lists and create the lists
     for month, merge_key_list in merge_key_lists.items():
@@ -293,11 +292,6 @@ def create_merge_key_lists(metadata: pd.DataFrame, output_dir: str, include_regi
             # create a combination month_region
             month_region = f"{month_year}_{region}"
             merge_key_lists[month_region] = group["Sample_ID"].tolist()
-    
-        # create output directory for the merge_key lists
-        # crm: confirm naming matches outline
-        dirs["wastewater_list_region"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month_region")
-        os.makedirs(dirs["wastewater_list_region"], exist_ok=True)
 
        # loop through the merge_key lists and create the lists
         for month_region, merge_key_list in merge_key_region_lists.items():

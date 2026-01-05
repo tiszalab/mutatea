@@ -192,24 +192,50 @@ def flu_cli():
         dirs["wastewater_list_month"] = dirs["wastewater_lists_dir"]
         os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
 
-    # crm: set to DNR for now
+    # create list of monthly accessions for downstream merge key creation
+    if include_region == True:
+        logger.info("\nMerging wastewater alignment files by month and public health region")
+    else:
+        logger.info("\nMerging wastewater alignment files by month")
+    #create_monthly_accession_lists(metadata, dirs["wastewater_lists_dir"])
+
+
+
+
+
+
+
+
+
+
+
+
+
     # wastewater merged bams
     #dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
     #os.makedirs(dirs["merged_bams"], exist_ok=True)
 
     # create subfolder: wastewater bams merged by month
-    dirs["merged_bams_month"] = os.path.join(dirs["merged_bams"], "merged_bams_month")        
-    os.makedirs(dirs["merged_bams_month"], exist_ok=True)
+    #dirs["merged_bams_month"] = os.path.join(dirs["merged_bams"], "merged_bams_month")        
+    #os.makedirs(dirs["merged_bams_month"], exist_ok=True)
 
     # crm: need to add function for merging bams by month
 
     # create subfolder: wastewater bams merged by month and region
-    if include_region:
-        dirs["merged_bams_month_region"] = os.path.join(dirs["merged_bams"], "merged_bams_month_region")
-        os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
+    #if include_region:
+    #    dirs["merged_bams_month_region"] = os.path.join(dirs["merged_bams"], "merged_bams_month_region")
+    #    os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
 
     # crm: need to add function for merging bams by month and region (if region included)
     
+    #if include_region == True:
+    #    logger.info("\nMerge wastewater BAM files by month and month_region combination")
+    #else:
+    #    logger.info("\nMerge wastewater BAM files by month")
+    #wastewater_reads = find_wastewater_reads(args.wastewater_reads, args.subtype)
+    
+
+
     # crm: set to DNR for now
     # create tsv_output folder to later catch tsv files
     #dirs["tsv_output"] = os.path.join(dirs["output"], "tsv_output")
@@ -218,6 +244,19 @@ def flu_cli():
     # crm: need to add in varmint for wastewater
 
     
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # process clinical files
     if include_clinical:

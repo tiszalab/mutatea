@@ -262,6 +262,8 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 continue
 
 # use wastewater metadata to create merge_key lists for merging bam files (need to include_region as bool arg)
+### crm: should end as lists, not none
+
 def create_merge_key_lists(metadata: pd.DataFrame, output_dir: str, include_region: bool = True) -> None:
     # create empty dictionary to store merge_key lists
     merge_key_lists = {}
@@ -280,14 +282,31 @@ def create_merge_key_lists(metadata: pd.DataFrame, output_dir: str, include_regi
         with open(out_path, "w") as f:
             f.write("\n".join(merge_key_list))
         print(f"Created {out_path}")
+
+    # do the same if region is also included
+    if include_region:
+        # create empty dictionary to store merge_key lists
+        merge_key_region_lists = {}
     
+        # month and region: loop through the metadata and create merge_key lists
+        for (month_year, region), group in metadata.groupby("Month_Year", "Region"):
+            # create a combination month_region
+            month_region = f"{month_year}_{region}"
+            merge_key_lists[month_region] = group["Sample_ID"].tolist()
+    
+        # create output directory for the merge_key lists
+        # crm: confirm naming matches outline
+        dirs["wastewater_list_region"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month_region")
+        os.makedirs(dirs["wastewater_list_region"], exist_ok=True)
+
+       # loop through the merge_key lists and create the lists
+        for month_region, merge_key_list in merge_key_region_lists.items():
+            out_path = os.path.join(dirs["wastewater_list_region"], f"{month_region}_list.txt")
+            with open(out_path, "w") as f:
+                f.write("\n".join(merge_key_list))
+            print(f"Created {out_path}")
+
     return merge_key_lists
-
-
-
-
-        
-    
 
 # merge bam files using merge_key lists
 # def merge_wastewater_bams()

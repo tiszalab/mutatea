@@ -15,9 +15,9 @@ import tempfile
 # load in functions from metadata_funcs
 # crm: make sure to update names of functions being imported as they change in metadata_funcs.py
 try:
-    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams
+    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads
 except:
-    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams
+    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads
 
 # convert string to boolean for argparse
 def str2bool(x):
@@ -117,8 +117,6 @@ def flu_cli():
         no_region = True
 
     # confirm SiteCode column is in metadata
-    # crm: do I really need to say this to the user?
-    logger.info("\nAdding SiteCode column to metadata")
     metadata = ensure_sitecode_column(metadata)
     
     # reorganize metadata columns with consideration of region potentially not being included
@@ -175,7 +173,7 @@ def flu_cli():
     os.makedirs(dirs["pools"], exist_ok=True)
     
     # align wastewater reads to reference genome
-    logger.info("\nAligning wastewater reads to reference genome")
+    logger.info("\nAligning wastewater reads to given reference genome")
     align_wastewater_reads(wastewater_reads, dirs["reference_dir"], dirs["pools"])
 
     # create directory for wastewater lists
@@ -221,20 +219,12 @@ def flu_cli():
         logger.info("\nMerging wastewater BAM files by month and region")
         merge_wastewater_bams(dirs["wastewater_list_region"], dirs["merged_bams_month_region"])
     
-    #if include_region == True:
-    #    logger.info("\nMerge wastewater BAM files by month and month_region combination")
-    #else:
-    #    logger.info("\nMerge wastewater BAM files by month")
-    #wastewater_reads = find_wastewater_reads(args.wastewater_reads, args.subtype)
-    
-
-
-    # crm: set to DNR for now
     # create tsv_output folder to later catch tsv files
-    #dirs["tsv_output"] = os.path.join(dirs["output"], "tsv_output")
-    #os.makedirs(dirs["tsv_output"], exist_ok=True)
+    dirs["tsv_output"] = os.path.join(dirs["output"], "tsv_output")
+    os.makedirs(dirs["tsv_output"], exist_ok=True)
 
     # crm: need to add in varmint for wastewater
+
 
     
 
@@ -279,11 +269,13 @@ def flu_cli():
         split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
 
         # create folder for the clinical bam files that were merged by month
-        # dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
-        # os.makedirs(dirs["clinical_bam_month"], exist_ok=True)
+        dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
+        os.makedirs(dirs["clinical_bam_month"], exist_ok=True)
 
         # crm: add function to align clinical reads to reference
-        # crm: output should we sorted bam files
+        logger.info("\nAligning clinical reads to reference genome")
+        #align_clinical_reads()
+
 
         # crm: varmint for clinical bam files
         # crm: output should be tsv files saved to tsv_output

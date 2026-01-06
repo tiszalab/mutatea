@@ -139,6 +139,8 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
         for src_path in glob.glob(os.path.join(input_folder, pattern)):
             filename = os.path.basename(src_path)
             out_path = os.path.join(reference_dir, filename)
+
+            # crm: I want to remove the print line here
             # make sure the reference file is not already in the reference_dir
             if os.path.exists(out_path):
                 print(f"Reference file {filename} already exists in {reference_dir}.\n")
@@ -195,7 +197,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
         read_pairs=[]
         # loop through all existing r1 reads to find their r2 read
         if r1_files:
-            # crm: pretty sure r2 would be kept next to r1 (same pool)
+            # crm: pretty sure r2 would be kept next to r1 (same pool), but maybe need to confirm that
             for r1_file in r1_files:
                 r2_file = r1_file.replace("R1.fastq", "R2.fastq")
 
@@ -209,7 +211,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
         if read_pairs:
             reads_by_pool[pool_id] = read_pairs
             # crm: prints how many read pairs were found for each pool, but maybe it's not necessary?
-            print(f"Found {len(read_pairs)} read pairs for pool {pool_id}")
+            print(f"Found {len(read_pairs)} {subtype} read pairs for pool {pool_id}")
 
     # let user know if no reads were found for that subtype in that pool
     if not reads_by_pool:
@@ -229,10 +231,11 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
 
     # loop through the reads_by_pool dictionary and align the reads to the reference
     for pool_id, read_pairs in reads_by_pool.items():
+
+        print(f"\nAligning reads from pool {pool_id}")
         # create output directory for each pool
         pool_output_dir = os.path.join(pools, pool_id)
         os.makedirs(pool_output_dir, exist_ok=True)
-
 
         for read_pair in read_pairs:
             r1_file, r2_file = read_pair
@@ -246,18 +249,12 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
             # crm: need to add in a skip if the BAM is already created
 
             # minimap2 | samtools view | samtools sort
-            # crm: want to adjust this print line to print as each pool is aligned to the reference genome, not each sample
-            print(f"Aligning {sample_name} from {pool_id} to the reference genome")
-
             cmd = f"minimap2 -ax sr {reference_fasta} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
             try:
                 subprocess.run(cmd, shell=True, check=True, capture_output=True)
                 
                 # index the sorted bam files
                 subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
-
-                # crm: do I need a print line here for every sample?
-                print(f"Successfully aligned and indexed {sample_name}")
             
             # crm: not sure if this is the best way to do the error
             except subprocess.CalledProcessError as e:
@@ -296,7 +293,6 @@ def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_outp
             out_path = os.path.join(month_output_dir, f"{month}_list.txt")
             with open(out_path, "w") as f:
                 f.write("\n".join(bam_path_list))
-            print(f"Created {out_path}")
 
     # do the same if region is also included
     if include_region and region_output_dir:
@@ -333,7 +329,6 @@ def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_outp
                 out_path = os.path.join(region_output_dir, f"{month_region}_list.txt")
                 with open(out_path, "w") as f:
                     f.write("\n".join(bam_path_list))
-                print(f"Created {out_path}")
 
 # merge bam files using month and month_region lists
 def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> None:
@@ -347,8 +342,6 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
 
         # create filename for outputted merged bam
         output_bam = os.path.join(output_dir, f"{list_name}.sort.bam")
-        
-        print(f"Merging bam files for {list_name}")
 
         # samtools merge | samtools sort
         bam_paths_str = " ".join(bam_paths)
@@ -359,19 +352,70 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
                 
             # index the sorted bam file
             subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
-
-            print(f"Successfully indexed the sorted bam file for {list_name}")
             
         except subprocess.CalledProcessError as e:
             print(f"Error processing {list_name}: {e}")
             continue
 
+
+
+
 # run varmint on merged bam files
 # def varmint_wastewater()
 
+
+
+
 # optional: if include clinical, then align fasta files to reference
 ## pipe minimap2 into samtools sort, then index
+############# crm: still very much in progress 
 # def align_clinical_reads()
+def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_dir: str, threads: int = 4) -> dict:
+
+    # extract reference fasta from reference_files
+    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
+    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
+
+    # loop through the fasta files in the clinical fasta folder
+    for fasta_file in glob.glob(os.path.join(clinical_fasta_month)):
+
+        # get the base name by removing the extension (can be for either month or month_region)
+        month_year = os.path.basename(fasta_file).replace(".fasta", "")
+
+        # create output directory for each pool
+        pool_output_dir = os.path.join(pools, pool_id)
+        os.makedirs(pool_output_dir, exist_ok=True)
+
+
+        for read_pair in read_pairs:
+            r1_file, r2_file = read_pair
+
+            # get sample name from the filename of R1
+            sample_name= os.path.basename(r1_file).split(".")[0]
+
+            # create output BAM filename 
+            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+
+            # crm: need to add in a skip if the BAM is already created
+
+            # minimap2 | samtools view | samtools sort
+            # crm: want to adjust this print line to print as each pool is aligned to the reference genome, not each sample
+            print(f"Aligning {sample_name} from {pool_id} to the reference genome")
+
+            cmd = f"minimap2 -ax sr {reference_fasta} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+            try:
+                subprocess.run(cmd, shell=True, check=True, capture_output=True)
+                
+                # index the sorted bam files
+                subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+
+                # crm: do I need a print line here for every sample?
+                print(f"Successfully aligned and indexed {sample_name}")
+            
+            # crm: not sure if this is the best way to do the error
+            except subprocess.CalledProcessError as e:
+                print(f"Error processing {sample_name}: {e}")
+                continue
 
 # optional: if include clinical, then run varmint on merged clinical bam files
 # def varmint()

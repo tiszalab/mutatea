@@ -264,46 +264,107 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 print(f"Error processing {sample_name}: {e}")
                 continue
 
-# use wastewater metadata to create merge_key lists for merging bam files (need to include_region as bool arg)
-### crm: should end as lists, not none
-
-def create_merge_key_lists(metadata: pd.DataFrame, output_dir: str, include_region: bool = True) -> None:
-    # create empty dictionary to store merge_key lists
-    merge_key_lists = {}
+# crm: do I end as None or dict?
+# use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
+def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> None:
+    # create empty dictionary to store file path lists
+    bam_path_lists = {}
     
-    # month: loop through the metadata and create merge_key lists
+    # month: loop through the metadata and create bam path lists
     for month, group in metadata.groupby("Month_Year"):
-        merge_key_lists[month] = group["Sample_ID"].tolist()
+        # create empty list for the bam paths
+        bam_paths=[]
 
-    # then loop through the merge_key lists and create the lists
-    for month, merge_key_list in merge_key_lists.items():
-        out_path = os.path.join(dirs["wastewater_list_month"], f"{month}_list.txt")
-        with open(out_path, "w") as f:
-            f.write("\n".join(merge_key_list))
-        print(f"Created {out_path}")
+        # loop through each row in the group and get the sample_id and pool_id
+        for i in range(len(group)):
+            sample_id = group.iloc[i]["Sample_ID"]
+            pool_id = group.iloc[i]["PoolID"]
 
-    # do the same if region is also included
-    if include_region:
-        # create empty dictionary to store merge_key lists
-        merge_key_region_lists = {}
-    
-        # month and region: loop through the metadata and create merge_key lists
-        for (month_year, region), group in metadata.groupby("Month_Year", "Region"):
-            # create a combination month_region
-            month_region = f"{month_year}_{region}"
-            merge_key_lists[month_region] = group["Sample_ID"].tolist()
+            # find file path for each sample
+            bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
 
-       # loop through the merge_key lists and create the lists
-        for month_region, merge_key_list in merge_key_region_lists.items():
-            out_path = os.path.join(dirs["wastewater_list_region"], f"{month_region}_list.txt")
+            # make sure the file exists before adding
+            if os.path.exists(bam_path):
+                bam_paths.append(bam_path)
+        # add the list to the dictionary
+        bam_path_lists[month] = bam_paths
+
+    # loop through the bam path lists and create the text files
+    for month, bam_path_list in bam_path_lists.items():
+        # only create the txt file if the list contains bam paths
+        if bam_path_list:
+            out_path = os.path.join(month_output_dir, f"{month}_list.txt")
             with open(out_path, "w") as f:
-                f.write("\n".join(merge_key_list))
+                f.write("\n".join(bam_path_list))
             print(f"Created {out_path}")
 
-    return merge_key_lists
+    # do the same if region is also included
+    if include_region and region_output_dir:
+        # create empty dictionary to store bam path lists by region
+        bam_path_lists_region = {}
+    
+        # month_region: loop through the metadata and create bam path lists
+        for (month_year, region), group in metadata.groupby(["Month_Year", "Region"]):
+            # create empty list for the bam paths
+            bam_paths_region = []
 
-# merge bam files using merge_key lists
-# def merge_wastewater_bams()
+            # loop through each row in the group and get the sample_id and pool_id
+            for i in range(len(group)):
+                sample_id = group.iloc[i]["Sample_ID"]
+                pool_id = group.iloc[i]["PoolID"]
+
+                # find file path for each sample
+                bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
+
+                # make sure the file exists before adding
+                if os.path.exists(bam_path):
+                    bam_paths_region.append(bam_path)
+
+            # create a combination month_region
+            month_region = f"{month_year}_{region}"
+
+            # add the list to the dictionary
+            bam_path_lists_region[month_region] = bam_paths_region
+     
+        # loop through the bam path lists and create the list files
+        for month_region, bam_path_list in bam_path_lists_region.items():
+            # only create the txt file if the list contains bam paths
+            if bam_path_list:
+                out_path = os.path.join(region_output_dir, f"{month_region}_list.txt")
+                with open(out_path, "w") as f:
+                    f.write("\n".join(bam_path_list))
+                print(f"Created {out_path}")
+
+# merge bam files using month and month_region lists
+def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> None:
+    for list_file in glob.glob(os.path.join(list_dir, "*.txt")):
+        # get the base name by removing the extension (can be for either month or month_region)
+        list_name = os.path.basename(list_file).replace("_list.txt", "")
+
+        # read BAM file paths from the list
+        with open(list_file, "r") as f:
+            bam_paths = f.read().splitlines()
+
+        # create filename for outputted merged bam
+        output_bam = os.path.join(output_dir, f"{list_name}.sort.bam")
+        
+        print(f"Merging bam files for {list_name}")
+
+        # samtools merge | samtools sort
+        bam_paths_str = " ".join(bam_paths)
+        cmd = f"samtools merge -@ {threads} -f - {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
+
+        try:
+            subprocess.run(cmd, shell=True, check=True, capture_output=True)
+                
+            # index the sorted bam file
+            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+
+            print(f"Successfully indexed the sorted bam file for {list_name}")
+            
+        except subprocess.CalledProcessError as e:
+            print(f"Error processing {list_name}: {e}")
+            continue
 
 # run varmint on merged bam files
 # def varmint_wastewater()

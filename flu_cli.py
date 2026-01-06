@@ -15,9 +15,9 @@ import tempfile
 # load in functions from metadata_funcs
 # crm: make sure to update names of functions being imported as they change in metadata_funcs.py
 try:
-    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_merge_key_lists
+    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams
 except:
-    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_merge_key_lists
+    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams
 
 # convert string to boolean for argparse
 def str2bool(x):
@@ -197,36 +197,29 @@ def flu_cli():
         logger.info("\nMerging wastewater alignment files by month and public health region")
     else:
         logger.info("\nMerging wastewater alignment files by month")
-    #create_monthly_accession_lists(metadata, dirs["wastewater_lists_dir"])
 
-
-
-
-
-
-
-
-
-
-
-
+    create_wastewater_bam_lists(metadata, dirs["pools"], dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
 
     # wastewater merged bams
-    #dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
-    #os.makedirs(dirs["merged_bams"], exist_ok=True)
+    dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
+    os.makedirs(dirs["merged_bams"], exist_ok=True)
 
     # create subfolder: wastewater bams merged by month
-    #dirs["merged_bams_month"] = os.path.join(dirs["merged_bams"], "merged_bams_month")        
-    #os.makedirs(dirs["merged_bams_month"], exist_ok=True)
+    dirs["merged_bams_month"] = os.path.join(dirs["merged_bams"], "merged_bams_month")        
+    os.makedirs(dirs["merged_bams_month"], exist_ok=True)
 
-    # crm: need to add function for merging bams by month
+    # merge wastewater bams by month
+    logger.info("\nMerging wastewater BAM files by month")
+    merge_wastewater_bams(dirs["wastewater_list_month"], dirs["merged_bams_month"])
 
     # create subfolder: wastewater bams merged by month and region
-    #if include_region:
-    #    dirs["merged_bams_month_region"] = os.path.join(dirs["merged_bams"], "merged_bams_month_region")
-    #    os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
-
-    # crm: need to add function for merging bams by month and region (if region included)
+    if include_region:
+        dirs["merged_bams_month_region"] = os.path.join(dirs["merged_bams"], "merged_bams_month_region")
+        os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
+        
+        # merge wastewater bams by month and region
+        logger.info("\nMerging wastewater BAM files by month and region")
+        merge_wastewater_bams(dirs["wastewater_list_region"], dirs["merged_bams_month_region"])
     
     #if include_region == True:
     #    logger.info("\nMerge wastewater BAM files by month and month_region combination")

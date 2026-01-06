@@ -132,7 +132,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
         out_path = os.path.join(reference_dir, filename)
         with gzip.open(gz_file, "rb") as f_in, open(out_path, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
-        print(f"\nUnzipped to: {out_path}\n")
+        print(f"\nUnzipped reference file to: {out_path}\n")
         output_paths.append(out_path)
     # copy any uncompressed reference files into the reference_dir
     for pattern in ("*.fna", "*.gff"):
@@ -140,14 +140,12 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
             filename = os.path.basename(src_path)
             out_path = os.path.join(reference_dir, filename)
 
-            # crm: I want to remove the print line here
             # make sure the reference file is not already in the reference_dir
             if os.path.exists(out_path):
-                print(f"Reference file {filename} already exists in {reference_dir}.\n")
                 continue
             if src_path != out_path:
                 shutil.copy(src_path, out_path)
-            print(f"Copied to: {out_path}\n")
+            print(f"Copied to: {out_path}")
             output_paths.append(out_path)
     return output_paths
 
@@ -232,7 +230,7 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
     # loop through the reads_by_pool dictionary and align the reads to the reference
     for pool_id, read_pairs in reads_by_pool.items():
 
-        print(f"\nAligning reads from pool {pool_id}")
+        print(f"Aligning reads from pool {pool_id}")
         # create output directory for each pool
         pool_output_dir = os.path.join(pools, pool_id)
         os.makedirs(pool_output_dir, exist_ok=True)

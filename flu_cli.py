@@ -97,20 +97,17 @@ def flu_cli():
     
     ############################## process metadata files ##############################
     # process wastewater metadata
-    logger.info(f"\nProcessing wastewater metadata from: {args.wastewater_metadata}")
     metadata = load_merge_metadata(args.wastewater_metadata)
     if metadata.empty:
         logger.error("No metadata files found in the specified directory.")
         sys.exit(1)
-    
+
     # add month_year column to metadata
-    logger.info("\nAdding month_year column to metadata")
     metadata = add_month_year(metadata)
 
     # add region column to the metadata if user didn't specify month only
     if not args.month_only:
         # add region column to metadata
-        logger.info("\nAdding region column to metadata")
         metadata = add_region(metadata)
         no_region = False
     else:
@@ -120,7 +117,6 @@ def flu_cli():
     metadata = ensure_sitecode_column(metadata)
     
     # reorganize metadata columns with consideration of region potentially not being included
-    logger.info("\nReorganizing metadata columns")
     metadata = reorganize_metadata_columns(metadata, no_region=no_region)
     
     # crm: messy, clean this up
@@ -129,21 +125,20 @@ def flu_cli():
         logger.info(f"\nViewing the time range of the wastewater samples")
         get_date_range(metadata)
 
-    # create directory for cleaned and merged metadata
+    # create directory for processed and merged metadata
     dirs["metadata_dir"] = os.path.join(dirs["output"], "metadata_files")
     os.makedirs(dirs["metadata_dir"], exist_ok=True)
 
-    # export cleaned wastewater metadata
-    logger.info(f"\nExporting the cleaned wastewater metadata to {dirs['metadata_dir']}")
+    # export processed wastewater metadata
+    logger.info(f"\nExporting the processed wastewater metadata to {dirs['metadata_dir']}")
     export_metadata(metadata, dirs["metadata_dir"])
 
     # load in clinical metadata
     if include_clinical:
-        logger.info("\nLoading in clinical metadata")
         clinical_metadata = load_clinical_metadata(args.clinical_files)
 
-        # export cleaned clinical metadata
-        logger.info(f"\nExporting the cleaned clinical metadata to {dirs['metadata_dir']}")
+        # export processed clinical metadata
+        logger.info(f"\nExporting the processesed clinical metadata to {dirs['metadata_dir']}")
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
     
    
@@ -152,12 +147,10 @@ def flu_cli():
     os.makedirs(dirs["reference_dir"], exist_ok=True)
 
     ## process reference files
-    logger.info("\nProcessing reference files")
     reference_files = process_reference_file(args.reference_files, dirs["reference_dir"])
 
     ############################## process reads ##############################
     # find wastewater reads from pools
-    logger.info("\nFinding wastewater reads from pools")
     wastewater_reads = find_wastewater_reads(args.wastewater_reads, args.subtype)
     
     # create file directory for alignment files
@@ -173,7 +166,7 @@ def flu_cli():
     os.makedirs(dirs["pools"], exist_ok=True)
     
     # align wastewater reads to reference genome
-    logger.info("\nAligning wastewater reads to given reference genome")
+    logger.info("\nAligning wastewater reads to given reference genome\n")
     align_wastewater_reads(wastewater_reads, dirs["reference_dir"], dirs["pools"])
 
     # create directory for wastewater lists

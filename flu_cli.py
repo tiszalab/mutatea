@@ -11,6 +11,7 @@ from Bio import SeqIO
 from pathlib import Path
 import time
 import tempfile
+from datetime import timedelta
 
 # load in functions from metadata_funcs
 # crm: make sure to update names of functions being imported as they change in metadata_funcs.py
@@ -200,7 +201,6 @@ def flu_cli():
     os.makedirs(dirs["merged_bams_month"], exist_ok=True)
 
     # merge wastewater bams by month
-    logger.info("\nMerging wastewater BAM files by month")
     merge_wastewater_bams(dirs["wastewater_list_month"], dirs["merged_bams_month"])
 
     # create subfolder: wastewater bams merged by month and region
@@ -269,10 +269,13 @@ def flu_cli():
         logger.info("\nAligning clinical reads to reference genome")
         align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], dirs["reference_dir"])
 
-
         # crm: varmint for clinical bam files
         # crm: output should be tsv files saved to tsv_output
 
+    # print run time
+    cli_end_time = time.perf_counter()
+    time_taken = round((cli_end_time - cli_start_time), 2) 
+    # crm: clean up later
+    logger.info(f"Run time: {timedelta(seconds=time_taken)}")
 
     # CRM: would like to add in a "find existing reference files" function to metadata_funcs.py
-        

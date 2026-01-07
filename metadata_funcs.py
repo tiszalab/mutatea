@@ -8,7 +8,6 @@ import os
 import re
 import subprocess
 
-# crm: need filter to only merge files that have specific columns
 # load in and merge metadata files
 def load_merge_metadata(metadata_folder:str) -> pd.DataFrame:
     metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
@@ -145,7 +144,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
                 continue
             if src_path != out_path:
                 shutil.copy(src_path, out_path)
-            print(f"Copied to: {out_path}")
+            print(f"Reference file was already unzipped, was copied to: {out_path}")
             output_paths.append(out_path)
     return output_paths
 
@@ -178,7 +177,6 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
         SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
-# crm: not functional yet, work on this
 # find wastewater reads from pools for the subtype of interest
 def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
     # create empty dictionary to store reads by pool
@@ -355,14 +353,8 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
             print(f"Error processing {list_name}: {e}")
             continue
 
-
-
-
 # run varmint on merged bam files
 # def varmint_wastewater()
-
-
-
 
 # optional: if include clinical, then align fasta files to reference
 ## pipe minimap2 into samtools sort, then index

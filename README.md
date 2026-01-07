@@ -39,6 +39,5 @@ optional arguments
 - `-my, --monthly_only': Only group wastewater samples by month (overrides default of being grouped by both month and month_region)
 - '-t, --time_range': View time range of wastewater samples
 
-# crm: file paths need to be cleaned here
 # Example
-`flu_CLI -s H1N1 -m /wastewater_metadata -r /path/to/wastewater/reads -ref /ref_files`
+`flu_CLI -s H1N1 -m path/to/wastewater/metadata -r /path/to/wastewater/reads -ref path/to/ref/files`

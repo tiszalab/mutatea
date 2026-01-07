@@ -48,7 +48,6 @@ def flu_cli():
     # argument for file path to folder containing wastewater metadata files
     parser.add_argument("-m", "--wastewater_metadata", type=str, required=True, help="Path to folder containing wastewater metadata files")
 
-    # crm: currently set reads to DNR, will update after I can start accessing the reads
     # argument for file path to folders containing wastewater reads
     parser.add_argument("-r", "--wastewater_reads", type=str, required=True, help="Path to the folders containing the wastewater reads")
 
@@ -66,7 +65,7 @@ def flu_cli():
     parser.add_argument("-my", "--month_only", action='store_true', help="Override default split of month and region, will only split the wastewater data by month")
 
     # argument to view time range covered by wastewater metadata
-    parser.add_argument("-t", "--time_range", type=str, help="View time range covered by wastewater sample collection")
+    parser.add_argument("-t", "--time_range", action='store_true', help="View time range covered by wastewater sample collection")
 
     # parse arguments
     args = parser.parse_args()
@@ -120,18 +119,17 @@ def flu_cli():
     # reorganize metadata columns with consideration of region potentially not being included
     metadata = reorganize_metadata_columns(metadata, no_region=no_region)
     
-    # crm: messy, clean this up
-    # optionally give the time range of the wastewater samples
+    # optionally give time range of the wastewater samples
     if args.time_range:
-        logger.info(f"\nViewing the time range of the wastewater samples")
-        get_date_range(metadata)
+        earliest, latest = get_date_range(metadata)
+        logger.info(f"Date range covered by wastewater data: {earliest.strftime('%Y-%m-%d')} to {latest.strftime('%Y-%m-%d')}")
 
     # create directory for processed and merged metadata
     dirs["metadata_dir"] = os.path.join(dirs["output"], "metadata_files")
     os.makedirs(dirs["metadata_dir"], exist_ok=True)
 
     # export processed wastewater metadata
-    logger.info(f"\nExporting the processed wastewater metadata to {dirs['metadata_dir']}")
+    logger.info(f"Exporting the processed metadata to {dirs['metadata_dir']}\n")
     export_metadata(metadata, dirs["metadata_dir"])
 
     # load in clinical metadata
@@ -139,7 +137,6 @@ def flu_cli():
         clinical_metadata = load_clinical_metadata(args.clinical_files)
 
         # export processed clinical metadata
-        logger.info(f"\nExporting the processesed clinical metadata to {dirs['metadata_dir']}")
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
     
    
@@ -209,7 +206,6 @@ def flu_cli():
         os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
         
         # merge wastewater bams by month and region
-        logger.info("\nMerging wastewater BAM files by month and region")
         merge_wastewater_bams(dirs["wastewater_list_region"], dirs["merged_bams_month_region"])
     
     # create tsv_output folder to later catch tsv files
@@ -249,7 +245,8 @@ def flu_cli():
         os.makedirs(dirs["clinical_lists_month"], exist_ok=True)
 
         # create monthly lists of accessions
-        logger.info("\nCreating monthly lists of accessions")
+        # crm: I want to delete this logger line, which I could go forward with if I am saving the monthly lists to tempdir
+        #logger.info("\nCreating monthly lists of accessions")
         create_monthly_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
 
         # crm: want to later remove these clinical fasta files, want to use tempfile to instead save them to a temp dir
@@ -258,7 +255,7 @@ def flu_cli():
         os.makedirs(dirs["clinical_fasta_month"], exist_ok=True)
 
         # split clinical fasta by monthly lists
-        logger.info("\nSplitting clinical FASTA by monthly lists")
+        logger.info("\nSplitting clinical FASTA by month")
         split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
 
         # create folder for the clinical bam files that were merged by month
@@ -266,16 +263,15 @@ def flu_cli():
         os.makedirs(dirs["clinical_bam_month"], exist_ok=True)
 
         # align clinical reads to reference
-        logger.info("\nAligning clinical reads to reference genome")
+        logger.info("\nAligning clinical reads to the reference genome")
         align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], dirs["reference_dir"])
 
         # crm: varmint for clinical bam files
         # crm: output should be tsv files saved to tsv_output
 
+    # crm: needed more things at the end than this
     # print run time
     cli_end_time = time.perf_counter()
     time_taken = round((cli_end_time - cli_start_time), 2) 
     # crm: clean up later
     logger.info(f"Run time: {timedelta(seconds=time_taken)}")
-
-    # CRM: would like to add in a "find existing reference files" function to metadata_funcs.py

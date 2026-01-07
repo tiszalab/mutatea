@@ -52,7 +52,7 @@ def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame
     if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
         print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
     else:
-        print("All cities in the metadata were successfully assigned to public health regions!")
+        print("\nAll cities in the metadata were successfully assigned to public health regions!\n")
     return metadata
 
 # add a sitecode column to metadata if not already present (older metadata files don't have this column)
@@ -120,22 +120,16 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
     # make sure reference_dir exists
     os.makedirs(reference_dir, exist_ok=True)
     output_paths=[]
-    # find all .fna.gz and .gff.gz files in the input folder and unzip into the reference_dir
-    gz_files = (
-        glob.glob(os.path.join(input_folder, "*fna.gz"))
-        + glob.glob(os.path.join(input_folder, "*gff.gz"))
+
+    # find all .fna and .gff files in the input folder
+    unzipped_files = (
+        glob.glob(os.path.join(input_folder, "*.fna"))
+        + glob.glob(os.path.join(input_folder, "*.gff"))
     )
-    # process zipped reference files
-    for gz_file in gz_files:
-        filename = os.path.basename(gz_file)[:-3]
-        out_path = os.path.join(reference_dir, filename)
-        with gzip.open(gz_file, "rb") as f_in, open(out_path, "wb") as f_out:
-            shutil.copyfileobj(f_in, f_out)
-        print(f"\nUnzipped reference file to: {out_path}\n")
-        output_paths.append(out_path)
-    # copy any uncompressed reference files into the reference_dir
-    for pattern in ("*.fna", "*.gff"):
-        for src_path in glob.glob(os.path.join(input_folder, pattern)):
+    
+    # first try to copy uncompressed reference files into the reference_dir
+    if unzipped_files:
+        for src_path in unzipped_files:
             filename = os.path.basename(src_path)
             out_path = os.path.join(reference_dir, filename)
 
@@ -146,14 +140,27 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
                 shutil.copy(src_path, out_path)
             print(f"Reference file was already unzipped, was copied to: {out_path}")
             output_paths.append(out_path)
-    return output_paths
 
-# crm: need to find a way to make this override the "process_reference_file" function
-# find existing .fna and .gff files in the reference directory
-def find_existing_reference_files(reference_dir: str) -> tuple:
-    existing_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))
-    existing_gff = glob.glob(os.path.join(reference_dir, "*.gff"))
-    return existing_fasta, existing_gff
+    # if no uncompressed files found then try to unzip files
+    else:
+        # find all zipped files
+        gz_files = (
+        glob.glob(os.path.join(input_folder, "*.fna.gz"))
+        + glob.glob(os.path.join(input_folder, "*.gff.gz"))
+        )
+
+        # process zipped reference files
+        for gz_file in gz_files:
+            filename = os.path.basename(gz_file)[:-3]
+            out_path = os.path.join(reference_dir, filename)
+            with gzip.open(gz_file, "rb") as f_in, open(out_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            print(f"Unzipped reference file to: {out_path}")
+            output_paths.append(out_path)
+
+    # crm: being too specific about spacing, I know my character flaws
+    print("")
+    return output_paths
 
 # create lists of accessions grouped by month_year
 def create_monthly_accession_lists(clinical_metadata: pd.DataFrame, output_dir: str) -> None:
@@ -193,7 +200,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
         read_pairs=[]
         # loop through all existing r1 reads to find their r2 read
         if r1_files:
-            # crm: pretty sure r2 would be kept next to r1 (same pool), but maybe need to confirm that
+            # crm: this is assuming that the respective r2 would be kept next to r1 (same pool), but maybe need to confirm that
             for r1_file in r1_files:
                 r2_file = r1_file.replace("R1.fastq", "R2.fastq")
 
@@ -206,8 +213,11 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
         # add them to the dictionary
         if read_pairs:
             reads_by_pool[pool_id] = read_pairs
-            # crm: prints how many read pairs were found for each pool, but maybe it's not necessary?
-            print(f"Found {len(read_pairs)} {subtype} read pairs for pool {pool_id}")
+            # prints how many read pairs were found for each pool
+            if len(read_pairs)==1:
+                print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pair")
+            else:
+                print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pairs")
 
     # let user know if no reads were found for that subtype in that pool
     if not reads_by_pool:
@@ -252,7 +262,6 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 # index the sorted bam files
                 subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
             
-            # crm: not sure if this is the best way to do the error
             except subprocess.CalledProcessError as e:
                 print(f"Error processing {sample_name}: {e}")
                 continue
@@ -376,14 +385,15 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
         # crm ?
         output_bam = os.path.join(output_dir, f"{month_year}.sort.bam")
 
+        # crm: this might actually kill the script if the output already exists, is this skip necessary?
         # crm: need to add in a skip if the BAM is already created
         if os.path.exists(output_bam):
             bam_files_month[month_year]
             continue
 
-
         # minimap2 | samtools view | samtools sort
-        print(f"Aligning samples from {month_year} to the reference genome")
+        # crm: want to replace this print line with a progress bar
+        #print(f"Aligning samples from {month_year} to the reference genome")
 
         cmd = f"minimap2 -ax sr {reference_fasta} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
         try:

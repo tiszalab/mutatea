@@ -366,54 +366,48 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
 
 # optional: if include clinical, then align fasta files to reference
 ## pipe minimap2 into samtools sort, then index
-############# crm: still very much in progress 
-# def align_clinical_reads()
 def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_dir: str, threads: int = 4) -> dict:
 
     # extract reference fasta from reference_files
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
     reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
 
+    # create empty dictionary to catch outputted bam files
+    bam_files_month = {}
+
     # loop through the fasta files in the clinical fasta folder
-    for fasta_file in glob.glob(os.path.join(clinical_fasta_month)):
+    for fasta_file in glob.glob(os.path.join(clinical_fasta_month, "*.fasta")):
 
         # get the base name by removing the extension (can be for either month or month_region)
         month_year = os.path.basename(fasta_file).replace(".fasta", "")
 
-        # create output directory for each pool
-        pool_output_dir = os.path.join(pools, pool_id)
-        os.makedirs(pool_output_dir, exist_ok=True)
+        # crm ?
+        output_bam = os.path.join(output_dir, f"{month_year}.sort.bam")
+
+        # crm: need to add in a skip if the BAM is already created
+        if os.path.exists(output_bam):
+            bam_files_month[month_year]
+            continue
 
 
-        for read_pair in read_pairs:
-            r1_file, r2_file = read_pair
+        # minimap2 | samtools view | samtools sort
+        print(f"Aligning samples from {month_year} to the reference genome")
 
-            # get sample name from the filename of R1
-            sample_name= os.path.basename(r1_file).split(".")[0]
-
-            # create output BAM filename 
-            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
-
-            # crm: need to add in a skip if the BAM is already created
-
-            # minimap2 | samtools view | samtools sort
-            # crm: want to adjust this print line to print as each pool is aligned to the reference genome, not each sample
-            print(f"Aligning {sample_name} from {pool_id} to the reference genome")
-
-            cmd = f"minimap2 -ax sr {reference_fasta} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
-            try:
-                subprocess.run(cmd, shell=True, check=True, capture_output=True)
-                
-                # index the sorted bam files
-                subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
-
-                # crm: do I need a print line here for every sample?
-                print(f"Successfully aligned and indexed {sample_name}")
+        cmd = f"minimap2 -ax sr {reference_fasta} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+        try:
+            subprocess.run(cmd, shell=True, check=True, capture_output=True)
             
-            # crm: not sure if this is the best way to do the error
-            except subprocess.CalledProcessError as e:
-                print(f"Error processing {sample_name}: {e}")
-                continue
+            # index the sorted bam files
+            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+            
+            # add the bam file to the dictionary
+            bam_files_month[month_year] = output_bam
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error processing {sample_name}: {e}")
+            continue
+
+    return bam_files_month
 
 # optional: if include clinical, then run varmint on merged clinical bam files
 # def varmint()

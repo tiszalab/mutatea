@@ -265,9 +265,9 @@ def flu_cli():
         dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
         os.makedirs(dirs["clinical_bam_month"], exist_ok=True)
 
-        # crm: add function to align clinical reads to reference
+        # align clinical reads to reference
         logger.info("\nAligning clinical reads to reference genome")
-        #align_clinical_reads()
+        align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], dirs["reference_dir"])
 
 
         # crm: varmint for clinical bam files

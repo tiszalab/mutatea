@@ -269,9 +269,9 @@ def flu_cli():
         # crm: varmint for clinical bam files
         # crm: output should be tsv files saved to tsv_output
 
-    # crm: needed more things at the end than this
+    # crm: pretty sure I needed more things at the end than this
     # print run time
     cli_end_time = time.perf_counter()
     time_taken = round((cli_end_time - cli_start_time), 2) 
-    # crm: clean up later
+    # crm: can make this prettier later
     logger.info(f"Run time: {timedelta(seconds=time_taken)}")

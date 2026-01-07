@@ -134,7 +134,9 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
             out_path = os.path.join(reference_dir, filename)
 
             # make sure the reference file is not already in the reference_dir
+            # crm: print line is clunky
             if os.path.exists(out_path):
+                print(f"Existing unzipped reference file found in reference directory: {filename}")
                 continue
             if src_path != out_path:
                 shutil.copy(src_path, out_path)

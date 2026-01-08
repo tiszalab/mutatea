@@ -1,4 +1,4 @@
-# flu_cli
+# crm: imutav
 This is a framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2, and H5N1) between sources/cohorts.
 
 `Inputs`:
@@ -11,21 +11,35 @@ This is a framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2
 2. tsv of mutations found in the reads
 
 # Installation
+## Prerequisites
+Must install the following tools:
+- **minimap2** (for read alignment)
+- **samtools** (for BAM file processing)
+- **varmint** (annotating coding effects using GFF CDS features)
 
+Install via conda (recommended):
+```bash
+conda install -c bioconda minimap2 samtools
+```
+
+Quick install varmint with `pip`
+
+*This will not install dependencies, it will be installed into whichever environment you are in*
+```bash
+conda install pip
+cd /path/to/varmint
+pip install .
+```
+
+## Steps
 1. Clone this github repository
 
-2. Create the `conda` environment using the .yaml file, e.g.
-`conda env create -f environment/flu_cli.yaml`
+2. Install the Python package and dependencies (pandas, biopython, openpyxl):
 
-3. Activate the environment, i.e.
-`conda activate flu_cli`
-
-4. Use pip to install this command line tool, i.e.
-`cd python_CLI`
-`pip install -e .`
-
-5. Usage
-`flu_CLI -s <IAV_SUBTYPE> -m <WASTEWATER_METADATA_FILES> -r <WASTEWATER_READS> -ref <REFERENCE_FILES>'
+# Usage
+```bash
+flu_CLI -s <IAV_SUBTYPE> -m <WASTEWATER_METADATA_FILES> -r <WASTEWATER_READS> -ref <REFERENCE_FILES>
+```
 
 # Required arguments
 - '-s, --subtype': Influenza A subtype (H1N1, H3N2, H5N1)
@@ -33,7 +47,7 @@ This is a framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2
 - '-r, --wastewater_reads': Path to folder containing the paired wastewater reads (fastq(.gz))
 - '-ref, --reference_files': Path to folder containing the reference files fna(.gz) and gff(.gz)
 
-optional arguments
+# Optional arguments
 - '-o, --output_dir': Path to output directory 
 - '-c, --clinical_files': Path to folder containing the clinical metadata files and fasta
 - `-my, --monthly_only': Only group wastewater samples by month (overrides default of being grouped by both month and month_region)

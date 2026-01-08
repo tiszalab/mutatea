@@ -21,9 +21,9 @@ classifiers = [
 dependencies = [
     "pandas",
     "biopython",
-    "openpyxl", 
-    "minimap2",
-    "samtools"
+    "openpyxl",
+    "polars",
+    "pysam"
 ]
 
 [tool.setuptools]

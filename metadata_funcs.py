@@ -127,38 +127,40 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
         + glob.glob(os.path.join(input_folder, "*.gff"))
     )
     
-    # first try to copy uncompressed reference files into the reference_dir
-    if unzipped_files:
-        for src_path in unzipped_files:
-            filename = os.path.basename(src_path)
-            out_path = os.path.join(reference_dir, filename)
-
-            # make sure the reference file is not already in the reference_dir
-            # crm: print line is clunky
-            if os.path.exists(out_path):
-                print(f"Existing reference file found in reference directory: {filename}")
-                continue
-            if src_path != out_path:
-                shutil.copy(src_path, out_path)
-            print(f"Reference file was already unzipped, was copied to: {out_path}")
+    # copy any uncompressed reference files into the reference_dir
+    for src_path in unzipped_files:
+        filename = os.path.basename(src_path)
+        out_path = os.path.join(reference_dir, filename)
+        # make sure the reference file is not already in the reference_dir
+        # crm: print line is clunky
+        if os.path.exists(out_path):
+            print(f"Existing reference file found in reference directory: {filename}")
             output_paths.append(out_path)
+            continue
+        if src_path != out_path:
+            shutil.copy(src_path, out_path)
+        print(f"Reference file was already unzipped, was copied to: {out_path}")
+        output_paths.append(out_path)
 
-    # if no uncompressed files found then try to unzip files
-    else:
-        # find all zipped files
-        gz_files = (
-        glob.glob(os.path.join(input_folder, "*.fna.gz"))
-        + glob.glob(os.path.join(input_folder, "*.gff.gz"))
-        )
+    # find all zipped files
+    gz_files = (
+    glob.glob(os.path.join(input_folder, "*.fna.gz"))
+    + glob.glob(os.path.join(input_folder, "*.gff.gz"))
+    )
 
-        # process zipped reference files
-        for gz_file in gz_files:
-            filename = os.path.basename(gz_file)[:-3]
-            out_path = os.path.join(reference_dir, filename)
-            with gzip.open(gz_file, "rb") as f_in, open(out_path, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
-            print(f"Unzipped reference file to: {out_path}")
+    # process zipped reference files
+    for gz_file in gz_files:
+        filename = os.path.basename(gz_file)[:-3]
+        out_path = os.path.join(reference_dir, filename)
+
+        # check if the unzipped version already exists in the reference dir
+        if os.path.exists(out_path):
             output_paths.append(out_path)
+            continue
+        with gzip.open(gz_file, "rb") as f_in, open(out_path, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+        print(f"Unzipped reference file to: {out_path}")
+        output_paths.append(out_path)
 
     # crm: being too specific about spacing, I know my character flaws
     print("")
@@ -230,6 +232,13 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
 # align wastewater reads to reference files
 def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, threads: int = 4) -> dict:
 
+    # get full paths to minimap2 and samtools
+    minimap2_path = shutil.which("minimap2")
+    samtools_path = shutil.which("samtools")
+    
+    if not minimap2_path or not samtools_path:
+        raise RuntimeError("minimap2 or samtools not found in PATH. Please ensure they are installed and accessible.")
+
     # extract reference fasta from reference_files
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
     reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
@@ -257,12 +266,12 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
             # crm: need to add in a skip if the BAM is already created
 
             # minimap2 | samtools view | samtools sort
-            cmd = f"minimap2 -ax sr {reference_fasta} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+            cmd = f"{minimap2_path} -ax sr {reference_fasta} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
             try:
                 subprocess.run(cmd, shell=True, check=True, capture_output=True)
                 
                 # index the sorted bam files
-                subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+                subprocess.run([samtools_path, "index", output_bam], check=True, capture_output=True)
             
             except subprocess.CalledProcessError as e:
                 print(f"Error processing {sample_name}: {e}")
@@ -339,6 +348,12 @@ def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_outp
 
 # merge bam files using month and month_region lists
 def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> None:
+    # get full path to samtools
+    samtools_path = shutil.which("samtools")
+    
+    if not samtools_path:
+        raise RuntimeError("samtools not found in PATH. Please ensure it is installed and accessible.")
+    
     for list_file in glob.glob(os.path.join(list_dir, "*.txt")):
         # get the base name by removing the extension (can be for either month or month_region)
         list_name = os.path.basename(list_file).replace("_list.txt", "")
@@ -352,13 +367,13 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
 
         # samtools merge | samtools sort
         bam_paths_str = " ".join(bam_paths)
-        cmd = f"samtools merge -@ {threads} -f - {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
+        cmd = f"{samtools_path} merge -@ {threads} -f - {bam_paths_str} | {samtools_path} sort -@ {threads} -o {output_bam}"
 
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
                 
             # index the sorted bam file
-            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+            subprocess.run([samtools_path, "index", output_bam], check=True, capture_output=True)
             
         except subprocess.CalledProcessError as e:
             print(f"Error processing {list_name}: {e}")
@@ -370,6 +385,13 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
 # optional: if include clinical, then align fasta files to reference
 ## pipe minimap2 into samtools sort, then index
 def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_dir: str, threads: int = 4) -> dict:
+
+    # get full paths to minimap2 and samtools
+    minimap2_path = shutil.which("minimap2")
+    samtools_path = shutil.which("samtools")
+    
+    if not minimap2_path or not samtools_path:
+        raise RuntimeError("minimap2 or samtools not found in PATH. Please ensure they are installed and accessible.")
 
     # extract reference fasta from reference_files
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
@@ -397,12 +419,12 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
         # crm: want to replace this print line with a progress bar
         #print(f"Aligning samples from {month_year} to the reference genome")
 
-        cmd = f"minimap2 -ax sr {reference_fasta} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+        cmd = f"{minimap2_path} -ax sr {reference_fasta} {fasta_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
             
             # index the sorted bam files
-            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+            subprocess.run([samtools_path, "index", output_bam], check=True, capture_output=True)
             
             # add the bam file to the dictionary
             bam_files_month[month_year] = output_bam

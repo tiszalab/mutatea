@@ -16,9 +16,9 @@ from datetime import timedelta
 # load in functions from metadata_funcs
 # crm: make sure to update names of functions being imported as they change in metadata_funcs.py
 try:
-    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads
+    from .metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
 except:
-    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads
+    from metadata_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
 
 # convert string to boolean for argparse
 def str2bool(x):
@@ -212,7 +212,40 @@ def flu_cli():
     dirs["tsv_output"] = os.path.join(dirs["output"], "tsv_output")
     os.makedirs(dirs["tsv_output"], exist_ok=True)
 
-    # crm: need to add in varmint for wastewater
+    # create subfolders if clinical included
+    if include_clinical:
+        # split output tsv by source
+        dirs["tsv_wastewater"] = os.path.join(dirs["tsv_output"], "wastewater")
+        os.makedirs(dirs["tsv_wastewater"], exist_ok=True)
+
+        dirs["tsv_clinical"] = os.path.join(dirs["tsv_output"], "clinical")
+        os.makedirs(dirs["tsv_clinical"], exist_ok=True)
+        
+        # split clinical output by grouping method
+        if include_region:
+            dirs["tsv_month"] = os.path.join(dirs["tsv_wastewater"], "month")
+            os.makedirs(dirs["tsv_month"], exist_ok=True)
+            dirs["tsv_month_region"] = os.path.join(dirs["tsv_wastewater"], "month_region")
+            os.makedirs(dirs["tsv_month_region"], exist_ok=True)
+
+    # or just split clinical output by grouping method
+    else:
+        dirs["tsv_month"] = os.path.join(dirs["tsv_output"], "month")
+        os.makedirs(dirs["tsv_month"], exist_ok=True)
+
+        dirs["tsv_month_region"] = os.path.join(dirs["tsv_output"], "month_region")
+        os.makedirs(dirs["tsv_month_region"], exist_ok=True)
+            
+    # crm: still in test
+    # varmint for wastewater
+    logger.info("\nAnnotating coding effects of mutations with varmint")
+
+    # crm: this is too messy, please find a better way to do this
+    if include_region:
+        varmint(dirs["merged_bams_month"], dirs["reference_dir"], dirs["tsv_month"])
+        varmint(dirs["merged_bams_month_region"], dirs["reference_dir"], dirs["tsv_month_region"])
+    else:
+        varmint(dirs["merged_bams_month"], dirs["reference_dir"], dirs["tsv_output"])
 
 
     
@@ -266,8 +299,10 @@ def flu_cli():
         logger.info("\nAligning clinical reads to the reference genome")
         align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], dirs["reference_dir"])
 
-        # crm: varmint for clinical bam files
-        # crm: output should be tsv files saved to tsv_output
+        # varmint for clinical
+        logger.info("\nAnnotating coding effects of mutations with varmint")
+        varmint(dirs["clinical_bam_month"], dirs["reference_dir"], dirs["tsv_clinical"])
+
 
     # crm: pretty sure I needed more things at the end than this
     # print run time

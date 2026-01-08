@@ -379,8 +379,54 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
             print(f"Error processing {list_name}: {e}")
             continue
 
+
+
+
+
+
+
+
+# crm: probably doesn't output to none
 # run varmint on merged bam files
-# def varmint_wastewater()
+def varmint(bam_dir: str, reference_dir: str, output_dir:str) -> None:
+    # get full path to varmint
+    varmint_path = shutil.which("varmint")
+    
+    if not varmint_path:
+        raise RuntimeError("varmint not found in PATH. Please ensure it is installed and accessible.")
+    
+    for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):
+        # get the base name by removing the extension (can be for either month or month_region)
+        merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
+
+        # create filename for outputted tsv
+        output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
+
+        # extract reference fasta from reference directory
+        reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
+        reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
+
+        # varmint
+        cmd = f"{varmint_path} --bam {bam_file} --ref {reference_fasta} --gff {reference_gff} -o {output_tsv}"
+
+        try:
+            subprocess.run(cmd, shell=True, check=True, capture_output=True)
+            
+        except subprocess.CalledProcessError as e:
+            print(f"Error processing {merge_name}: {e}")
+            continue
+
+
+
+
+
+
+
+
+
+
+
+
 
 # optional: if include clinical, then align fasta files to reference
 ## pipe minimap2 into samtools sort, then index

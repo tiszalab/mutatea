@@ -15,7 +15,7 @@ This is a framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2
 Must install the following tools:
 - **minimap2** (for read alignment)
 - **samtools** (for BAM file processing)
-- **varmint** (annotating coding effects using GFF CDS features)
+- **varmint** (for annotating coding effects using GFF CDS features)
 
 Install via conda (recommended):
 ```bash

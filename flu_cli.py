@@ -54,6 +54,7 @@ def flu_cli():
     # argument for file path to folder containing reference files
     parser.add_argument("-ref", "--reference_files", type=str, required=True, help="Path to folder containing the reference fasta(.gz) and gff(.gz) files")
 
+
     ## optional arguments
     # argument for file path to folder containing clinical files
     parser.add_argument("-c", "--clinical_files", type=str, help="Path to folder containing the clinical fasta and csv files")
@@ -66,6 +67,10 @@ def flu_cli():
 
     # argument to view time range covered by wastewater metadata
     parser.add_argument("-t", "--time_range", action='store_true', help="View time range covered by wastewater sample collection")
+
+    # crm: argument to view current version
+    parser.add_argument("-v", "--version", action='store_true', help="View current version")
+
 
     # parse arguments
     args = parser.parse_args()
@@ -96,6 +101,10 @@ def flu_cli():
     logger.addHandler(stream_handler)
     
     ############################## process metadata files ##############################
+    # optionally give current version
+    if args.version:
+        logger.info(f"Current version is {version('flu_CLI')}")
+
     # process wastewater metadata
     metadata = load_merge_metadata(args.wastewater_metadata)
     if metadata.empty:

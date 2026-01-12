@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flu_CLI"
-version = "0.1.0"
+version = "0.0.1"
 authors = [
   { name="Camille R. Mazurek", email="camillemazurek23@gmail.com" },
 ]
-description = "A framework comparing the mutational spectra of IAV (subtypes H1N1, H3N2, and H5N1) between sources/cohorts."
+# crm: need to update description of this package
+description = "A framework comparing the mutational spectra of virome sequencing data between sources/cohorts."
 readme = "README.md"
 requires-python = ">=3.9"
 
@@ -27,7 +28,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["flu_cli", "metadata_funcs"]
+py-modules = ["flu_cli", "cli_funcs"]
 
 [project.scripts]  
 flu_CLI = "flu_cli:flu_cli"

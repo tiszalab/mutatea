@@ -9,18 +9,20 @@ import re
 import subprocess
 
 # load in and merge metadata files
-def load_merge_metadata(metadata_folder:str) -> pd.DataFrame:
+def process_metadata(metadata_folder:str) -> pd.DataFrame:
     metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
     if not metadata_files:
         return pd.DataFrame()
     md_list=[pd.read_excel(file) for file in metadata_files]
     metadata=pd.concat(md_list, ignore_index=True)
-    return metadata
 
-# add month_year column to metadata
-def add_month_year(metadata:pd.DataFrame) -> pd.DataFrame:
+    # add month_year column to metadata
     metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
     metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
+    
+    # add a sitecode column to metadata if not already present (older metadata files don't have this column)
+    if "SiteCode" not in metadata.columns:
+        metadata["SiteCode"] = pd.NA
     return metadata
 
 # optional: add public health region column to merged metadata
@@ -55,12 +57,6 @@ def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame
         print("\nAll cities in the metadata were successfully assigned to public health regions!\n")
     return metadata
 
-# add a sitecode column to metadata if not already present (older metadata files don't have this column)
-def ensure_sitecode_column(metadata: pd.DataFrame) -> pd.DataFrame:
-    if "SiteCode" not in metadata.columns:
-        metadata["SiteCode"] = pd.NA
-    return metadata
-
 # reorganize metadata columns to have a default order
 def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False) -> pd.DataFrame:
     if no_region == False:
@@ -75,18 +71,8 @@ def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False)
         ]
     return metadata[columns]
 
-# get the time range from the metadata
-def get_date_range(metadata: pd.DataFrame) -> tuple:
-    earliest_date = metadata["Date"].min()
-    latest_date = metadata["Date"].max()
-    return earliest_date, latest_date
-
-# export the metadata as a csv to output path
-def export_metadata(metadata: pd.DataFrame, metadata_dir: str, sep: str = ",") -> None:
-    metadata.to_csv(f"{metadata_dir}/metadata_wastewater_combined.csv", sep=sep, index=False)
-
-# load in clinical metadata and add column for month_year
-def load_clinical_metadata(clinical_file_path: str) -> pd.DataFrame:
+# load in clinical metadata and fasta
+def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
     # find the csv in the clinical_metadata_path
     csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
     # raise error if no CSV files were found
@@ -101,10 +87,7 @@ def load_clinical_metadata(clinical_file_path: str) -> pd.DataFrame:
     clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
     # add month_year column to the clinical metadata
     clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
-    return clinical_metadata
 
-# load in clinical fasta
-def load_clinical_fasta(clinical_file_path: str) -> list:
     # find the fasta in the clinical_metadata_path
     fasta_file = glob.glob(os.path.join(clinical_file_path, "*.fasta"))
     # raise error if no fasta files were found
@@ -113,7 +96,7 @@ def load_clinical_fasta(clinical_file_path: str) -> list:
     # raise error if multiple fasta files were found
     if len(fasta_file)>1:
         raise ValueError(f"Multiple fasta files found in {clinical_file_path}")
-    return fasta_file[0]
+    return clinical_metadata, fasta_file[0]
 
 # process reference files
 def process_reference_file(input_folder: str, reference_dir: str) -> list:
@@ -222,7 +205,6 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
                 print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pair")
             else:
                 print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pairs")
-
     # let user know if no reads were found for that subtype in that pool
     if not reads_by_pool:
         print(f"No R1 files were found for {subtype} in {pool_id}")
@@ -409,7 +391,6 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
         # crm: this might actually kill the script if the output already exists, is this skip necessary?
         # crm: need to add in a skip if the BAM is already created
         if os.path.exists(output_bam):
-            bam_files_month[month_year]
             continue
 
         # minimap2 | samtools view | samtools sort

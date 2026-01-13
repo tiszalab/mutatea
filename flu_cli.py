@@ -16,9 +16,9 @@ from datetime import timedelta
 # load in functions from cli funcs
 # crm: make sure to update names of functions being imported as they change in cli_funcs.py
 try:
-    from .cli_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
+    from .cli_funcs import process_metadata, add_region, reorganize_metadata_columns, load_clinical_files, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
 except:
-    from cli_funcs import load_merge_metadata, add_month_year, add_region, ensure_sitecode_column, reorganize_metadata_columns, export_metadata, get_date_range, load_clinical_metadata, load_clinical_fasta, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
+    from cli_funcs import process_metadata, add_region, reorganize_metadata_columns, load_clinical_files, process_reference_file, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
 
 # convert string to boolean for argparse
 def str2bool(x):
@@ -106,13 +106,10 @@ def flu_cli():
         logger.info(f"Current version is {version('flu_CLI')}")
 
     # process wastewater metadata
-    metadata = load_merge_metadata(args.wastewater_metadata)
+    metadata = process_metadata(args.wastewater_metadata)
     if metadata.empty:
         logger.error("No metadata files found in the specified directory.")
         sys.exit(1)
-
-    # add month_year column to metadata
-    metadata = add_month_year(metadata)
 
     # add region column to the metadata if user didn't specify month only
     if not args.month_only:
@@ -121,16 +118,13 @@ def flu_cli():
         no_region = False
     else:
         no_region = True
-
-    # confirm SiteCode column is in metadata
-    metadata = ensure_sitecode_column(metadata)
     
     # reorganize metadata columns with consideration of region potentially not being included
     metadata = reorganize_metadata_columns(metadata, no_region=no_region)
     
     # optionally give time range of the wastewater samples
     if args.time_range:
-        earliest, latest = get_date_range(metadata)
+        earliest, latest = metadata["Date"].min(), metadata["Date"].max()
         logger.info(f"Date range covered by wastewater data: {earliest.strftime('%Y-%m-%d')} to {latest.strftime('%Y-%m-%d')}")
 
     # create directory for processed and merged metadata
@@ -139,16 +133,15 @@ def flu_cli():
 
     # export processed wastewater metadata
     logger.info(f"Exporting the processed metadata to {dirs['metadata_dir']}\n")
-    export_metadata(metadata, dirs["metadata_dir"])
+    metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_wastewater_combined.csv"), index=False)
 
     # load in clinical metadata
     if include_clinical:
-        clinical_metadata = load_clinical_metadata(args.clinical_files)
+        clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files)
 
         # export processed clinical metadata
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
     
-   
     # create directory for unzipped reference files
     dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
     os.makedirs(dirs["reference_dir"], exist_ok=True)
@@ -277,10 +270,6 @@ def flu_cli():
         # create folder for clinical output
         dirs["clinical"] = os.path.join(dirs["alignment_dir"], "clinical")
         os.makedirs(dirs["clinical"], exist_ok=True)
-
-        # load in clinical fasta
-        logger.info("\nLoading in clinical FASTA")
-        clinical_fasta = load_clinical_fasta(args.clinical_files)
 
         # create folder for the lists of accessions by month
         dirs["clinical_lists_month"] = os.path.join(dirs["clinical"], "clinical_lists_month")

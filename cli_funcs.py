@@ -7,96 +7,7 @@ import glob
 import os
 import re
 import subprocess
-
-# load in and merge metadata files
-def process_metadata(metadata_folder:str) -> pd.DataFrame:
-    metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
-    if not metadata_files:
-        return pd.DataFrame()
-    md_list=[pd.read_excel(file) for file in metadata_files]
-    metadata=pd.concat(md_list, ignore_index=True)
-
-    # add month_year column to metadata
-    metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
-    metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
-    
-    # add a sitecode column to metadata if not already present (older metadata files don't have this column)
-    if "SiteCode" not in metadata.columns:
-        metadata["SiteCode"] = pd.NA
-    return metadata
-
-# optional: add public health region column to merged metadata
-def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame:
-    # added filter for if there is not yet a city_region dictionary
-    if city_region is None:
-        city_region = {
-        "Houston, TX": "6_5S",
-        "El Paso, TX": "9_10",
-        "Lubbock, TX": "1",
-        "Brownsville, TX": "11",
-        "Wichita Falls, TX": "2_3",
-        "Baytown, TX": "6_5S",
-        "Humble, TX": "6_5S",
-        "Missouri City, TX": "6_5S",
-        "Austin, TX": "7",
-        "Laredo, TX": "11",
-        "Waco, TX": "7",
-        "Fort Worth, TX": "2_3",
-        "Palestine, TX": "4_5N",
-        "Athens, TX": "4_5N",
-        "Dallas, TX": "2_3",
-        "DFW Airport, TX": "2_3",
-        "Katy, TX": "6_5S"
-    }
-    # use dictionary to add a "Region" column to the metadata
-    metadata["Region"] = metadata["City"].map(city_region)
-    # add a warning for any unexpected cities, that way the user will know if they need to update the city_region dictionary
-    if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
-        print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
-    else:
-        print("\nAll cities in the metadata were successfully assigned to public health regions!\n")
-    return metadata
-
-# reorganize metadata columns to have a default order
-def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False) -> pd.DataFrame:
-    if no_region == False:
-        columns = [
-            "City", "Sample_ID", "Site", "Date", "Flow",
-            "PoolID", "SiteCode", "Region", "Month_Year"
-        ]
-    else:
-        columns = [
-            "City", "Sample_ID", "Site", "Date", "Flow",
-            "PoolID", "SiteCode", "Month_Year"
-        ]
-    return metadata[columns]
-
-# load in clinical metadata and fasta
-def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
-    # find the csv in the clinical_metadata_path
-    csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
-    # raise error if no CSV files were found
-    if not csv_file:
-        raise FileNotFoundError(f"No CSV files found in {clinical_file_path}")
-    # raise error if multiple CSV files were found
-    if len(csv_file)>1:
-        raise ValueError(f"Multiple CSV files found in {clinical_file_path}") 
-    # read in csv
-    clinical_metadata = pd.read_csv(csv_file[0]) 
-    # make sure the collection date column is a datetime object
-    clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
-    # add month_year column to the clinical metadata
-    clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
-
-    # find the fasta in the clinical_metadata_path
-    fasta_file = glob.glob(os.path.join(clinical_file_path, "*.fasta"))
-    # raise error if no fasta files were found
-    if not fasta_file:
-        raise FileNotFoundError(f"No fasta files found in {clinical_file_path}")
-    # raise error if multiple fasta files were found
-    if len(fasta_file)>1:
-        raise ValueError(f"Multiple fasta files found in {clinical_file_path}")
-    return clinical_metadata, fasta_file[0]
+import time
 
 # process reference files
 def process_reference_file(input_folder: str, reference_dir: str) -> list:
@@ -145,9 +56,95 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
         print(f"Unzipped reference file to: {out_path}")
         output_paths.append(out_path)
 
-    # crm: being too specific about spacing, I know my character flaws
-    print("")
-    return output_paths
+# load in and merge metadata files
+def process_metadata(metadata_folder:str) -> pd.DataFrame:
+    metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
+    if not metadata_files:
+        return pd.DataFrame()
+    md_list=[pd.read_excel(file) for file in metadata_files]
+    metadata=pd.concat(md_list, ignore_index=True)
+
+    # add month_year column to metadata
+    metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
+    metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
+    
+    # add a sitecode column to metadata if not already present (older metadata files don't have this column)
+    if "SiteCode" not in metadata.columns:
+        metadata["SiteCode"] = pd.NA
+    return metadata
+
+# optional: add public health region column to merged metadata
+def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame:
+    # added filter for if there is not yet a city_region dictionary
+    if city_region is None:
+        city_region = {
+        "Houston, TX": "6_5S",
+        "El Paso, TX": "9_10",
+        "Lubbock, TX": "1",
+        "Brownsville, TX": "11",
+        "Wichita Falls, TX": "2_3",
+        "Baytown, TX": "6_5S",
+        "Humble, TX": "6_5S",
+        "Missouri City, TX": "6_5S",
+        "Austin, TX": "7",
+        "Laredo, TX": "11",
+        "Waco, TX": "7",
+        "Fort Worth, TX": "2_3",
+        "Palestine, TX": "4_5N",
+        "Athens, TX": "4_5N",
+        "Dallas, TX": "2_3",
+        "DFW Airport, TX": "2_3",
+        "Katy, TX": "6_5S"
+    }
+    # use dictionary to add a "Region" column to the metadata
+    metadata["Region"] = metadata["City"].map(city_region)
+    # add a warning for any unexpected cities, that way the user will know if they need to update the city_region dictionary
+    if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
+        print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
+    else:
+        print("All cities in the metadata were successfully assigned to public health regions!\n")
+    return metadata
+
+# reorganize metadata columns to have a default order
+def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False) -> pd.DataFrame:
+    if no_region == False:
+        columns = [
+            "City", "Sample_ID", "Site", "Date", "Flow",
+            "PoolID", "SiteCode", "Region", "Month_Year"
+        ]
+    else:
+        columns = [
+            "City", "Sample_ID", "Site", "Date", "Flow",
+            "PoolID", "SiteCode", "Month_Year"
+        ]
+    return metadata[columns]
+
+# load in clinical metadata and fasta
+def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
+    # find the csv in the clinical_metadata_path
+    csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
+    # raise error if no CSV files were found
+    if not csv_file:
+        raise FileNotFoundError(f"No CSV files found in {clinical_file_path}")
+    # raise error if multiple CSV files were found
+    if len(csv_file)>1:
+        raise ValueError(f"Multiple CSV files found in {clinical_file_path}") 
+    # read in csv
+    clinical_metadata = pd.read_csv(csv_file[0]) 
+    # make sure the collection date column is a datetime object
+    clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
+    # add month_year column to the clinical metadata
+    clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
+
+    # find the fasta in the clinical_metadata_path
+    fasta_file = glob.glob(os.path.join(clinical_file_path, "*.fasta"))
+    # raise error if no fasta files were found
+    if not fasta_file:
+        raise FileNotFoundError(f"No fasta files found in {clinical_file_path}")
+    # raise error if multiple fasta files were found
+    if len(fasta_file)>1:
+        raise ValueError(f"Multiple fasta files found in {clinical_file_path}")
+    return clinical_metadata, fasta_file[0]
 
 # create lists of accessions grouped by month_year
 def create_monthly_accession_lists(clinical_metadata: pd.DataFrame, output_dir: str) -> None:
@@ -175,9 +172,10 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
 def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
     # create empty dictionary to store reads by pool
     reads_by_pool = {}
-    for pool_dir in glob.glob(os.path.join(pools_base_dir, "*")):
+    for pool_dir in sorted(glob.glob(os.path.join(pools_base_dir, "*"))):
         pool_id = os.path.basename(pool_dir)
 
+        # crm: this may not be the way most people name their pools
         # skip the folder if it is not a directory or doesn't match the naming of the pools
         if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
             continue
@@ -230,22 +228,25 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
 
     # loop through the reads_by_pool dictionary and align the reads to the reference
     for pool_id, read_pairs in reads_by_pool.items():
+        pool_total_pairs = len(read_pairs)
 
-        print(f"Aligning reads from pool {pool_id}")
         # create output directory for each pool
         pool_output_dir = os.path.join(pools, pool_id)
         os.makedirs(pool_output_dir, exist_ok=True)
 
-        for read_pair in read_pairs:
+        for idx, read_pair in enumerate(read_pairs, start = 1):
+            pair_start = time.perf_counter()
             r1_file, r2_file = read_pair
 
+            # print progress that overwrites the line (with padding to clear previous text)
+            # crm: made sude every line is padded to 80 characters, so number of reads won't throw off the print line
+            print(f"\r\033[KAligning {idx}/{pool_total_pairs} reads from pool {pool_id}".ljust(80), end='', flush=True)
+            
             # get sample name from the filename of R1
             sample_name= os.path.basename(r1_file).split(".")[0]
 
             # create output BAM filename 
             output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
-
-            # crm: need to add in a skip if the BAM is already created
 
             # minimap2 | samtools view | samtools sort
             cmd = f"{minimap2_path} -ax sr {reference_fasta} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
@@ -258,6 +259,9 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
             except subprocess.CalledProcessError as e:
                 print(f"Error processing {sample_name}: {e}")
                 continue
+        
+        # Print newline and timing after pool completes
+        print()
 
 # crm: do I end as None or dict?
 # use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
@@ -394,9 +398,6 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
             continue
 
         # minimap2 | samtools view | samtools sort
-        # crm: want to replace this print line with a progress bar
-        #print(f"Aligning samples from {month_year} to the reference genome")
-
         cmd = f"{minimap2_path} -ax sr {reference_fasta} {fasta_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)

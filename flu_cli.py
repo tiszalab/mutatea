@@ -122,7 +122,6 @@ def flu_cli():
     # process wastewater metadata
     section_start = time.perf_counter()
     metadata = process_metadata(args.wastewater_metadata)
-    logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s")
     if metadata.empty:
         logger.error("No metadata files found in the specified directory.")
         sys.exit(1)
@@ -157,7 +156,8 @@ def flu_cli():
 
         # export processed clinical metadata
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
-
+    logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s")
+    
     ############################## wastewater ##############################
     # find wastewater reads from pools
     section_start = time.perf_counter()

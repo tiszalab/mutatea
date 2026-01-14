@@ -396,6 +396,11 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
         # crm: need to add in a skip if the BAM is already created
         if os.path.exists(output_bam):
             continue
+        
+        # print progress that overwrites the line (with padding to clear previous text)
+        # crm: made sude every line is padded to 80 characters, so number of reads won't throw off the print line
+        print(f"\r\033[KAligning clinical reads from {month_year}".ljust(80), end='', flush=True)
+            
 
         # minimap2 | samtools view | samtools sort
         cmd = f"{minimap2_path} -ax sr {reference_fasta} {fasta_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"

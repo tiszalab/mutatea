@@ -15,9 +15,9 @@ from datetime import timedelta
 # load in functions from cli funcs
 # crm: make sure to update names of functions being imported as they change in cli_funcs.py
 try:
-    from .cli_funcs import process_reference_file, process_metadata, add_region, reorganize_metadata_columns, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
+    from .cli_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
 except:
-    from cli_funcs import process_reference_file, process_metadata, add_region, reorganize_metadata_columns, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
+    from cli_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
 
 # entry point function for the CLI
 def flu_cli():
@@ -31,8 +31,9 @@ def flu_cli():
 
     ############################## set arguments ##############################
     ## required arguments
-    # argument for IAV subtype
-    parser.add_argument("-s", "--subtype", type=str, required=True, choices=["H1N1", "H3N2", "H5N1"], help="Influenza subtype to process, options are H1N1, H3N2, and H5N1")
+    # argument for virus subtype
+    # crm: need to clean up descriptor for argument here
+    parser.add_argument("-s", "--subtype", type=str, required=True, help="Pathogen subtype to process, options are H1N1, H3N2, H5N1, and Sars-Cov2")
 
     # argument for file path to folder containing wastewater metadata files
     parser.add_argument("-m", "--wastewater_metadata", type=str, required=True, help="Path to folder containing wastewater metadata files")
@@ -107,7 +108,7 @@ def flu_cli():
     ## process reference files
     section_start = time.perf_counter()
     process_reference_file(args.reference_files, dirs["reference_dir"])
-    logger.info(f"Reference processing: {time.perf_counter() - section_start:.2f}s")
+    logger.info(f"Reference processing: {time.perf_counter() - section_start:.2f}s\n")
 
     # process wastewater metadata
     section_start = time.perf_counter()
@@ -123,10 +124,7 @@ def flu_cli():
         no_region = False
     else:
         no_region = True
-    
-    # reorganize metadata columns with consideration of region potentially not being included
-    metadata = reorganize_metadata_columns(metadata, no_region=no_region)
-    
+
     # optionally give time range of the wastewater samples
     if args.time_range:
         earliest, latest = metadata["Date"].min(), metadata["Date"].max()
@@ -137,7 +135,7 @@ def flu_cli():
     os.makedirs(dirs["metadata_dir"], exist_ok=True)
 
     # export processed wastewater metadata
-    logger.info(f"Exporting the processed metadata to {dirs['metadata_dir']}\n")
+    logger.info(f"Exporting the processed metadata to {dirs['metadata_dir']}")
     metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_wastewater_combined.csv"), index=False)
 
     # load in clinical metadata and fasta
@@ -146,7 +144,7 @@ def flu_cli():
 
         # export processed clinical metadata
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
-    logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s")
+    logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s\n")
 
     ############################## wastewater ##############################
     # find wastewater reads from pools
@@ -304,11 +302,11 @@ def flu_cli():
         varmint(dirs["clinical_bam_month"], dirs["reference_dir"], dirs["tsv_clinical"])
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")
 
-        # crm: maybe doing too much here
-        # delete alignment files if not requested
-        if not args.all:
-            shutil.rmtree(dirs["alignment_dir"])
-            logger.info(f"\nRemoved intermediate alignment files")
+    # crm: maybe doing too much here
+    # delete alignment files if not requested
+    if not args.all:
+        shutil.rmtree(dirs["alignment_dir"])
+        logger.info(f"\nRemoved intermediate alignment files")
 
     # crm: check iav_serotype and make sure you're ending this correctly
     # print run time

@@ -5,12 +5,12 @@ This is a framework comparing the mutational spectra of virome sequencing data b
 1. metadata
 2. either paired-end short reads or single reads
     
-# crm: could be one single read too, e.g. COVID
+## crm: could be one single read too, e.g. COVID
 
 3. reference fna and gff
 
 `Outputs`:
-# crm: output is unclear
+## crm: output is unclear
 1. tsv of mutations found in the data of each month 
 2. optional: alignment files of the reads
 
@@ -45,7 +45,9 @@ pip install .
 
 4. Activate conda environment with required packages
 
-# crm: probably needs more steps
+## 5. crm: pip install package and run as function
+
+## crm: probably needs more steps
 
 # Usage
 ```bash
@@ -53,12 +55,12 @@ flu_CLI -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_RE
 ```
 
 # Required arguments
-# crm: need to adjust, it's not just IAV subtype
+## crm: need to adjust, it's not just IAV subtype
 
 - `-s`, `--subtype`: Influenza A subtype (H1N1, H3N2, H5N1) ????
 - `-m`, `--wastewater_metadata`: Path to folder containing the wastewater metadata files (.xlsx)
 - `-ref`, `--reference_files`: Path to folder containing the reference files fna(.gz) and gff(.gz)
-# crm: why do they have different file formats accepted for each read type? should be the same for both inputs
+## crm: why do they have different file formats accepted for each read type? should be the same for both inputs
 ### Either
 - `-pr`, `--paired_reads`: Path to folder containing paired wastewater reads (fastq)
 - `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fasta)
@@ -70,7 +72,7 @@ flu_CLI -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_RE
 - `-my`, `--monthly_only`: Only group wastewater samples by month (overrides default of being grouped by both month and month_region)
 - `-t`, `--time_range`: Print time range of wastewater samples
 - `-v`, `--version`: Print the current version of ????
-# crm: flu cli? clean up description of --version above
+## crm: clean up description of --version above
 
 # Example
 ``` bash

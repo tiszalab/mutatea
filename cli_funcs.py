@@ -105,20 +105,6 @@ def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame
         print("All cities in the metadata were successfully assigned to public health regions!\n")
     return metadata
 
-# reorganize metadata columns to have a default order
-def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False) -> pd.DataFrame:
-    if not no_region:
-        columns = [
-            "City", "Sample_ID", "Site", "Date", "Flow",
-            "PoolID", "SiteCode", "Region", "Month_Year"
-        ]
-    else:
-        columns = [
-            "City", "Sample_ID", "Site", "Date", "Flow",
-            "PoolID", "SiteCode", "Month_Year"
-        ]
-    return metadata[columns]
-
 # load in clinical metadata and fasta
 def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
     # find the csv in the clinical_metadata_path
@@ -176,7 +162,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
     # for single reads
     if single_reads:
         # find all fasta files matching the subtype
-        fasta_files = glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fasta"))
+        fasta_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fasta")))
         
         if not fasta_files:
             print(f"No FASTA files found for {subtype} in {pools_base_dir}")
@@ -196,9 +182,9 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
         # print summary
         for pool_id, files in reads_by_pool.items():
             if len(files) == 1:
-                print(f"Pool {pool_id} contained {len(files)} {subtype} file")
+                print(f"Pool {pool_id} contained {len(files)} {subtype} reads")
             else:
-                print(f"Pool {pool_id} contained {len(files)} {subtype} files")
+                print(f"Pool {pool_id} contained {len(files)} {subtype} reads")
     # for paired reads            
     else:
         for pool_dir in sorted(glob.glob(os.path.join(pools_base_dir, "*"))):
@@ -239,7 +225,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
     return reads_by_pool
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, threads: int = 4) -> dict:
+def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, threads: int = 8) -> dict:
 
     # get full paths to minimap2 and samtools
     minimap2_path = shutil.which("minimap2")
@@ -251,45 +237,61 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
     # extract reference fasta from reference_files
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
 
-    # bam files by pool
-    bam_files_by_pool = {}
-
     # loop through the reads_by_pool dictionary and align the reads to the reference
-    for pool_id, read_pairs in reads_by_pool.items():
-        pool_total_pairs = len(read_pairs)
+    for pool_id, read_files in reads_by_pool.items():
+        pool_total_reads = len(read_files)
 
         # create output directory for each pool
         pool_output_dir = os.path.join(pools, pool_id)
         os.makedirs(pool_output_dir, exist_ok=True)
+        
+        # align and sort wastewater reads
+        for idx, read_file in enumerate(read_files, start = 1):
+            # paired reads
+            if isinstance(read_file, tuple):
+                r1_file, r2_file = read_file
 
-        for idx, read_pair in enumerate(read_pairs, start = 1):
-            r1_file, r2_file = read_pair
+                # print progress that overwrites the line (with padding to clear previous text)
+                print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
+                    
+                # get sample name from the filename of R1
+                sample_name= os.path.basename(r1_file).split(".")[0]
 
-            # print progress that overwrites the line (with padding to clear previous text)
-            # crm: made sude every line is padded to 80 characters, so number of reads won't throw off the print line
-            print(f"\r\033[KAligning {idx}/{pool_total_pairs} reads from pool {pool_id}".ljust(80), end='', flush=True)
-            
-            # get sample name from the filename of R1
-            sample_name= os.path.basename(r1_file).split(".")[0]
+                # create output BAM filename 
+                output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
-            # create output BAM filename 
-            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+                # minimap2 | samtools view | samtools sort
+                cmd = f"{minimap2_path} -t {threads} -ax sr {reference_fasta} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"  
+            # single reads
+            else:
+                # print progress that overwrites the line (with padding to clear previous text)
+                print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
+                            
+                filename = os.path.basename(read_file)
 
-            # minimap2 | samtools view | samtools sort
-            cmd = f"{minimap2_path} -ax sr {reference_fasta} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
+                # extract sample_id from filename (e.g., p1965.AGNJK6.Sars-Cov2.fasta -> AGNJK6)
+                parts = filename.split(".")
+                sample_name = parts[1] if len(parts) >= 3 else parts[0]
+
+                # create output BAM filename 
+                output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+
+                # crm: what type of sequencing are these single reads? map-ont may not be the correct option here
+                # minimap2 | samtools view | samtools sort
+                cmd = f"{minimap2_path} -t {threads} -ax map-ont {reference_fasta} {read_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
             try:
                 subprocess.run(cmd, shell=True, check=True, capture_output=True)
-                
+                                
                 # index the sorted bam files
                 subprocess.run([samtools_path, "index", output_bam], check=True, capture_output=True)
-            
+                                
             except subprocess.CalledProcessError as e:
                 print(f"Error processing {sample_name}: {e}")
                 continue
-        
+                    
         # Print newline and timing after pool completes
         print()
-
+            
 # crm: do I end as None or dict?
 # use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
 def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> None:
@@ -334,6 +336,7 @@ def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_outp
             bam_paths_region = []
 
             # loop through each row in the group and get the sample_id and pool_id
+            # crm: make sure you can explain iloc
             for i in range(len(group)):
                 sample_id = group.iloc[i]["Sample_ID"]
                 pool_id = group.iloc[i]["PoolID"]
@@ -360,7 +363,7 @@ def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_outp
                     f.write("\n".join(bam_path_list))
 
 # merge bam files using month and month_region lists
-def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> None:
+def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> None:
     # get full path to samtools
     samtools_path = shutil.which("samtools")
     
@@ -394,7 +397,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 4) -> N
 
 # optional: if include clinical, then align fasta files to reference
 ## pipe minimap2 into samtools sort, then index
-def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_dir: str, threads: int = 4) -> dict:
+def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_dir: str, threads: int = 8) -> dict:
 
     # get full paths to minimap2 and samtools
     minimap2_path = shutil.which("minimap2")
@@ -424,7 +427,6 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
             continue
         
         # print progress that overwrites the line (with padding to clear previous text)
-        # crm: made sude every line is padded to 80 characters, so number of reads won't throw off the print line
         print(f"\r\033[KAligning clinical reads from {month_year}".ljust(80), end='', flush=True)
             
 

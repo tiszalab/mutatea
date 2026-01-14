@@ -107,7 +107,7 @@ def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame
 
 # reorganize metadata columns to have a default order
 def reorganize_metadata_columns(metadata: pd.DataFrame, no_region: bool = False) -> pd.DataFrame:
-    if no_region == False:
+    if not no_region:
         columns = [
             "City", "Sample_ID", "Site", "Date", "Flow",
             "PoolID", "SiteCode", "Region", "Month_Year"
@@ -169,43 +169,72 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
 # find wastewater reads from pools for the subtype of interest
-def find_wastewater_reads(pools_base_dir: str, subtype: str) -> dict:
+def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool = True) -> dict:
     # create empty dictionary to store reads by pool
     reads_by_pool = {}
-    for pool_dir in sorted(glob.glob(os.path.join(pools_base_dir, "*"))):
-        pool_id = os.path.basename(pool_dir)
 
-        # crm: this may not be the way most people name their pools
-        # skip the folder if it is not a directory or doesn't match the naming of the pools
-        if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
-            continue
-        r1_files = glob.glob(os.path.join(pool_dir, "**", f"*{subtype}.R1.fastq"), recursive=True)
-
-        # create empty list for the paired reads
-        read_pairs=[]
-        # loop through all existing r1 reads to find their r2 read
-        if r1_files:
-            # crm: this is assuming that the respective r2 would be kept next to r1 (same pool), but maybe need to confirm that
-            for r1_file in r1_files:
-                r2_file = r1_file.replace("R1.fastq", "R2.fastq")
-
-                # make sure r2 actually exists
-                if os.path.exists(r2_file):
-                    read_pairs.append((r1_file, r2_file))
-                else:
-                    print(f"No R2 file found for {r1_file}")
-
-        # add them to the dictionary
-        if read_pairs:
-            reads_by_pool[pool_id] = read_pairs
-            # prints how many read pairs were found for each pool
-            if len(read_pairs)==1:
-                print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pair")
+    # for single reads
+    if single_reads:
+        # find all fasta files matching the subtype
+        fasta_files = glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fasta"))
+        
+        if not fasta_files:
+            print(f"No FASTA files found for {subtype} in {pools_base_dir}")
+            return reads_by_pool
+        
+        # group files by pool_id (extracted from filename)
+        for fasta_file in fasta_files:
+            filename = os.path.basename(fasta_file)
+            # extract pool_id from filename (e.g., p1965.AGNJK6.Sars-Cov2.fasta -> p1965)
+            parts = filename.split(".")
+            if len(parts) >= 3 and re.match(r'^p\d{4}$', parts[0]):
+                pool_id = parts[0]
+                if pool_id not in reads_by_pool:
+                    reads_by_pool[pool_id] = []
+                reads_by_pool[pool_id].append(fasta_file)
+        
+        # print summary
+        for pool_id, files in reads_by_pool.items():
+            if len(files) == 1:
+                print(f"Pool {pool_id} contained {len(files)} {subtype} file")
             else:
-                print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pairs")
-    # let user know if no reads were found for that subtype in that pool
-    if not reads_by_pool:
-        print(f"No R1 files were found for {subtype} in {pool_id}")
+                print(f"Pool {pool_id} contained {len(files)} {subtype} files")
+    # for paired reads            
+    else:
+        for pool_dir in sorted(glob.glob(os.path.join(pools_base_dir, "*"))):
+            pool_id = os.path.basename(pool_dir)
+
+            # crm: this may not be the way most people name their pools
+            # skip the folder if it is not a directory or doesn't match the naming of the pools
+            if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
+                continue
+            r1_files = glob.glob(os.path.join(pool_dir, "**", f"*{subtype}.R1.fastq"), recursive=True)
+
+            # create empty list for the paired reads
+            read_pairs=[]
+            # loop through all existing r1 reads to find their r2 read
+            if r1_files:
+                # crm: this is assuming that the respective r2 would be kept next to r1 (same pool), but maybe need to confirm that
+                for r1_file in r1_files:
+                    r2_file = r1_file.replace("R1.fastq", "R2.fastq")
+
+                    # make sure r2 actually exists
+                    if os.path.exists(r2_file):
+                        read_pairs.append((r1_file, r2_file))
+                    else:
+                        print(f"No R2 file found for {r1_file}")
+
+            # add them to the dictionary
+            if read_pairs:
+                reads_by_pool[pool_id] = read_pairs
+                # prints how many read pairs were found for each pool
+                if len(read_pairs)==1:
+                    print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pair")
+                else:
+                    print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pairs")
+        # let user know if no reads were found for that subtype in that pool
+        if not reads_by_pool:
+            print(f"No R1 files were found for {subtype} in {pool_id}")
 
     return reads_by_pool
 
@@ -221,7 +250,6 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
 
     # extract reference fasta from reference_files
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
-    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
 
     # bam files by pool
     bam_files_by_pool = {}
@@ -235,7 +263,6 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
         os.makedirs(pool_output_dir, exist_ok=True)
 
         for idx, read_pair in enumerate(read_pairs, start = 1):
-            pair_start = time.perf_counter()
             r1_file, r2_file = read_pair
 
             # print progress that overwrites the line (with padding to clear previous text)
@@ -378,13 +405,12 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
 
     # extract reference fasta from reference_files
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
-    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
 
     # create empty dictionary to catch outputted bam files
     bam_files_month = {}
 
     # loop through the fasta files in the clinical fasta folder
-    for fasta_file in glob.glob(os.path.join(clinical_fasta_month, "*.fasta")):
+    for fasta_file in sorted(glob.glob(os.path.join(clinical_fasta_month, "*.fasta"))):
 
         # get the base name by removing the extension (can be for either month or month_region)
         month_year = os.path.basename(fasta_file).replace(".fasta", "")
@@ -415,8 +441,10 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
        
         # crm: error
         except subprocess.CalledProcessError as e:
-            print(f"Error processing {sample_name}: {e}")
+            print(f"Error processing {month_year}: {e}")
             continue
+    # clear the progress line after each month
+    print()
     return bam_files_month
 
 # crm: probably doesn't output to none
@@ -424,6 +452,10 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
 def varmint(bam_dir: str, reference_dir: str, output_dir:str) -> None:
     # get full path to varmint
     varmint_path = shutil.which("varmint")
+
+    # extract reference fasta from reference directory
+    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
+    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
     
     if not varmint_path:
         raise RuntimeError("varmint not found in PATH. Please ensure it is installed and accessible.")
@@ -434,10 +466,6 @@ def varmint(bam_dir: str, reference_dir: str, output_dir:str) -> None:
 
         # create filename for outputted tsv
         output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
-
-        # extract reference fasta from reference directory
-        reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
-        reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
 
         # varmint
         cmd = f"{varmint_path} --bam {bam_file} --ref {reference_fasta} --gff {reference_gff} -o {output_tsv}"

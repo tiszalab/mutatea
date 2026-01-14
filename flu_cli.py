@@ -10,7 +10,6 @@ import shutil
 from Bio import SeqIO
 from pathlib import Path
 import time
-import tempfile
 from datetime import timedelta
 
 # load in functions from cli funcs
@@ -19,17 +18,6 @@ try:
     from .cli_funcs import process_reference_file, process_metadata, add_region, reorganize_metadata_columns, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
 except:
     from cli_funcs import process_reference_file, process_metadata, add_region, reorganize_metadata_columns, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
-
-# convert string to boolean for argparse
-def str2bool(x):
-    if isinstance(x, bool):
-       return x
-    if x.lower() in ("yes", "y"):
-        return True
-    elif x.lower() in ('no', 'n'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 # entry point function for the CLI
 def flu_cli():
@@ -49,8 +37,10 @@ def flu_cli():
     # argument for file path to folder containing wastewater metadata files
     parser.add_argument("-m", "--wastewater_metadata", type=str, required=True, help="Path to folder containing wastewater metadata files")
 
-    # argument for file path to folders containing wastewater reads
-    parser.add_argument("-r", "--wastewater_reads", type=str, required=True, help="Path to the folders containing the wastewater reads")
+    # mutually exclusive group for wastewater reads type
+    reads_group = parser.add_mutually_exclusive_group(required=True)
+    reads_group.add_argument("-pr", "--paired_reads", type=str, help="Path to folders containing paired FASTQ wastewater reads (R1/R2)")
+    reads_group.add_argument("-sr", "--single_reads", type=str, help="Path to folder containing single FASTA wastewater reads")
 
     # argument for file path to folder containing reference files
     parser.add_argument("-ref", "--reference_files", type=str, required=True, help="Path to folder containing the reference fasta(.gz) and gff(.gz) files")
@@ -116,7 +106,7 @@ def flu_cli():
 
     ## process reference files
     section_start = time.perf_counter()
-    reference_files = process_reference_file(args.reference_files, dirs["reference_dir"])
+    process_reference_file(args.reference_files, dirs["reference_dir"])
     logger.info(f"Reference processing: {time.perf_counter() - section_start:.2f}s")
 
     # process wastewater metadata
@@ -157,11 +147,15 @@ def flu_cli():
         # export processed clinical metadata
         clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
     logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s")
-    
+
     ############################## wastewater ##############################
     # find wastewater reads from pools
     section_start = time.perf_counter()
-    wastewater_reads = find_wastewater_reads(args.wastewater_reads, args.subtype)
+    # determine which reads type was provided
+    if args.single_reads:
+        wastewater_reads = find_wastewater_reads(args.single_reads, args.subtype, single_reads=True)
+    else:
+        wastewater_reads = find_wastewater_reads(args.paired_reads, args.subtype, single_reads=False)
     logger.info(f"Finding wastewater reads: {time.perf_counter() - section_start:.2f}s")
     
     # create file directory for alignment files
@@ -187,17 +181,16 @@ def flu_cli():
     os.makedirs(dirs["wastewater_lists_dir"], exist_ok=True)
 
     # create subfolders for wastewater lists
-    if include_region == True:
+    if include_region:
         dirs["wastewater_list_month"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month")
         os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
         dirs["wastewater_list_region"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month_region")
         os.makedirs(dirs["wastewater_list_region"], exist_ok=True)
     else:
         dirs["wastewater_list_month"] = dirs["wastewater_lists_dir"]
-        os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
 
     # create list of monthly accessions for downstream merge key creation
-    if include_region == True:
+    if include_region:
         logger.info("\nMerging wastewater alignment files by month and public health region")
     else:
         logger.info("\nMerging wastewater alignment files by month")

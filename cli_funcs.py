@@ -474,7 +474,7 @@ def _varmint(args):
     except subprocess.CalledProcessError as e:
         return f"Error processing {merge_name}: {e}"
 
-def varmint(bam_dir: str, reference_dir: str, output_dir:str, max_workers: int = 2) -> None:
+def varmint(bam_dir: str, reference_dir: str, output_dir:str, max_workers: int = 4) -> None:
     # find paths of imported functions
     varmint_path = shutil.which("varmint")
     
@@ -485,23 +485,20 @@ def varmint(bam_dir: str, reference_dir: str, output_dir:str, max_workers: int =
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
     reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
     
-    # Prepare all tasks
+    # prepare tasks
     tasks = []
-    for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):    
+    for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):
         # for all reads, append the arguments to the tasks
         tasks.append((bam_file, reference_fasta, reference_gff, output_dir, varmint_path))
     
-    # Process in parallel
     # print line is now saying number of tasks run with number of max_workers, not number of reads/total per pool
-    print(f"\nRunning varmint on {len(tasks)} BAM files using {max_workers} parallel workers")
+    print(f"Running varmint on {len(tasks)} BAM files from {os.path.basename(bam_dir)} using {max_workers} parallel workers")
     
-    # run 
+    # run multiprocess 
     with Pool(processes=max_workers) as pool:
         results = pool.map(_varmint, tasks)
     
-    # Print results
+    # show any errors
     for result in results:
         if result.startswith("Error"):
             print(result)
-    
-    print()

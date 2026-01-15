@@ -297,7 +297,7 @@ def flu_cli():
         logger.info(f"Clinical alignment: {time.perf_counter() - section_start:.2f}s")
 
         # varmint for clinical
-        logger.info("\nAnnotating coding effects of mutations with varmint")
+        logger.info("\nAnnotating coding effects of mutations with varmint\n")
         section_start = time.perf_counter()
         varmint(dirs["clinical_bam_month"], dirs["reference_dir"], dirs["tsv_clinical"])
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")

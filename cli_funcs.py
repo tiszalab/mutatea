@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import time
+from multiprocessing import Pool
 
 # process reference files
 def process_reference_file(input_folder: str, reference_dir: str) -> list:
@@ -396,7 +397,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> N
             continue
 
 # optional: if include clinical, then align fasta files to reference
-## pipe minimap2 into samtools sort, then index
+# pipe minimap2 into samtools sort, then index
 def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_dir: str, threads: int = 8) -> dict:
 
     # get full paths to minimap2 and samtools
@@ -451,30 +452,56 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
 
 # crm: probably doesn't output to none
 # run varmint on merged bam files
-def varmint(bam_dir: str, reference_dir: str, output_dir:str) -> None:
-    # get full path to varmint
-    varmint_path = shutil.which("varmint")
+# defining helper function
+def _varmint(args):
+    # set the arguments it will be expecting
+    bam_file, reference_fasta, reference_gff, output_dir, varmint_path = args
+    
+    # creating subprocess line
+    # get the base name by removing the extension (can be for either month or month_region)
+    merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
-    # extract reference fasta from reference directory
-    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
-    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
+    # create filename for outputted tsv
+    output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
+
+    # varmint
+    cmd = f"{varmint_path} --bam {bam_file} --ref {reference_fasta} --gff {reference_gff} -o {output_tsv}"
+
+    # run subprocess lines for varmint
+    try:
+        subprocess.run(cmd, shell=True, check=True, capture_output=True)
+        return f"Success: {merge_name}"
+    except subprocess.CalledProcessError as e:
+        return f"Error processing {merge_name}: {e}"
+
+def varmint(bam_dir: str, reference_dir: str, output_dir:str, max_workers: int = 2) -> None:
+    # find paths of imported functions
+    varmint_path = shutil.which("varmint")
     
     if not varmint_path:
         raise RuntimeError("varmint not found in PATH. Please ensure it is installed and accessible.")
     
-    for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):
-        # get the base name by removing the extension (can be for either month or month_region)
-        merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
-
-        # create filename for outputted tsv
-        output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
-
-        # varmint
-        cmd = f"{varmint_path} --bam {bam_file} --ref {reference_fasta} --gff {reference_gff} -o {output_tsv}"
-
-        try:
-            subprocess.run(cmd, shell=True, check=True, capture_output=True)
-            
-        except subprocess.CalledProcessError as e:
-            print(f"Error processing {merge_name}: {e}")
-            continue
+    # load in reference fasta and gff
+    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
+    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
+    
+    # Prepare all tasks
+    tasks = []
+    for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):    
+        # for all reads, append the arguments to the tasks
+        tasks.append((bam_file, reference_fasta, reference_gff, output_dir, varmint_path))
+    
+    # Process in parallel
+    # print line is now saying number of tasks run with number of max_workers, not number of reads/total per pool
+    print(f"\nRunning varmint on {len(tasks)} BAM files using {max_workers} parallel workers")
+    
+    # run 
+    with Pool(processes=max_workers) as pool:
+        results = pool.map(_varmint, tasks)
+    
+    # Print results
+    for result in results:
+        if result.startswith("Error"):
+            print(result)
+    
+    print()

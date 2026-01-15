@@ -305,8 +305,10 @@ def flu_cli():
     # crm: maybe doing too much here
     # delete alignment files if not requested
     if not args.all:
+        section_start = time.perf_counter()
         shutil.rmtree(dirs["alignment_dir"])
         logger.info(f"\nRemoved intermediate alignment files")
+        logger.info(f"Deleting intermediate alignment files: {time.perf_counter() - section_start:.2f}s")
 
     # crm: check iav_serotype and make sure you're ending this correctly
     # print run time

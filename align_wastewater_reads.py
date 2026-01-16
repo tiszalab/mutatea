@@ -1,7 +1,7 @@
 from multiprocessing import Pool
 
 # defining helper function
-def _align_single_sample(args):
+def _align_wastewater_reads(args):
 
     # set the arguments it will be expecting
     read_file, pool_id, reference_fasta, pool_output_dir, minimap2_path, samtools_path, threads = args

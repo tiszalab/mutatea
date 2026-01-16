@@ -62,7 +62,21 @@ def process_metadata(metadata_folder:str) -> pd.DataFrame:
     metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
     if not metadata_files:
         return pd.DataFrame()
-    md_list=[pd.read_excel(file) for file in metadata_files]
+
+    # filter to require specific columns
+    required_columns = ["City", "Sample_ID", "Date"]
+    md_list = []
+
+    for file in metadata_files:
+        df = pd.read_excel(file)
+        # make sure all required columns are there
+        for col in required_columns:
+            if col not in df.columns:
+                raise ValueError(f"File {os.path.basename(file)} is missing required column: {col}")
+        # save the files that passed filter to a list
+        md_list.append(df)
+    
+    # merge into metadata
     metadata=pd.concat(md_list, ignore_index=True)
 
     # add month_year column to metadata
@@ -110,14 +124,25 @@ def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame
 def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
     # find the csv in the clinical_metadata_path
     csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
+    
     # raise error if no CSV files were found
     if not csv_file:
         raise FileNotFoundError(f"No CSV files found in {clinical_file_path}")
     # raise error if multiple CSV files were found
     if len(csv_file)>1:
         raise ValueError(f"Multiple CSV files found in {clinical_file_path}") 
+    
     # read in csv
     clinical_metadata = pd.read_csv(csv_file[0]) 
+
+    # set required columns for metadata csv
+    required_columns = ["Accession", "Collection_Date"]
+
+    # check for required columns
+    for col in required_columns:
+        if col not in clinical_metadata.columns:
+            raise ValueError(f"Clinical csv is missing required column: {col}")
+
     # make sure the collection date column is a datetime object
     clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
     # add month_year column to the clinical metadata
@@ -470,6 +495,17 @@ def _varmint(args):
     # run subprocess lines for varmint
     try:
         subprocess.run(cmd, shell=True, check=True, capture_output=True)
+
+        # confirm that the tsv file has content before saving
+        if os.path.exists(output_tsv):
+            try:
+                df = pd.read_csv(output_tsv, sep="\t")
+                if len(df) == 0:
+                    os.remove(output_tsv)
+                    return f"Warning: {merge_name} produced empty TSV (deleted)"
+            except pd.errors.EmptyDataError:
+                os.remove(output_tsv)
+                return f"Warning: {merge_name} produced empty TSV (deleted)"
         return f"Success: {merge_name}"
     except subprocess.CalledProcessError as e:
         return f"Error processing {merge_name}: {e}"

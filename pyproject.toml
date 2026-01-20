@@ -24,8 +24,9 @@ dependencies = [
     "biopython",
     "openpyxl",
     "polars",
-    "pysam"
-]
+    "pysam",
+    "varmint@git+ssh://git@github.com/tiszalab/varmint.git"
+    ]
 
 [tool.setuptools]
 py-modules = ["flu_cli", "cli_funcs"]

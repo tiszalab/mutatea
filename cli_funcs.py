@@ -9,6 +9,7 @@ import re
 import subprocess
 import time
 from multiprocessing import Pool
+from variant_funcs import met_variant_alleles
 
 # process reference files
 def process_reference_file(input_folder: str, reference_dir: str) -> list:
@@ -286,6 +287,8 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 # create output BAM filename 
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
+                # crm: ONT sequencing splits the cDNA into two ssRNA reads, but these are NOT the same as Illumina paired-end reads
+                # crm: need to change the minimap2 setting being used here
                 # minimap2 | samtools view | samtools sort
                 cmd = f"{minimap2_path} -t {threads} -ax sr {reference_fasta} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"  
             # single reads
@@ -480,9 +483,8 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
 # defining helper function
 def _varmint(args):
     # set the arguments it will be expecting
-    bam_file, reference_fasta, reference_gff, output_dir, varmint_path = args
+    bam_file, reference_fasta, reference_gff, output_dir = args
     
-    # creating subprocess line
     # get the base name by removing the extension (can be for either month or month_region)
     merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
@@ -490,33 +492,28 @@ def _varmint(args):
     output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
 
     # varmint
-    cmd = f"{varmint_path} --bam {bam_file} --ref {reference_fasta} --gff {reference_gff} -o {output_tsv}"
-
-    # run subprocess lines for varmint
     try:
-        subprocess.run(cmd, shell=True, check=True, capture_output=True)
+        df = met_variant_alleles(
+            bam_path = bam_file,
+            fasta_path = reference_fasta,
+            gff_path = reference_gff,
+            min_base_qual = 20,
+            min_depth = 1,
+            min_map_qual =0
+        )
+
+        # write to TSV
+        df.write_csv(output_tsv, seperator="\t")
 
         # confirm that the tsv file has content before saving
-        if os.path.exists(output_tsv):
-            try:
-                df = pd.read_csv(output_tsv, sep="\t")
-                if len(df) == 0:
-                    os.remove(output_tsv)
-                    return f"Warning: {merge_name} produced empty TSV (deleted)"
-            except pd.errors.EmptyDataError:
-                os.remove(output_tsv)
-                return f"Warning: {merge_name} produced empty TSV (deleted)"
+        if len(df) == 0:
+            os.remove(output_tsv)
+            return f"Warning: {merge_name} produced empty TSV (deleted)"
         return f"Success: {merge_name}"
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         return f"Error processing {merge_name}: {e}"
 
 def varmint(bam_dir: str, reference_dir: str, output_dir:str, max_workers: int = 4) -> None:
-    # find paths of imported functions
-    varmint_path = shutil.which("varmint")
-    
-    if not varmint_path:
-        raise RuntimeError("varmint not found in PATH. Please ensure it is installed and accessible.")
-    
     # load in reference fasta and gff
     reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
     reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
@@ -525,7 +522,7 @@ def varmint(bam_dir: str, reference_dir: str, output_dir:str, max_workers: int =
     tasks = []
     for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):
         # for all reads, append the arguments to the tasks
-        tasks.append((bam_file, reference_fasta, reference_gff, output_dir, varmint_path))
+        tasks.append((bam_file, reference_fasta, reference_gff, output_dir))
     
     # print line is now saying number of tasks run with number of max_workers, not number of reads/total per pool
     print(f"Running varmint on {len(tasks)} BAM files from {os.path.basename(bam_dir)} using {max_workers} parallel workers")

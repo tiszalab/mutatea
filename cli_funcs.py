@@ -503,7 +503,7 @@ def _varmint(args):
         )
 
         # write to TSV
-        df.write_csv(output_tsv, seperator="\t")
+        df.write_csv(output_tsv, separator="\t")
 
         # confirm that the tsv file has content before saving
         if len(df) == 0:

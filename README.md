@@ -4,8 +4,9 @@ This is a framework comparing the mutational spectra of virome sequencing data b
 `Inputs`:
 1. metadata
 2. either paired-end short reads or single reads
-    
+## crm: we don't use paired-end short reads, ONT doesn't do that
 ## crm: could be one single read too, e.g. COVID
+## crm: need to add an argument, minimap2 alignment depends on the type of sequencing read being run (can set default as ONT since that's what we use)
 
 3. reference fna and gff
 
@@ -19,33 +20,21 @@ This is a framework comparing the mutational spectra of virome sequencing data b
 Must install the following tools:
 - **minimap2** (for read alignment)
 - **samtools** (for BAM file processing)
-- **varmint** (for annotating coding effects using GFF CDS features)
 
 Install via conda (recommended):
 ```bash
 conda install -c bioconda minimap2 samtools
 ```
 
-Quick install varmint with `pip`
-
-*This will not install dependencies, it will be installed into whichever environment you are in*
-
-```bash
-conda install pip
-cd /path/to/varmint
-pip install .
-```
 
 ## Steps
 1. Clone this github repository
 
 2. Install the Python package and dependencies (pandas, biopython, openpyxl)
 
-3. Install varmint and dependencies
+3. Activate conda environment with required packages
 
-4. Activate conda environment with required packages
-
-## 5. crm: pip install package and run as function
+## 4. crm: pip install package and run as function
 
 ## crm: probably needs more steps
 
@@ -61,6 +50,7 @@ flu_CLI -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_RE
 - `-m`, `--wastewater_metadata`: Path to folder containing the wastewater metadata files (.xlsx)
 - `-ref`, `--reference_files`: Path to folder containing the reference files fna(.gz) and gff(.gz)
 ## crm: why do they have different file formats accepted for each read type? should be the same for both inputs
+## crm: paired reads is not the accurate term
 ### Either
 - `-pr`, `--paired_reads`: Path to folder containing paired wastewater reads (fastq)
 - `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fasta)

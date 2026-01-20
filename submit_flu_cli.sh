@@ -18,14 +18,14 @@ conda activate flu_cli
 # Ensure varmint is in PATH (installed at ~/.local/bin/varmint)
 export PATH="$HOME/.local/bin:$PATH"
 
-# Navigate to flu_cli directory
-cd /data/tisza/analyses/crm/flu_cli
+# Navigate to working directory
+cd /data/tisza/analyses/crm
 
-# Run flu_cli with COVID data
-python flu_cli.py \
+# Run flu_CLI with COVID data
+flu_CLI \
   -s Sars-Cov2 \
   -m /data/tisza/analyses/crm/flu_cli/wastewater_metadata \
-  -sr /data/tisza/analyses/crm/cli_outdated/covid_cli/clinical_input_data \
+  -sr /data/service/Pools/EsViritu/TEPHI_pathogen_reads/Sars-Cov2_filter \
   -ref /data/tisza/analyses/crm/cli_outdated/covid_cli/clinical_input_data \
   -c /data/tisza/analyses/crm/cli_outdated/covid_cli/clinical_input_data \
   -o /data/tisza/analyses/crm/flu_cli

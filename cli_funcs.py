@@ -287,8 +287,6 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 # create output BAM filename 
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
-                # crm: ONT sequencing splits the cDNA into two ssRNA reads, but these are NOT the same as Illumina paired-end reads
-                # crm: need to change the minimap2 setting being used here
                 # minimap2 | samtools view | samtools sort
                 cmd = f"{minimap2_path} -t {threads} -ax sr {reference_fasta} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"  
             # single reads
@@ -305,9 +303,8 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 # create output BAM filename 
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
-                # crm: what type of sequencing are these single reads? map-ont may not be the correct option here
                 # minimap2 | samtools view | samtools sort
-                cmd = f"{minimap2_path} -t {threads} -ax map-ont {reference_fasta} {read_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
+                cmd = f"{minimap2_path} -t {threads} -ax sr {reference_fasta} {read_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
             try:
                 subprocess.run(cmd, shell=True, check=True, capture_output=True)
                                 

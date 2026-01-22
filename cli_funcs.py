@@ -274,14 +274,6 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
 
 # align wastewater reads to reference files
 def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threads: int = 8) -> dict:
-
-    # get full paths to minimap2 and samtools
-    minimap2_path = shutil.which("minimap2")
-    samtools_path = shutil.which("samtools")
-    
-    if not minimap2_path or not samtools_path:
-        raise RuntimeError("minimap2 or samtools not found in PATH. Please ensure they are installed and accessible.")
-
     # loop through the reads_by_pool dictionary and align the reads to the reference
     for pool_id, read_files in reads_by_pool.items():
         pool_total_reads = len(read_files)
@@ -306,7 +298,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threa
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
                 # minimap2 | samtools view | samtools sort
-                cmd = f"{minimap2_path} -t {threads} -ax sr {fna_path} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"  
+                cmd = f"minimap2 -t {threads} -ax sr {fna_path} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"  
             # single reads
             else:
                 # print progress that overwrites the line (with padding to clear previous text)
@@ -322,12 +314,12 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threa
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
                 # minimap2 | samtools view | samtools sort
-                cmd = f"{minimap2_path} -t {threads} -ax sr {reference_fasta} {read_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
+                cmd = f"minimap2 -t {threads} -ax sr {reference_fasta} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
             try:
                 subprocess.run(cmd, shell=True, check=True, capture_output=True)
                                 
                 # index the sorted bam files
-                subprocess.run([samtools_path, "index", output_bam], check=True, capture_output=True)
+                subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
                                 
             except subprocess.CalledProcessError as e:
                 print(f"Error processing {sample_name}: {e}")
@@ -408,12 +400,6 @@ def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_outp
 
 # merge bam files using month and month_region lists
 def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> None:
-    # get full path to samtools
-    samtools_path = shutil.which("samtools")
-    
-    if not samtools_path:
-        raise RuntimeError("samtools not found in PATH. Please ensure it is installed and accessible.")
-    
     for list_file in glob.glob(os.path.join(list_dir, "*.txt")):
         # get the base name by removing the extension (can be for either month or month_region)
         list_name = os.path.basename(list_file).replace("_list.txt", "")
@@ -427,13 +413,13 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> N
 
         # samtools merge | samtools sort
         bam_paths_str = " ".join(bam_paths)
-        cmd = f"{samtools_path} merge -@ {threads} -f - {bam_paths_str} | {samtools_path} sort -@ {threads} -o {output_bam}"
+        cmd = f"samtools merge -@ {threads} -f - {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
 
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
                 
             # index the sorted bam file
-            subprocess.run([samtools_path, "index", output_bam], check=True, capture_output=True)
+            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
             
         except subprocess.CalledProcessError as e:
             print(f"Error processing {list_name}: {e}")
@@ -442,14 +428,6 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> N
 # optional: if include clinical, then align fasta files to reference
 # pipe minimap2 into samtools sort, then index
 def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: str, threads: int = 8) -> dict:
-
-    # get full paths to minimap2 and samtools
-    minimap2_path = shutil.which("minimap2")
-    samtools_path = shutil.which("samtools")
-    
-    if not minimap2_path or not samtools_path:
-        raise RuntimeError("minimap2 or samtools not found in PATH. Please ensure they are installed and accessible.")
-
     # create empty dictionary to catch outputted bam files
     bam_files_month = {}
 
@@ -473,12 +451,12 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: s
         # crm: need to change this, this is not the same sort of input data as wastewater
         # crm: maybe asm 10, need to read into minimap2 documentation
         # minimap2 | samtools view | samtools sort
-        cmd = f"{minimap2_path} -ax sr {fna_path} {fasta_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
+        cmd = f"minimap2 -ax sr {fna_path} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
             
             # index the sorted bam files
-            subprocess.run([samtools_path, "index", output_bam], check=True, capture_output=True)
+            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
             
             # add the bam file to the dictionary
             bam_files_month[month_year] = output_bam
@@ -495,8 +473,6 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: s
 # run varmint on merged bam files
 # defining helper function
 def _varmint(bam_file, fna_path, gff_path, output_dir):
-    #= args
-
     # get the base name by removing the extension (can be for either month or month_region)
     merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
@@ -514,14 +490,13 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
             min_map_qual =0
         )
 
-        # write to TSV
-        df.write_csv(output_tsv, separator="\t")
-
         # confirm that the tsv file has content before saving
         if len(df) == 0:
-            os.remove(output_tsv)
             return f"Warning: {merge_name} produced empty TSV (deleted)"
-        return f"Success: {merge_name}"
+        else:
+            # write to TSV
+            df.write_csv(output_tsv, separator="\t")
+            return f"Success: {merge_name}"
     except Exception as e:
         return f"Error processing {merge_name}: {e}"
 

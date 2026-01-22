@@ -63,7 +63,7 @@ def flu_cli():
     parser.add_argument("-v", "--version", action='store_true', help="View current version")
 
     # argument to keep all output
-    parser.add_argument("-a", "--all", action='store_true', help="Keep all intermediate alignment files created")
+    parser.add_argument("-a", "--all", action='store_true', help="Keep all intermediate files")
 
     # parse arguments
     args = parser.parse_args()
@@ -355,8 +355,9 @@ def flu_cli():
     if not args.all:
         section_start = time.perf_counter()
         shutil.rmtree(dirs["alignment_dir"])
-        logger.info(f"\nRemoved intermediate alignment files")
-        logger.info(f"Deleting intermediate alignment files: {time.perf_counter() - section_start:.2f}s")
+        shutil.rmtree(dirs["reference_dir"])
+        logger.info(f"\nRemoved intermediate files")
+        logger.info(f"Deleting intermediate files: {time.perf_counter() - section_start:.2f}s")
 
     # print run time
     cli_end_time = time.perf_counter()

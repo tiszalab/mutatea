@@ -21,7 +21,7 @@ cd /data/tisza/analyses/crm
 
 # Run flu_CLI with COVID data
 flu_CLI \
-  -s Sars-Cov2 \
+  -s covid \
   -m /data/tisza/analyses/crm/flu_cli/wastewater_metadata \
   -sr /data/service/Pools/EsViritu/TEPHI_pathogen_reads/SARS-COV2_filter_fq \
   -ref /data/tisza/analyses/crm/cli_outdated/covid_cli/clinical_input_data \

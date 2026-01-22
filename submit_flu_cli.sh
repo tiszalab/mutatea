@@ -4,10 +4,8 @@
 #SBATCH --error=covid_flu_cli_%j.out
 #SBATCH --cpus-per-task=32
 #SBATCH --exclusive
-#SBATCH --mem=128G
 
 # exclusive means it will use a whole node for my job, each node has 32 cpus 
-# set a cap limit at 128G
 
 # Initialize conda for bash
 source /mmfs1/apps/miniconda3/etc/profile.d/conda.sh
@@ -25,9 +23,10 @@ cd /data/tisza/analyses/crm
 flu_CLI \
   -s Sars-Cov2 \
   -m /data/tisza/analyses/crm/flu_cli/wastewater_metadata \
-  -sr /data/service/Pools/EsViritu/TEPHI_pathogen_reads/Sars-Cov2_filter \
+  -sr /data/service/Pools/EsViritu/TEPHI_pathogen_reads/SARS-COV2_filter_fq \
   -ref /data/tisza/analyses/crm/cli_outdated/covid_cli/clinical_input_data \
   -c /data/tisza/analyses/crm/cli_outdated/covid_cli/clinical_input_data \
   -o /data/tisza/analyses/crm/flu_cli
+
 
 # specified the output so it doesn't overwrite the existing run

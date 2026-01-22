@@ -12,16 +12,24 @@ from multiprocessing import Pool
 from variant_funcs import met_variant_alleles
 
 # process reference files
-def process_reference_file(input_folder: str, reference_dir: str) -> list:
+def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,str]:
     # make sure reference_dir exists
     os.makedirs(reference_dir, exist_ok=True)
     output_paths=[]
+
+    # set empty strings to catch output
+    fna_path = None
+    gff_path = None
 
     # find all .fna and .gff files in the input folder
     unzipped_files = (
         glob.glob(os.path.join(input_folder, "*.fna"))
         + glob.glob(os.path.join(input_folder, "*.gff"))
     )
+
+    # error for if there are multiple input files
+    if len(unzipped_files) > 2:
+        return f"Error: only one gff(.gz) and one fna(.gz) can exist in the input folder"  
     
     # copy any uncompressed reference files into the reference_dir
     for src_path in unzipped_files:
@@ -39,24 +47,35 @@ def process_reference_file(input_folder: str, reference_dir: str) -> list:
         output_paths.append(out_path)
 
     # find all zipped files
-    gz_files = (
+    zipped_files = (
     glob.glob(os.path.join(input_folder, "*.fna.gz"))
     + glob.glob(os.path.join(input_folder, "*.gff.gz"))
     )
 
+    # error for if there are multiple input files
+    if len(zipped_files) > 2:
+        return f"Error: only one gff(.gz) and one fna(.gz) can exist in the input folder"  
+    
+
     # process zipped reference files
-    for gz_file in gz_files:
-        filename = os.path.basename(gz_file)[:-3]
+    for zipped_file in zipped_files:
+        filename = os.path.basename(zipped_file)[:-3]
         out_path = os.path.join(reference_dir, filename)
 
         # check if the unzipped version already exists in the reference dir
         if os.path.exists(out_path):
             output_paths.append(out_path)
             continue
-        with gzip.open(gz_file, "rb") as f_in, open(out_path, "wb") as f_out:
+        with gzip.open(zipped_file, "rb") as f_in, open(out_path, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
         print(f"Unzipped reference file to: {out_path}")
         output_paths.append(out_path)
+
+    # save paths to unzipped reference files
+    fna_path = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
+    gff_path = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
+
+    return fna_path, gff_path
 
 # load in and merge metadata files
 def process_metadata(metadata_folder:str) -> pd.DataFrame:
@@ -188,23 +207,25 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
 
     # for single reads
     if single_reads:
-        # find all fasta files matching the subtype
+        # find all fasta and fastq files matching the subtype
         fasta_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fasta")))
+        fastq_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fastq")))
+        all_files = fasta_files + fastq_files
         
         if not fasta_files:
-            print(f"No FASTA files found for {subtype} in {pools_base_dir}")
+            print(f"No FASTA or FASTQ files found for {subtype} in {pools_base_dir}")
             return reads_by_pool
         
         # group files by pool_id (extracted from filename)
-        for fasta_file in fasta_files:
-            filename = os.path.basename(fasta_file)
+        for all_file in all_files:
+            filename = os.path.basename(all_file)
             # extract pool_id from filename (e.g., p1965.AGNJK6.Sars-Cov2.fasta -> p1965)
             parts = filename.split(".")
             if len(parts) >= 3 and re.match(r'^p\d{4}$', parts[0]):
                 pool_id = parts[0]
                 if pool_id not in reads_by_pool:
                     reads_by_pool[pool_id] = []
-                reads_by_pool[pool_id].append(fasta_file)
+                reads_by_pool[pool_id].append(all_file)
         
         # print summary
         for pool_id, files in reads_by_pool.items():
@@ -252,7 +273,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
     return reads_by_pool
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, threads: int = 8) -> dict:
+def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threads: int = 8) -> dict:
 
     # get full paths to minimap2 and samtools
     minimap2_path = shutil.which("minimap2")
@@ -260,9 +281,6 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
     
     if not minimap2_path or not samtools_path:
         raise RuntimeError("minimap2 or samtools not found in PATH. Please ensure they are installed and accessible.")
-
-    # extract reference fasta from reference_files
-    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
 
     # loop through the reads_by_pool dictionary and align the reads to the reference
     for pool_id, read_files in reads_by_pool.items():
@@ -288,7 +306,7 @@ def align_wastewater_reads(reads_by_pool: dict, reference_dir: str, pools: str, 
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
                 # minimap2 | samtools view | samtools sort
-                cmd = f"{minimap2_path} -t {threads} -ax sr {reference_fasta} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"  
+                cmd = f"{minimap2_path} -t {threads} -ax sr {fna_path} {r1_file} {r2_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"  
             # single reads
             else:
                 # print progress that overwrites the line (with padding to clear previous text)
@@ -423,7 +441,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> N
 
 # optional: if include clinical, then align fasta files to reference
 # pipe minimap2 into samtools sort, then index
-def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_dir: str, threads: int = 8) -> dict:
+def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: str, threads: int = 8) -> dict:
 
     # get full paths to minimap2 and samtools
     minimap2_path = shutil.which("minimap2")
@@ -431,9 +449,6 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
     
     if not minimap2_path or not samtools_path:
         raise RuntimeError("minimap2 or samtools not found in PATH. Please ensure they are installed and accessible.")
-
-    # extract reference fasta from reference_files
-    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
 
     # create empty dictionary to catch outputted bam files
     bam_files_month = {}
@@ -455,9 +470,10 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
         # print progress that overwrites the line (with padding to clear previous text)
         print(f"\r\033[KAligning clinical reads from {month_year}".ljust(80), end='', flush=True)
             
-
+        # crm: need to change this, this is not the same sort of input data as wastewater
+        # crm: maybe asm 10, need to read into minimap2 documentation
         # minimap2 | samtools view | samtools sort
-        cmd = f"{minimap2_path} -ax sr {reference_fasta} {fasta_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
+        cmd = f"{minimap2_path} -ax sr {fna_path} {fasta_file} | {samtools_path} view -@ {threads} -bS | {samtools_path} sort -@ {threads} -o {output_bam}"
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
             
@@ -478,10 +494,9 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, reference_d
 # crm: probably doesn't output to none
 # run varmint on merged bam files
 # defining helper function
-def _varmint(args):
-    # set the arguments it will be expecting
-    bam_file, reference_fasta, reference_gff, output_dir = args
-    
+def _varmint(bam_file, fna_path, gff_path, output_dir):
+    #= args
+
     # get the base name by removing the extension (can be for either month or month_region)
     merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
@@ -492,8 +507,8 @@ def _varmint(args):
     try:
         df = met_variant_alleles(
             bam_path = bam_file,
-            fasta_path = reference_fasta,
-            gff_path = reference_gff,
+            fasta_path = fna_path,
+            gff_path = gff_path,
             min_base_qual = 20,
             min_depth = 1,
             min_map_qual =0
@@ -510,23 +525,19 @@ def _varmint(args):
     except Exception as e:
         return f"Error processing {merge_name}: {e}"
 
-def varmint(bam_dir: str, reference_dir: str, output_dir:str, max_workers: int = 4) -> None:
-    # load in reference fasta and gff
-    reference_fasta = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
-    reference_gff = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
-    
+def varmint(bam_dir: str, fna_path:str, gff_path:str, output_dir:str, max_workers: int = 4) -> None:    
     # prepare tasks
     tasks = []
     for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):
         # for all reads, append the arguments to the tasks
-        tasks.append((bam_file, reference_fasta, reference_gff, output_dir))
+        tasks.append((bam_file, fna_path, gff_path, output_dir))
     
     # print line is now saying number of tasks run with number of max_workers, not number of reads/total per pool
     print(f"Running varmint on {len(tasks)} BAM files from {os.path.basename(bam_dir)} using {max_workers} parallel workers")
     
     # run multiprocess 
     with Pool(processes=max_workers) as pool:
-        results = pool.map(_varmint, tasks)
+        results = pool.starmap(_varmint, tasks)
     
     # show any errors
     for result in results:

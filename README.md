@@ -5,7 +5,6 @@ This is a framework comparing the mutational spectra of virome sequencing data b
 1. metadata
 2. either paired-end short reads or single reads
 ## crm: we don't use paired-end short reads, ONT doesn't do that
-## crm: could be one single read too, e.g. COVID
 ## crm: need to add an argument, minimap2 alignment depends on the type of sequencing read being run (can set default as ONT since that's what we use)
 
 3. reference fna and gff
@@ -25,7 +24,6 @@ Install via conda (recommended):
 ```bash
 conda install -c bioconda minimap2 samtools
 ```
-
 
 ## Steps
 1. Clone this github repository

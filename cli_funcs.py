@@ -362,7 +362,6 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subty
     return bam_files
 
             
-# crm: do I end as None or dict?
 # use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
 def create_wastewater_bam_lists(bam_files:list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
     # create empty dictionary to store file path lists
@@ -556,7 +555,7 @@ def varmint(bam_files:list, fna_path:str, gff_path:str, output_dir:str, max_work
         tasks.append((bam_file, fna_path, gff_path, output_dir))
     
     # print line is now saying number of tasks run with number of max_workers, not number of reads/total per pool
-    print(f"Running varmint on {len(tasks)} BAM files from {os.path.basename(bam_dir)} using {max_workers} parallel workers")
+    print(f"Running varmint on {len(tasks)} BAM files using {max_workers} parallel workers")
     
     # run multiprocess 
     with Pool(processes=max_workers) as pool:

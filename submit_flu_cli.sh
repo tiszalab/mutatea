@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=covid_flu_cli
-#SBATCH --output=covid_flu_cli_%j.out
-#SBATCH --error=covid_flu_cli_%j.out
+#SBATCH --job-name=covid_cli
+#SBATCH --output=covid_cli_%j.out
+#SBATCH --error=covid_cli_%j.out
 #SBATCH --cpus-per-task=32
 #SBATCH --exclusive
 

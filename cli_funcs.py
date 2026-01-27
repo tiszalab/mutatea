@@ -280,7 +280,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
 
 # align wastewater reads to reference files
 def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subtype:str, threads: int = 8) -> list:
-    # create list to capture ouput BAM file paths
+    # create list to capture output BAM file paths
     bam_files = []
 
     # loop through the reads_by_pool dictionary and align the reads to the reference
@@ -361,9 +361,8 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subty
         print()
     return bam_files
 
-            
 # use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
-def create_wastewater_bam_lists(bam_files:list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
+def create_wastewater_bam_groups(bam_files:list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
     # create empty dictionary to store file path lists
     bam_path_lists = {}
     
@@ -434,7 +433,7 @@ def create_wastewater_bam_lists(bam_files:list, metadata: pd.DataFrame, month_ou
                 with open(out_path, "w") as f:
                     f.write("\n".join(bam_path_list))
     if include_region:
-        return region_output_dir
+        return month_output_dir, region_output_dir
     else:
         return month_output_dir
 
@@ -474,9 +473,9 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
 
 # optional: if include clinical, then align fasta files to reference
 # pipe minimap2 into samtools sort, then index
-def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: str, threads: int = 8) -> dict:
-    # create empty dictionary to catch outputted bam files
-    bam_files_month = {}
+def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: str, threads: int = 8) -> list:
+    # create empty list to catch outputted bam files
+    bam_files = []
 
     # loop through the fasta files in the clinical fasta folder
     for fasta_file in sorted(glob.glob(os.path.join(clinical_fasta_month, "*.fasta"))):
@@ -505,8 +504,8 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: s
             # index the sorted bam files
             subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
             
-            # add the bam file to the dictionary
-            bam_files_month[month_year] = output_bam
+            # add the bam file to the list
+            bam_files.append(output_bam)
        
         # crm: error
         except subprocess.CalledProcessError as e:
@@ -514,7 +513,7 @@ def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: s
             continue
     # clear the progress line after each month
     print()
-    return bam_files_month
+    return bam_files
 
 # crm: probably doesn't output to none
 # run varmint on merged bam files

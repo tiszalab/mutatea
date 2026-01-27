@@ -83,7 +83,7 @@ def flu_cli():
     os.makedirs(dirs["output"], exist_ok=True)
 
     # define logger
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("flu_cli_logger")
     logger.setLevel(logging.DEBUG)
 
     stream_handler = logging.StreamHandler(sys.stdout)
@@ -217,7 +217,10 @@ def flu_cli():
 
     section_start = time.perf_counter()
     try:
-        list_dir = create_wastewater_bam_lists(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
+        if include_region:
+            month_list_dir, region_list_dir = create_wastewater_bam_lists(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
+        else:
+            month_list_dir = create_wastewater_bam_lists(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
     except Exception as e:
         return f"Error creating the lists for merging wastewater alignment files: {e}" 
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")
@@ -233,7 +236,7 @@ def flu_cli():
     # merge wastewater bams by month
     section_start = time.perf_counter()
     try:
-        merged_bams_month = merge_wastewater_bams(list_dir, dirs["merged_bams_month"])
+        merged_bams_month = merge_wastewater_bams(month_list_dir, dirs["merged_bams_month"])
     except Exception as e:
         return f"Error merging wastewater alignment files by month: {e}" 
     logger.info(f"Merging BAMs by month: {time.perf_counter() - section_start:.2f}s")
@@ -246,7 +249,7 @@ def flu_cli():
         # merge wastewater bams by month and region
         section_start = time.perf_counter()
         try:
-            merged_bams_month_region = merge_wastewater_bams(list_dir, dirs["merged_bams_month_region"])
+            merged_bams_month_region = merge_wastewater_bams(region_list_dir, dirs["merged_bams_month_region"])
         except Exception as e:
             return f"Error creating the lists for merging wastewater alignment files by month and region: {e}" 
         logger.info(f"Merging BAMs by month+region: {time.perf_counter() - section_start:.2f}s")
@@ -337,7 +340,7 @@ def flu_cli():
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], fna_path)
+            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], fna_path)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Clinical alignment: {time.perf_counter() - section_start:.2f}s")
@@ -346,7 +349,7 @@ def flu_cli():
         logger.info("\nAnnotating coding effects of mutations with varmint\n")
         section_start = time.perf_counter()
         try:
-            varmint(dirs["clinical_bam_month"], fna_path, gff_path, dirs["tsv_clinical"])
+            varmint(bam_files, fna_path, gff_path, dirs["tsv_clinical"])
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")

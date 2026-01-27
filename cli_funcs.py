@@ -29,7 +29,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
 
     # error for if there are multiple input files
     if len(unzipped_files) > 2:
-        return f"Error: only one gff(.gz) and one fna(.gz) can exist in the input folder"  
+        raise ValueError (f"only one gff(.gz) and one fna(.gz) can exist in the input folder")
     
     # copy any uncompressed reference files into the reference_dir
     for src_path in unzipped_files:
@@ -54,8 +54,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
 
     # error for if there are multiple input files
     if len(zipped_files) > 2:
-        return f"Error: only one gff(.gz) and one fna(.gz) can exist in the input folder"  
-    
+        raise ValueError (f"only one gff(.gz) and one fna(.gz) can exist in the input folder")  
 
     # process zipped reference files
     for zipped_file in zipped_files:
@@ -212,17 +211,24 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
         fastq_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fastq")))
         all_files = fasta_files + fastq_files
         
-        if not fasta_files:
+        if not all_files:
             print(f"No FASTA or FASTQ files found for {subtype} in {pools_base_dir}")
             return reads_by_pool
         
         # group files by pool_id (extracted from filename)
         for all_file in all_files:
             filename = os.path.basename(all_file)
-            # extract pool_id from filename (e.g., p1965.AGNJK6.Sars-Cov2.fasta -> p1965)
+
+            # crm: this could be an issue if they have these single reads in folders by poolID (not in the name of the fastq)
+            # extract pool_id from filename
             parts = filename.split(".")
-            if len(parts) >= 3 and re.match(r'^p\d{4}$', parts[0]):
-                pool_id = parts[0]
+            pool_id = None
+            for part in parts:
+                if re.match(r'^p\d{4}$', part):
+                    pool_id = part
+                    break
+            # crm: only processes files that have a valid pool_ID
+            if pool_id:            
                 if pool_id not in reads_by_pool:
                     reads_by_pool[pool_id] = []
                 reads_by_pool[pool_id].append(all_file)
@@ -273,7 +279,10 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
     return reads_by_pool
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threads: int = 8) -> dict:
+def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subtype:str, threads: int = 8) -> list:
+    # create list to capture ouput BAM file paths
+    bam_files = []
+
     # loop through the reads_by_pool dictionary and align the reads to the reference
     for pool_id, read_files in reads_by_pool.items():
         pool_total_reads = len(read_files)
@@ -292,10 +301,18 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threa
                 print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
                     
                 # get sample name from the filename of R1
-                sample_name= os.path.basename(r1_file).split(".")[0]
+                filename = os.path.basename(r1_file)
+                parts = filename.split(".")  
+
+                # crm: only works if the first item is the sampleid, need to confirm naming
+                # take sampleID         
+                sample_name = parts[0]
 
                 # create output BAM filename 
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+
+                # add to list of BAM files
+                bam_files.append(output_bam)
 
                 # minimap2 | samtools view | samtools sort
                 cmd = f"minimap2 -t {threads} -ax sr {fna_path} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"  
@@ -303,18 +320,33 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threa
             else:
                 # print progress that overwrites the line (with padding to clear previous text)
                 print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
-                            
-                filename = os.path.basename(read_file)
 
-                # extract sample_id from filename (e.g., p1965.AGNJK6.Sars-Cov2.fasta -> AGNJK6)
+                # extract sample_name from filename   
+                filename = os.path.basename(read_file)
                 parts = filename.split(".")
-                sample_name = parts[1] if len(parts) >= 3 else parts[0]
+
+                # remove file extension
+                parts = parts[:-1]
+
+                # remove pool ID if it's there
+                if pool_id in parts:
+                    parts.remove(pool_id)
+
+                # remove subtype if it's there
+                if subtype:
+                    parts = [p for p in parts if p.lower() != subtype.lower()]
+                
+                # get sample name
+                sample_name = ".".join(parts) if parts else unknown
 
                 # create output BAM filename 
                 output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
+                # add to list of BAM files
+                bam_files.append(output_bam)
+
                 # minimap2 | samtools view | samtools sort
-                cmd = f"minimap2 -t {threads} -ax sr {reference_fasta} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+                cmd = f"minimap2 -t {threads} -ax sr {fna_path} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
             try:
                 subprocess.run(cmd, shell=True, check=True, capture_output=True)
                                 
@@ -327,12 +359,17 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, threa
                     
         # Print newline and timing after pool completes
         print()
+    return bam_files
+
             
 # crm: do I end as None or dict?
 # use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
-def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> None:
+def create_wastewater_bam_lists(bam_files:list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
     # create empty dictionary to store file path lists
     bam_path_lists = {}
+    
+    # get bam directory from the inputted bam_files
+    bam_dir = os.path.dirname(os.path.dirname(bam_files[0]))
     
     # month: loop through the metadata and create bam path lists
     for month, group in metadata.groupby("Month_Year"):
@@ -397,9 +434,16 @@ def create_wastewater_bam_lists(metadata: pd.DataFrame, bam_dir: str, month_outp
                 out_path = os.path.join(region_output_dir, f"{month_region}_list.txt")
                 with open(out_path, "w") as f:
                     f.write("\n".join(bam_path_list))
+    if include_region:
+        return region_output_dir
+    else:
+        return month_output_dir
 
 # merge bam files using month and month_region lists
-def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> None:
+def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> list:
+    # create empty list to catch output
+    merged_bams = []
+
     for list_file in glob.glob(os.path.join(list_dir, "*.txt")):
         # get the base name by removing the extension (can be for either month or month_region)
         list_name = os.path.basename(list_file).replace("_list.txt", "")
@@ -420,10 +464,14 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> N
                 
             # index the sorted bam file
             subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+
+            # add to list of created bams
+            merged_bams.append(output_bam)
             
         except subprocess.CalledProcessError as e:
             print(f"Error processing {list_name}: {e}")
             continue
+    return merged_bams
 
 # optional: if include clinical, then align fasta files to reference
 # pipe minimap2 into samtools sort, then index
@@ -500,10 +548,10 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
     except Exception as e:
         return f"Error processing {merge_name}: {e}"
 
-def varmint(bam_dir: str, fna_path:str, gff_path:str, output_dir:str, max_workers: int = 4) -> None:    
+def varmint(bam_files:list, fna_path:str, gff_path:str, output_dir:str, max_workers: int = 4) -> None:    
     # prepare tasks
     tasks = []
-    for bam_file in glob.glob(os.path.join(bam_dir, "*.sort.bam")):
+    for bam_file in bam_files:
         # for all reads, append the arguments to the tasks
         tasks.append((bam_file, fna_path, gff_path, output_dir))
     

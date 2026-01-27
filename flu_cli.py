@@ -103,14 +103,14 @@ def flu_cli():
     os.makedirs(dirs["reference_dir"], exist_ok=True)
 
     # crm: being too specific about spacing, I know my character flaws
-    print("")
+    logger.info("")
 
     ## process reference files
     section_start = time.perf_counter()
     try:
         fna_path, gff_path = process_reference_file(args.reference_files, dirs["reference_dir"])
     except Exception as e:
-        return f"Error processing the reference files"  
+        return f"Error processing the reference files: {e}"  
     logger.info(f"Reference processing: {time.perf_counter() - section_start:.2f}s\n")
 
     # process wastewater metadata
@@ -118,7 +118,7 @@ def flu_cli():
     try:
         metadata = process_metadata(args.wastewater_metadata)
     except Exception as e:
-        return f"Error processing metadata"
+        return f"Error processing metadata: {e}"
     
     if metadata.empty:
         logger.error("No metadata files found in the specified directory.")
@@ -130,7 +130,7 @@ def flu_cli():
             # add region column to metadata
             metadata = add_region(metadata)
         except Exception as e:
-            return f"Error adding region to the metadata" 
+            return f"Error adding region to the metadata: {e}" 
 
     # optionally give time range of the wastewater samples
     if args.time_range:
@@ -146,7 +146,7 @@ def flu_cli():
     try:
         metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_wastewater_combined.csv"), index=False)
     except Exception as e:
-        return f"Error exporting the processed metadata" 
+        return f"Error exporting the processed metadata: {e}" 
 
     # load in clinical metadata and fasta
     if include_clinical:
@@ -156,7 +156,7 @@ def flu_cli():
             # export processed clinical metadata
             clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
         except Exception as e:
-            return f"Error loading in the clinical files" 
+            return f"Error loading in the clinical files: {e}" 
     logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s\n")
 
     ############################## wastewater ##############################
@@ -167,12 +167,12 @@ def flu_cli():
         try:
             wastewater_reads = find_wastewater_reads(args.single_reads, args.subtype, single_reads=True)
         except Exception as e:
-            return f"Error finding the wastewater reads" 
+            return f"Error finding the wastewater reads: {e}" 
     else:
         try:
             wastewater_reads = find_wastewater_reads(args.paired_reads, args.subtype, single_reads=False)
         except Exception as e:
-            return f"Error finding the wastewater reads" 
+            return f"Error finding the wastewater reads: {e}" 
     logger.info(f"Finding wastewater reads: {time.perf_counter() - section_start:.2f}s")
     
     # create file directory for alignment files
@@ -191,9 +191,9 @@ def flu_cli():
     logger.info("\nAligning wastewater reads to given reference genome\n")
     section_start = time.perf_counter()
     try:
-        align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"])
+        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], subtype = args.subtype)
     except Exception as e:
-        return f"Error aligning the wastewater reads" 
+        return f"Error aligning the wastewater reads: {e}" 
     logger.info(f"Wastewater alignment: {time.perf_counter() - section_start:.2f}s")
 
     # create directory for wastewater lists
@@ -217,9 +217,9 @@ def flu_cli():
 
     section_start = time.perf_counter()
     try:
-        create_wastewater_bam_lists(metadata, dirs["pools"], dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
+        list_dir = create_wastewater_bam_lists(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
     except Exception as e:
-        return f"Error creating the lists for merging wastewater alignment files" 
+        return f"Error creating the lists for merging wastewater alignment files: {e}" 
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")
 
     # wastewater merged bams
@@ -233,9 +233,9 @@ def flu_cli():
     # merge wastewater bams by month
     section_start = time.perf_counter()
     try:
-        merge_wastewater_bams(dirs["wastewater_list_month"], dirs["merged_bams_month"])
+        merged_bams_month = merge_wastewater_bams(list_dir, dirs["merged_bams_month"])
     except Exception as e:
-        return f"Error merging wastewater alignment files by month" 
+        return f"Error merging wastewater alignment files by month: {e}" 
     logger.info(f"Merging BAMs by month: {time.perf_counter() - section_start:.2f}s")
 
     # create subfolder: wastewater bams merged by month and region
@@ -246,9 +246,9 @@ def flu_cli():
         # merge wastewater bams by month and region
         section_start = time.perf_counter()
         try:
-            merge_wastewater_bams(dirs["wastewater_list_region"], dirs["merged_bams_month_region"])
+            merged_bams_month_region = merge_wastewater_bams(list_dir, dirs["merged_bams_month_region"])
         except Exception as e:
-            return f"Error creating the lists for merging wastewater alignment files by month and region" 
+            return f"Error creating the lists for merging wastewater alignment files by month and region: {e}" 
         logger.info(f"Merging BAMs by month+region: {time.perf_counter() - section_start:.2f}s")
     
     # create tsv_output folder to later catch tsv files
@@ -285,15 +285,15 @@ def flu_cli():
 
     if include_region:
         try:
-            varmint(dirs["merged_bams_month"], fna_path, gff_path, dirs["tsv_month"])
-            varmint(dirs["merged_bams_month_region"], fna_path, gff_path, dirs["tsv_month_region"])
+            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_month"])
+            varmint(merged_bams_month_region, fna_path, gff_path, dirs["tsv_month_region"])
         except Exception as e:
-            return f"Error running varmint on alignment files" 
+            return f"Error running varmint on alignment files: {e}" 
     else:
         try:
-            varmint(dirs["merged_bams_month"], fna_path, gff_path, dirs["tsv_output"])
+            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_output"])
         except Exception as e:
-            return f"Error running varmint on alignment files" 
+            return f"Error running varmint on alignment files: {e}" 
     
     logger.info(f"Varmint (wastewater): {time.perf_counter() - section_start:.2f}s")
 
@@ -313,7 +313,7 @@ def flu_cli():
         try:
             create_monthly_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
         except Exception as e:
-            return f"Error creating monthly lists of accessions for clinical data" 
+            return f"Error creating monthly lists of accessions for clinical data: {e}" 
 
         # crm: want to later remove these clinical fasta files, want to use tempfile to instead save them to a temp dir
         # create folder for the clinical fastas split by month
@@ -326,7 +326,7 @@ def flu_cli():
         try:
             split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
         except Exception as e:
-            return f"Error splitting clinical FASTA by month" 
+            return f"Error splitting clinical FASTA by month: {e}" 
         logger.info(f"Splitting clinical FASTA: {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the clinical bam files that were merged by month
@@ -339,7 +339,7 @@ def flu_cli():
         try:
             align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], fna_path)
         except Exception as e:
-            return f"Error aligning the clinical reads"  
+            return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Clinical alignment: {time.perf_counter() - section_start:.2f}s")
 
         # varmint for clinical
@@ -348,7 +348,7 @@ def flu_cli():
         try:
             varmint(dirs["clinical_bam_month"], fna_path, gff_path, dirs["tsv_clinical"])
         except Exception as e:
-            return f"Error running varmint on the alignment files"  
+            return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")
 
     # delete alignment files if not requested

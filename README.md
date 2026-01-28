@@ -51,12 +51,13 @@ flu_CLI -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_RE
 ## crm: paired reads is not the accurate term
 ### Either
 - `-pr`, `--paired_reads`: Path to folder containing paired wastewater reads (fastq)
-- `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fasta)
+- `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fastq)
 
 # Optional arguments
 - `-o`, `--output_dir`: Path to desired output directory 
 - `-c`, `--clinical_files`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
 - `a`, `--all`: Keep all intermediate alignment files (otherwise deleted)
+- `f`, `--fast`: Override default for parallel workers, will run with all available cpus
 - `-my`, `--monthly_only`: Only group wastewater samples by month (overrides default of being grouped by both month and month_region)
 - `-t`, `--time_range`: Print time range of wastewater samples
 - `-v`, `--version`: Print the current version of ????

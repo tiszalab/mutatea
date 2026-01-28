@@ -278,91 +278,113 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
 
     return reads_by_pool
 
-# align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subtype:str, threads: int = 8) -> list:
+# crm: helper function to align wastewater reads to reference files
+def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, subtype: str, threads: int) -> list:
     # create list to capture output BAM file paths
     bam_files = []
 
-    # loop through the reads_by_pool dictionary and align the reads to the reference
-    for pool_id, read_files in reads_by_pool.items():
-        pool_total_reads = len(read_files)
+    # create output directory for each pool
+    pool_output_dir = os.path.join(pools, pool_id)
+    os.makedirs(pool_output_dir, exist_ok=True)
+    
+    pool_total_reads = len(read_files)
+    
+    # align and sort wastewater reads
+    for idx, read_file in enumerate(read_files, start = 1):
+        # paired reads
+        if isinstance(read_file, tuple):
+            r1_file, r2_file = read_file
 
-        # create output directory for each pool
-        pool_output_dir = os.path.join(pools, pool_id)
-        os.makedirs(pool_output_dir, exist_ok=True)
-        
-        # align and sort wastewater reads
-        for idx, read_file in enumerate(read_files, start = 1):
-            # paired reads
-            if isinstance(read_file, tuple):
-                r1_file, r2_file = read_file
-
-                # print progress that overwrites the line (with padding to clear previous text)
-                print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
-                    
-                # get sample name from the filename of R1
-                filename = os.path.basename(r1_file)
-                parts = filename.split(".")  
-
-                # crm: only works if the first item is the sampleid, need to confirm naming
-                # take sampleID         
-                sample_name = parts[0]
-
-                # create output BAM filename 
-                output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
-
-                # add to list of BAM files
-                bam_files.append(output_bam)
-
-                # minimap2 | samtools view | samtools sort
-                cmd = f"minimap2 -t {threads} -ax sr {fna_path} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"  
-            # single reads
-            else:
-                # print progress that overwrites the line (with padding to clear previous text)
-                print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
-
-                # extract sample_name from filename   
-                filename = os.path.basename(read_file)
-                parts = filename.split(".")
-
-                # remove file extension
-                parts = parts[:-1]
-
-                # remove pool ID if it's there
-                if pool_id in parts:
-                    parts.remove(pool_id)
-
-                # remove subtype if it's there
-                if subtype:
-                    parts = [p for p in parts if p.lower() != subtype.lower()]
+            # print progress that overwrites the line (with padding to clear previous text)
+            print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
                 
-                # get sample name
-                sample_name = ".".join(parts) if parts else unknown
+            # get sample name from the filename of R1
+            filename = os.path.basename(r1_file)
+            parts = filename.split(".")  
 
-                # create output BAM filename 
-                output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+            # crm: only works if the first item is the sampleid, need to confirm naming
+            # take sampleID         
+            sample_name = parts[0]
 
-                # add to list of BAM files
-                bam_files.append(output_bam)
+            # create output BAM filename 
+            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
-                # minimap2 | samtools view | samtools sort
-                cmd = f"minimap2 -t {threads} -ax sr {fna_path} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
-            try:
-                subprocess.run(cmd, shell=True, check=True, capture_output=True)
-                                
-                # index the sorted bam files
-                subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
-                                
-            except subprocess.CalledProcessError as e:
-                print(f"Error processing {sample_name}: {e}")
-                continue
-                    
-        # Print newline and timing after pool completes
-        print()
+            # minimap2 | samtools view | samtools sort
+            cmd = f"minimap2 -t {threads} -ax sr {fna_path} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"  
+        # single reads
+        else:
+            # print progress that overwrites the line (with padding to clear previous text)
+            print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
+
+            # extract sample_name from filename   
+            filename = os.path.basename(read_file)
+            parts = filename.split(".")
+
+            # remove file extension
+            parts = parts[:-1]
+
+            # remove pool ID if it's there
+            if pool_id in parts:
+                parts.remove(pool_id)
+
+            # remove subtype if it's there
+            if subtype:
+                parts = [p for p in parts if p.lower() != subtype.lower()]
+            
+            # get sample name
+            sample_name = ".".join(parts) if parts else "unknown"
+
+            # create output BAM filename 
+            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+
+            # minimap2 | samtools view | samtools sort
+            cmd = f"minimap2 -t {threads} -ax sr {fna_path} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+        
+        try:
+            subprocess.run(cmd, shell=True, check=True, capture_output=True)
+                                    
+            # index the sorted bam files
+            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+            
+            # add to list of BAM files
+            bam_files.append(output_bam)
+                                    
+        except subprocess.CalledProcessError as e:
+            print(f"Error processing {sample_name}: {e}")
+            continue
+                
+    # Print newline after pool completes
+    print()
+    return bam_files
+
+# align wastewater reads to reference files
+def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subtype: str, threads: int = 8, workers: int = 4) -> list:
+    # create list to capture output
+    bam_files = []
+    
+    if not reads_by_pool:
+        return bam_files
+
+    # prepare tasks
+    tasks = []
+    for pool_id, read_files in reads_by_pool.items():
+        tasks.append((pool_id, read_files, fna_path, pools, subtype, threads))
+
+    # crm: print line is now saying number of tasks run with number of workers
+    print(f"Aligning reads from {len(tasks)} pools using {workers} parallel workers")
+
+    # run multiprocess
+    with Pool(processes=workers) as pool:
+        results = pool.starmap(_align_wastewater_reads, tasks)
+    
+    # combine BAM files by pool
+    for pool_bam_files in results:
+        bam_files.extend(pool_bam_files)
+    
     return bam_files
 
 # use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
-def create_wastewater_bam_groups(bam_files:list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
+def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
     # create empty dictionary to store file path lists
     bam_path_lists = {}
     
@@ -472,47 +494,72 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
     return merged_bams
 
 # optional: if include clinical, then align fasta files to reference
-# pipe minimap2 into samtools sort, then index
-def align_clinical_reads(clinical_fasta_month: str, output_dir: str, fna_path: str, threads: int = 8) -> list:
-    # create empty list to catch outputted bam files
-    bam_files = []
+# crm: helper function to align clinical reads to reference files
+def _align_clinical_reads(fasta_file, fna_path, output_dir, threads):
+    # get the base name by removing the extension (can be for either month or month_region)
+    month_year = os.path.basename(fasta_file).replace(".fasta", "")
 
-    # loop through the fasta files in the clinical fasta folder
-    for fasta_file in sorted(glob.glob(os.path.join(clinical_fasta_month, "*.fasta"))):
+    # catch output bam
+    output_bam = os.path.join(output_dir, f"{month_year}.sort.bam")
 
-        # get the base name by removing the extension (can be for either month or month_region)
-        month_year = os.path.basename(fasta_file).replace(".fasta", "")
-
-        # crm ?
-        output_bam = os.path.join(output_dir, f"{month_year}.sort.bam")
-
-        # crm: this might actually kill the script if the output already exists, is this skip necessary?
-        # crm: need to add in a skip if the BAM is already created
-        if os.path.exists(output_bam):
-            continue
+    # crm: need to add in a skip if the BAM is already created
+    if os.path.exists(output_bam):
+        return output_bam
         
-        # print progress that overwrites the line (with padding to clear previous text)
-        print(f"\r\033[KAligning clinical reads from {month_year}".ljust(80), end='', flush=True)
+    # print progress that overwrites the line (with padding to clear previous text)
+    print(f"\r\033[KAligning clinical reads from {month_year}".ljust(80), end='', flush=True)
             
+    try:
         # crm: need to change this, this is not the same sort of input data as wastewater
         # crm: maybe asm 10, need to read into minimap2 documentation
         # minimap2 | samtools view | samtools sort
         cmd = f"minimap2 -ax sr {fna_path} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
-        try:
-            subprocess.run(cmd, shell=True, check=True, capture_output=True)
+        subprocess.run(cmd, shell=True, check=True, capture_output=True)
             
-            # index the sorted bam files
-            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
+        # index the sorted bam files
+        subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
             
-            # add the bam file to the list
-            bam_files.append(output_bam)
+        return output_bam
        
-        # crm: error
-        except subprocess.CalledProcessError as e:
-            print(f"Error processing {month_year}: {e}")
-            continue
+    # error
+    except subprocess.CalledProcessError as e:
+        print(f"Error processing {month_year}: {e}")
+        return None
+
     # clear the progress line after each month
     print()
+
+# align clinical reads to reference files
+def align_clinical_reads(clinical_fasta_month:str, output_dir: str, fna_path:str, threads: int = 8, workers: int = 4) -> list:
+    # create empty list to catch outputted bam files
+    bam_files = []
+
+    # find fasta files in the clinical fasta folder
+    fasta_files = sorted(glob.glob(os.path.join(clinical_fasta_month, "*.fasta")))
+
+    # prepare tasks
+    tasks = []
+    for fasta_file in fasta_files:
+        # for all clinical reads, append the arguments to the tasks
+        tasks.append((fasta_file, fna_path, output_dir, threads))
+
+    # print line is now saying number of tasks run with number of workers
+    print(f"Aligning {len(tasks)} clinical fasta files using {workers} parallel workers")
+
+    # run multiprocess 
+    with Pool(processes=workers) as pool:
+        results = pool.starmap(_align_clinical_reads, tasks)
+
+    # combine BAM files
+    for result in results:
+        if result is not None:
+            bam_files.append(results)
+    
+    # show any errors
+    for result in results:
+        if result.startswith("Error"):
+            print(result)
+
     return bam_files
 
 # crm: probably doesn't output to none
@@ -546,18 +593,18 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
     except Exception as e:
         return f"Error processing {merge_name}: {e}"
 
-def varmint(bam_files:list, fna_path:str, gff_path:str, output_dir:str, max_workers: int = 4) -> None:    
+def varmint(bam_files:list, fna_path:str, gff_path:str, output_dir:str, workers: int = 4) -> None:    
     # prepare tasks
     tasks = []
     for bam_file in bam_files:
         # for all reads, append the arguments to the tasks
         tasks.append((bam_file, fna_path, gff_path, output_dir))
     
-    # print line is now saying number of tasks run with number of max_workers, not number of reads/total per pool
-    print(f"Running varmint on {len(tasks)} BAM files using {max_workers} parallel workers")
+    # print line is now saying number of tasks run with number of workers, not number of reads/total per pool
+    print(f"Running varmint on {len(tasks)} BAM files using {workers} parallel workers")
     
     # run multiprocess 
-    with Pool(processes=max_workers) as pool:
+    with Pool(processes=workers) as pool:
         results = pool.starmap(_varmint, tasks)
     
     # show any errors

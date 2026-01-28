@@ -12,12 +12,15 @@ from pathlib import Path
 import time
 from datetime import timedelta
 
+# CPU detection for fast mode
+cpu_count = os.cpu_count() or 8
+
 # load in functions from cli funcs
 # crm: make sure to update names of functions being imported as they change in cli_funcs.py
 try:
-    from .cli_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
+    from .cli_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
 except:
-    from cli_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_lists, merge_wastewater_bams, align_clinical_reads, varmint
+    from cli_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
 
 # entry point function for the CLI
 def flu_cli():
@@ -64,6 +67,9 @@ def flu_cli():
 
     # argument to keep all output
     parser.add_argument("-a", "--all", action='store_true', help="Keep all intermediate files")
+
+    # argument to override default parallel workers
+    parser.add_argument("-f", "--fast", action='store_true', help="Override default number of parallel workers to run with all available cpus")
 
     # parse arguments
     args = parser.parse_args()
@@ -191,7 +197,7 @@ def flu_cli():
     logger.info("\nAligning wastewater reads to given reference genome\n")
     section_start = time.perf_counter()
     try:
-        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], subtype = args.subtype)
+        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], subtype=args.subtype, workers=cpu_count if args.fast else 4)
     except Exception as e:
         return f"Error aligning the wastewater reads: {e}" 
     logger.info(f"Wastewater alignment: {time.perf_counter() - section_start:.2f}s")
@@ -218,9 +224,9 @@ def flu_cli():
     section_start = time.perf_counter()
     try:
         if include_region:
-            month_list_dir, region_list_dir = create_wastewater_bam_lists(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
+            month_list_dir, region_list_dir = create_wastewater_bam_groups(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
         else:
-            month_list_dir = create_wastewater_bam_lists(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
+            month_list_dir = create_wastewater_bam_groups(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
     except Exception as e:
         return f"Error creating the lists for merging wastewater alignment files: {e}" 
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")
@@ -288,13 +294,13 @@ def flu_cli():
 
     if include_region:
         try:
-            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_month"])
-            varmint(merged_bams_month_region, fna_path, gff_path, dirs["tsv_month_region"])
+            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_month"], max_workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_month_region, fna_path, gff_path, dirs["tsv_month_region"], max_workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint on alignment files: {e}" 
     else:
         try:
-            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_output"])
+            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_output"], max_workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint on alignment files: {e}" 
     
@@ -340,7 +346,7 @@ def flu_cli():
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], fna_path)
+            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], dirs["clinical_bam_month"], fna_path, workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Clinical alignment: {time.perf_counter() - section_start:.2f}s")
@@ -349,7 +355,7 @@ def flu_cli():
         logger.info("\nAnnotating coding effects of mutations with varmint\n")
         section_start = time.perf_counter()
         try:
-            varmint(bam_files, fna_path, gff_path, dirs["tsv_clinical"])
+            varmint(bam_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")

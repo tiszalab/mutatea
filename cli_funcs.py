@@ -107,7 +107,7 @@ def process_metadata(metadata_folder:str) -> pd.DataFrame:
         metadata["SiteCode"] = pd.NA
     return metadata
 
-# optional: add public health region column to merged metadata
+# if include region: add public health region column to merged metadata
 def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame:
     # added filter for if there is not yet a city_region dictionary
     if city_region is None:
@@ -139,7 +139,7 @@ def add_region(metadata: pd.DataFrame, city_region: dict = None) -> pd.DataFrame
         print("All cities in the metadata were successfully assigned to public health regions!\n")
     return metadata
 
-# load in clinical metadata and fasta
+# if include clinical: load in clinical metadata and fasta
 def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
     # find the csv in the clinical_metadata_path
     csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
@@ -183,7 +183,7 @@ def create_monthly_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
         out_path = Path(output_dir) / f"{month}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
 
-# split clinical FASTA file by monthly lists
+# if include clinical: split clinical FASTA file by monthly lists
 def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, output_dir: str) -> None:
     # load clinical fasta as dictionary
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
@@ -227,18 +227,18 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
                 if re.match(r'^p\d{4}$', part):
                     pool_id = part
                     break
-            # crm: only processes files that have a valid pool_ID
+            # crm: only processes files that have a valid pool_id
             if pool_id:            
                 if pool_id not in reads_by_pool:
                     reads_by_pool[pool_id] = []
                 reads_by_pool[pool_id].append(all_file)
         
         # print summary
-        for pool_id, files in reads_by_pool.items():
-            if len(files) == 1:
-                print(f"Pool {pool_id} contained {len(files)} {subtype} reads")
-            else:
-                print(f"Pool {pool_id} contained {len(files)} {subtype} reads")
+        # crm set to comment: for pool_id, files in reads_by_pool.items():
+            # crm set to comment: if len(files) == 1:
+                # crm set to comment: print(f"Pool {pool_id} contained {len(files)} {subtype} reads")
+            # crm set to comment: else:
+                # crm set to comment: print(f"Pool {pool_id} contained {len(files)} {subtype} reads")
     # for paired reads            
     else:
         for pool_dir in sorted(glob.glob(os.path.join(pools_base_dir, "*"))):
@@ -268,17 +268,17 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
             if read_pairs:
                 reads_by_pool[pool_id] = read_pairs
                 # prints how many read pairs were found for each pool
-                if len(read_pairs)==1:
-                    print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pair")
-                else:
-                    print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pairs")
+                # crm set to comment: if len(read_pairs)==1:
+                    # crm set to comment: print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pair")
+                # crm set to comment: else:
+                    # crm set to comment: print(f"Pool {pool_id} contained {len(read_pairs)} {subtype} read pairs")
         # let user know if no reads were found for that subtype in that pool
         if not reads_by_pool:
             print(f"No R1 files were found for {subtype} in {pool_id}")
 
     return reads_by_pool
 
-# crm: helper function to align wastewater reads to reference files
+# helper function for later alignment of wastewater reads
 def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, subtype: str, threads: int) -> list:
     # create list to capture output BAM file paths
     bam_files = []
@@ -287,8 +287,9 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
     pool_output_dir = os.path.join(pools, pool_id)
     os.makedirs(pool_output_dir, exist_ok=True)
     
-    pool_total_reads = len(read_files)
+    # crm set to comment: pool_total_reads = len(read_files)
     
+    # crm: was previously for idx, read_file
     # align and sort wastewater reads
     for idx, read_file in enumerate(read_files, start = 1):
         # paired reads
@@ -296,14 +297,14 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             r1_file, r2_file = read_file
 
             # print progress that overwrites the line (with padding to clear previous text)
-            print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
+            # crm set to comment: print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
                 
             # get sample name from the filename of R1
             filename = os.path.basename(r1_file)
             parts = filename.split(".")  
 
             # crm: only works if the first item is the sampleid, need to confirm naming
-            # take sampleID         
+            # get sample_ID         
             sample_name = parts[0]
 
             # create output BAM filename 
@@ -314,7 +315,7 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
         # single reads
         else:
             # print progress that overwrites the line (with padding to clear previous text)
-            print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
+            # crm set to comment: print(f"\r\033[KAligning {idx}/{pool_total_reads} reads from pool {pool_id}".ljust(80), end='', flush=True)
 
             # extract sample_name from filename   
             filename = os.path.basename(read_file)
@@ -353,8 +354,8 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             print(f"Error processing {sample_name}: {e}")
             continue
                 
-    # Print newline after pool completes
-    print()
+    # print newline after pool completes
+    # crm set to comment: print()
     return bam_files
 
 # align wastewater reads to reference files
@@ -371,7 +372,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subty
         tasks.append((pool_id, read_files, fna_path, pools, subtype, threads))
 
     # crm: print line is now saying number of tasks run with number of workers
-    print(f"Aligning reads from {len(tasks)} pools using {workers} parallel workers")
+    print(f"Aligning wastewater reads from {len(tasks)} pools using {workers} parallel workers")
 
     # run multiprocess
     with Pool(processes=workers) as pool:
@@ -383,7 +384,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subty
     
     return bam_files
 
-# use wastewater metadata to create lists of bam filepaths for each month (optionally: and region)
+# use wastewater metadata to group bam files by month (option for if including region)
 def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
     # create empty dictionary to store file path lists
     bam_path_lists = {}
@@ -459,7 +460,7 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     else:
         return month_output_dir
 
-# merge bam files using month and month_region lists
+# merge bam files by month and month_region
 def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> list:
     # create empty list to catch output
     merged_bams = []
@@ -493,8 +494,8 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
             continue
     return merged_bams
 
-# optional: if include clinical, then align fasta files to reference
-# crm: helper function to align clinical reads to reference files
+## if include clinical: align clinical reads to reference
+# helper function for later alignment of clinical reads
 def _align_clinical_reads(fasta_file, fna_path, output_dir, threads):
     # get the base name by removing the extension (can be for either month or month_region)
     month_year = os.path.basename(fasta_file).replace(".fasta", "")
@@ -506,9 +507,6 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads):
     if os.path.exists(output_bam):
         return output_bam
         
-    # print progress that overwrites the line (with padding to clear previous text)
-    print(f"\r\033[KAligning clinical reads from {month_year}".ljust(80), end='', flush=True)
-            
     try:
         # crm: need to change this, this is not the same sort of input data as wastewater
         # crm: maybe asm 10, need to read into minimap2 documentation
@@ -526,11 +524,8 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads):
         print(f"Error processing {month_year}: {e}")
         return None
 
-    # clear the progress line after each month
-    print()
-
 # align clinical reads to reference files
-def align_clinical_reads(clinical_fasta_month:str, output_dir: str, fna_path:str, threads: int = 8, workers: int = 4) -> list:
+def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str, threads: int = 8, workers: int = 4) -> list:
     # create empty list to catch outputted bam files
     bam_files = []
 
@@ -553,7 +548,7 @@ def align_clinical_reads(clinical_fasta_month:str, output_dir: str, fna_path:str
     # combine BAM files
     for result in results:
         if result is not None:
-            bam_files.append(results)
+            bam_files.append(result)
     
     # show any errors
     for result in results:
@@ -562,9 +557,7 @@ def align_clinical_reads(clinical_fasta_month:str, output_dir: str, fna_path:str
 
     return bam_files
 
-# crm: probably doesn't output to none
-# run varmint on merged bam files
-# defining helper function
+# helper function for later running of varmint on merged bam files
 def _varmint(bam_file, fna_path, gff_path, output_dir):
     # get the base name by removing the extension (can be for either month or month_region)
     merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
@@ -593,7 +586,8 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
     except Exception as e:
         return f"Error processing {merge_name}: {e}"
 
-def varmint(bam_files:list, fna_path:str, gff_path:str, output_dir:str, workers: int = 4) -> None:    
+# run varmint on merged bam files
+def varmint(bam_files: list, fna_path: str, gff_path: str, output_dir: str, workers: int = 4) -> None:    
     # prepare tasks
     tasks = []
     for bam_file in bam_files:

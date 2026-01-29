@@ -25,10 +25,6 @@ env/
 
 # Input directories
 clinical_input_data_covid/
-clinical_input_data_H1N1/
-clinical_input_data_H3N2/
-clinical_input_data_H5N1/
-mpox_clade_2b/
 
 # Output directories
 H1N1_align/

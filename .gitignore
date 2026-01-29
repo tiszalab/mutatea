@@ -23,6 +23,9 @@ env/
 # OS
 .DS_Store
 
+# Input directories
+test_input_data/
+
 # Output directories
 H1N1_align/
 H3N2_align/

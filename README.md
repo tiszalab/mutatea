@@ -1,9 +1,9 @@
-# crm: virmuth
+# mutatea
 This is a framework comparing the mutational spectra of virome sequencing data between sources/cohorts.
 
 `Inputs`:
 1. metadata
-2. either paired-end short reads or single reads
+2. either Illumina paired-end short reads or single reads
 ## crm: we don't use paired-end short reads, ONT doesn't do that
 ## crm: need to add an argument, minimap2 alignment depends on the type of sequencing read being run (can set default as ONT since that's what we use)
 
@@ -12,7 +12,10 @@ This is a framework comparing the mutational spectra of virome sequencing data b
 `Outputs`:
 ## crm: output is unclear
 1. tsv of mutations found in the data of each month 
+
 2. optional: alignment files of the reads
+
+3. optional: processed metadata files
 
 # Installation
 ## Prerequisites
@@ -38,7 +41,7 @@ conda install -c bioconda minimap2 samtools
 
 # Usage
 ```bash
-flu_CLI -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_READS> -ref <REFERENCE_FILES>
+mutatea -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_READS> -ref <REFERENCE_FILES>
 ```
 
 # Required arguments

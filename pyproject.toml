@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "flu_CLI"
+name = "mutatea"
 version = "0.0.1"
 authors = [
   { name="Camille R. Mazurek", email="camillemazurek23@gmail.com" },
@@ -29,10 +29,10 @@ dependencies = [
     ]
 
 [tool.setuptools]
-py-modules = ["flu_cli", "cli_funcs"]
+py-modules = ["mutatea", "mutatea_funcs"]
 
 [project.scripts]  
-flu_CLI = "flu_cli:flu_cli"
+mutatea = "mutatea:mutatea"
 
 [project.urls]
-"Homepage" = "https://github.com/tiszalab/flu_mutatome_pipelines/python_CLI"
+"Homepage" = "https://github.com/tiszalab/flu_mutatome_pipelines/mutatea"

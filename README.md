@@ -60,13 +60,15 @@ mutatea -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_RE
 - `-o`, `--output_dir`: Path to desired output directory 
 - `-c`, `--clinical_files`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
 - `a`, `--all`: Keep all intermediate alignment files (otherwise deleted)
+- `d`, `--dictionary`: Input custom mapping dictionary, can be used to map cities to any region (public health region, county, state, etc)
 - `f`, `--fast`: Override default for parallel workers, will run with all available cpus
 - `-my`, `--monthly_only`: Only group wastewater samples by month (overrides default of being grouped by both month and month_region)
 - `-t`, `--time_range`: Print time range of wastewater samples
-- `-v`, `--version`: Print the current version of ????
-## crm: clean up description of --version above
+- `-v`, `--version`: Print the current version of mutatea
+
+
 
 # Example
 ``` bash
-flu_CLI -s H1N1 -m path/to/wastewater/metadata -pr /path/to/paired/wastewater/reads -ref path/to/ref/files -c path/to/clinical/files
+mutatea -s H1N1 -m path/to/wastewater/metadata -pr /path/to/paired/wastewater/reads -ref path/to/ref/files -c path/to/clinical/files
 ```

@@ -74,6 +74,12 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
     fna_path = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
     gff_path = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
 
+    # detailed error messages
+    if not fna_path:
+        raise ValueError(f"No fna(.gz) files found in the reference directory {reference_dir}")
+    if not gff_path:
+        raise ValueError(f"No gff(.gz) files found in the reference directory {reference_dir}")
+
     return fna_path, gff_path
 
 # load in and merge metadata files

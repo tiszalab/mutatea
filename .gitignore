@@ -24,7 +24,7 @@ env/
 .DS_Store
 
 # Input directories
-clinical_input_data_covid/
+test_input_data/clinical_input_data_covid/
 
 # Output directories
 H1N1_align/

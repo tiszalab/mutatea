@@ -63,7 +63,7 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-c`, `--clinical`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
 - `-my`, `--monthly_only`: Only group wastewater samples by month, overrides default of being grouped by both month and month_region
 - `-d`, `--dictionary`: Input custom mapping dictionary to map cities to any region (public health region, county, state, etc), overrides default of mapping cities to Texas public health regions
-- `-g`, `--grouping`: Group samples by month, week, or day, overrides the default of samples grouped by month
+- `-g`, `--grouping`: Group samples by year, month, week, or day, overrides the default of samples grouped by month
 
 ## Output and Performance
 - `-o`, `--output`: Path to desired output directory 

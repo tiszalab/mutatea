@@ -14,9 +14,9 @@ cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
+    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
 except:
-    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_monthly_accession_lists, split_clinical_fasta_by_month, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
+    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
 
 # entry point function for the CLI
 def mutatea():
@@ -73,7 +73,7 @@ def mutatea():
     parser.add_argument("-l", "--logger", action='store_true', help="Export a detailed logger file")
 
     # argument to change the unit of time by which the samples are organized (default is month)
-    parser.add_argument("-g", "--grouping", choices=["month", "week", "day"], help="Group samples by month, week, or day")
+    parser.add_argument("-g", "--grouping", choices=["month", "week", "day", "year"], help="Group samples by year, month, week, or day (default is month)")
 
     # parse arguments
     args = parser.parse_args()
@@ -326,7 +326,7 @@ def mutatea():
         # crm: I want to delete this logger line, which I could go forward with if I am saving the monthly lists to tempdir
         #logger.info("\nCreating monthly lists of accessions")
         try:
-            create_monthly_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
+            create_grouped_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
         except Exception as e:
             return f"Error creating monthly lists of accessions for clinical data: {e}" 
 
@@ -339,7 +339,7 @@ def mutatea():
         logger.info("\nSplitting clinical FASTA by month")
         section_start = time.perf_counter()
         try:
-            split_clinical_fasta_by_month(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
+            split_clinical_fasta_by_time(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
         except Exception as e:
             return f"Error splitting clinical FASTA by month: {e}" 
         logger.info(f"Splitting clinical FASTA: {time.perf_counter() - section_start:.2f}s")

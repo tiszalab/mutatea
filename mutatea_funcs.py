@@ -108,9 +108,11 @@ def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFram
     metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
 
     if grouping == "day":
-        metadata["Day_Year"] = metadata["Date"].dt.strftime("%Y-%m-%d")
+        metadata["Day_Month_Year"] = metadata["Date"].dt.strftime("%Y-%m-%d")
     elif grouping == "week":
-        metadata["Week"] = metadata["Date"].dt.strftime("%Y-%U")
+        metadata["Week_Year"] = metadata["Date"].dt.strftime("%Y-%U")
+    elif grouping == "year":
+        metadata["Year"] = metadata["Date"].dt.strftime("%Y")
     else:
         metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
     
@@ -163,7 +165,7 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
     return metadata
 
 # if include clinical: load in clinical metadata and fasta
-def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
+def load_clinical_files(clinical_file_path: str, grouping:str = "month") -> tuple[pd.DataFrame, str]:
     # find the csv in the clinical_metadata_path
     csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
     
@@ -187,8 +189,16 @@ def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
 
     # make sure the collection date column is a datetime object
     clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
-    # add month_year column to the clinical metadata
-    clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
+    
+    # add unit of time column to the clinical metadata
+    if grouping == "day":
+        clinical_metadata["Day_Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%Y-%m-%d")
+    elif grouping == "week":
+        clinical_metadata["Week_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%Y-%U")
+    elif grouping == "year":
+        clinical_metadata["Year"] = clinical_metadata["Collection_Date"].dt.strftime("%Y")
+    else:
+        clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
 
     # find the fasta in the clinical_metadata_path
     fasta_file = glob.glob(os.path.join(clinical_file_path, "*.fasta"))
@@ -200,27 +210,42 @@ def load_clinical_files(clinical_file_path: str) -> tuple[pd.DataFrame, str]:
         raise ValueError(f"Multiple fasta files found in {clinical_file_path}")
     return clinical_metadata, fasta_file[0]
 
-# create lists of accessions grouped by month_year
-def create_monthly_accession_lists(clinical_metadata: pd.DataFrame, output_dir: str) -> None:
-    for month, group in clinical_metadata.groupby("Month_Year"):
-        out_path = Path(output_dir) / f"{month}_list.txt"
+# create lists of accessions grouped by chosen unit of time
+def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: str) -> None:
+    # map grouping types to their corresponding column names
+    grouping_columns = {
+        "day": "Day_Month_Year",
+        "week": "Week", 
+        "year": "Year",
+        "month": "Month_Year" 
+    }
+    
+    # get column name (default is Month_Year)
+    group_column = grouping_columns.get(grouping, "Month_Year")
+    
+    # single loop for all grouping types
+    for time, group in clinical_metadata.groupby(group_column):
+        out_path = Path(output_dir) / f"{time}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
 
-# if include clinical: split clinical FASTA file by monthly lists
-def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, output_dir: str) -> None:
+# if include clinical: split clinical FASTA file by unit of time
+def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, output_dir: str) -> None:
     # load clinical fasta as dictionary
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
-    # loop through monthly lists and split the clinical fasta
+    # loop through lists and split the clinical fasta by selected unit of time
     for list_file in Path(lists_dir).glob("*.txt"):
         with open(list_file) as f:
             accessions = f.read().splitlines()
-        # get all accessions for each month
-        month_accessions = [records_by_id[a] for a in accessions if a in records_by_id]
-        # get the month_year from the file name
-        month_year = list_file.name.split("_")[0]
-        # export clinical fasta by month
-        clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
-        SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
+
+        # get all accessions for each unit of time
+        time_accessions = [records_by_id[a] for a in accessions if a in records_by_id]
+
+        # get the unit of time from the file name
+        time = list_file.name.split("_")[0]
+
+        # export clinical fasta by unit of time
+        clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
+        SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
 # find wastewater reads from pools for the pathogen of interest
 def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool = True) -> dict:
@@ -386,7 +411,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     
     return bam_files
 
-# use wastewater metadata to group bam files by month (option for if including region)
+# use wastewater metadata to group bam files by unit of time (option for if including region)
 def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
     # create empty dictionary to store file path lists
     bam_path_lists = {}
@@ -394,8 +419,19 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     # get bam directory from the inputted bam_files
     bam_dir = os.path.dirname(os.path.dirname(bam_files[0]))
     
-    # month: loop through the metadata and create bam path lists
-    for month, group in metadata.groupby("Month_Year"):
+    # time: loop through the metadata and create bam path lists
+    # map grouping types to their corresponding column names
+    grouping_columns = {
+        "day": "Day_Month_Year",
+        "week": "Week", 
+        "year": "Year",
+        "month": "Month_Year" 
+    }
+    
+    # get column name (default is Month_Year)
+    group_column = grouping_columns.get(grouping, "Month_Year")
+
+    for time, group in metadata.groupby("group_column"):
         # create empty list for the bam paths
         bam_paths=[]
 
@@ -411,13 +447,13 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
             if os.path.exists(bam_path):
                 bam_paths.append(bam_path)
         # add the list to the dictionary
-        bam_path_lists[month] = bam_paths
+        bam_path_lists[time] = bam_paths
 
     # loop through the bam path lists and create the text files
-    for month, bam_path_list in bam_path_lists.items():
+    for time, bam_path_list in bam_path_lists.items():
         # only create the txt file if the list contains bam paths
         if bam_path_list:
-            out_path = os.path.join(month_output_dir, f"{month}_list.txt")
+            out_path = os.path.join(month_output_dir, f"{time}_list.txt")
             with open(out_path, "w") as f:
                 f.write("\n".join(bam_path_list))
 
@@ -426,8 +462,8 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
         # create empty dictionary to store bam path lists by region
         bam_path_lists_region = {}
     
-        # month_region: loop through the metadata and create bam path lists
-        for (month_year, region), group in metadata.groupby(["Month_Year", "Region"]):
+        # time + region: loop through the metadata and create bam path lists
+        for (time, region), group in metadata.groupby([group_column, "Region"]):
             # create empty list for the bam paths
             bam_paths_region = []
 
@@ -444,17 +480,17 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
                 if os.path.exists(bam_path):
                     bam_paths_region.append(bam_path)
 
-            # create a combination month_region
-            month_region = f"{month_year}_{region}"
+            # create a combination time + region
+            time_region = f"{time}_{region}"
 
             # add the list to the dictionary
-            bam_path_lists_region[month_region] = bam_paths_region
+            bam_path_lists_region[time_region] = bam_paths_region
      
         # loop through the bam path lists and create the list files
-        for month_region, bam_path_list in bam_path_lists_region.items():
+        for time_region, bam_path_list in bam_path_lists_region.items():
             # only create the txt file if the list contains bam paths
             if bam_path_list:
-                out_path = os.path.join(region_output_dir, f"{month_region}_list.txt")
+                out_path = os.path.join(region_output_dir, f"{time_region}_list.txt")
                 with open(out_path, "w") as f:
                     f.write("\n".join(bam_path_list))
     if include_region:
@@ -462,13 +498,13 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     else:
         return month_output_dir
 
-# merge bam files by month and month_region
+# merge bam files by time and time+region
 def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> list:
     # create empty list to catch output
     merged_bams = []
 
     for list_file in glob.glob(os.path.join(list_dir, "*.txt")):
-        # get the base name by removing the extension (can be for either month or month_region)
+        # get the base name by removing the extension (can be for either time or time+region)
         list_name = os.path.basename(list_file).replace("_list.txt", "")
 
         # read BAM file paths from the list
@@ -499,7 +535,18 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
 ## if include clinical: align clinical reads to reference
 # helper function for later alignment of clinical reads
 def _align_clinical_reads(fasta_file, fna_path, output_dir, threads):
-    # get the base name by removing the extension (can be for either month or month_region)
+    # map grouping types to their corresponding column names
+    grouping_columns = {
+        "day": "Day_Month_Year",
+        "week": "Week", 
+        "year": "Year",
+        "month": "Month_Year" 
+    }
+    
+    # get column name (default is Month_Year)
+    group_column = grouping_columns.get(grouping, "Month_Year")
+
+    # get the base name by removing the extension (can be for either time or month_region)
     month_year = os.path.basename(fasta_file).replace(".fasta", "")
 
     # catch output bam

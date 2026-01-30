@@ -26,13 +26,12 @@ def mutatea():
     output_path_default = os.getcwd()
 
     # create parser and describe function of script
-    parser = argparse.ArgumentParser(description="Process and align wastewater and clinical virome sequencing data for mutation analysis.")
+    parser = argparse.ArgumentParser(description="Process and align wastewater and clinical pathogen sequencing data for mutation analysis.")
 
     ############################## set arguments ##############################
     ## required arguments
-    # argument for virus subtype
-    # crm: need to clean up descriptor for argument here
-    parser.add_argument("-s", "--subtype", type=str, required=True, help="Pathogen subtype to process, options are H1N1, H3N2, H5N1, and covid")
+    # argument for pathogen
+    parser.add_argument("-p", "--pathogen", type=str, required=True, help="Pathogen being processed, name should match the naming of the reads")
 
     # argument for file path to folder containing wastewater metadata files
     parser.add_argument("-m", "--wastewater_metadata", type=str, required=True, help="Path to folder containing wastewater metadata files")
@@ -56,7 +55,7 @@ def mutatea():
     parser.add_argument("-my", "--month_only", action='store_true', help="Override default split of month and region, will only split the wastewater data by month")
 
     # argument to view time range covered by wastewater metadata
-    parser.add_argument("-t", "--time_range", action='store_true', help="View time range covered by wastewater sample collection")
+    parser.add_argument("-tr", "--time_range", action='store_true', help="View time range covered by wastewater sample collection")
 
     # argument to view current version
     parser.add_argument("-v", "--version", action='store_true', help="View current version")
@@ -69,6 +68,12 @@ def mutatea():
 
     # argument to input personal dictionary (default is mapping Texas city to public health region)
     parser.add_argument("-d", "--dictionary", type=str, help="Path to JSON file containing city-to-region mapping")
+
+    # argument to save detailed loggger file
+    parser.add_argument("-l", "--logger", action='store_true', help="Export a detailed logger file")
+
+    # argument to change the unit of time by which the samples are organized (default is month)
+    parser.add_argument("-g", "--grouping", choices=["month", "week", "day"], help="Group samples by month, week, or day")
 
     # parse arguments
     args = parser.parse_args()
@@ -83,8 +88,8 @@ def mutatea():
     # initialize directories dictionary
     dirs = {}
     
-    # create main output directory with subtype-specific subfolder
-    dirs["output"] = os.path.join(args.output_dir, f"{args.subtype}_align")
+    # create main output directory with pathogen-specific subfolder
+    dirs["output"] = os.path.join(args.output_dir, f"{args.pathogen}_align")
     os.makedirs(dirs["output"], exist_ok=True)
 
     # define logger
@@ -121,7 +126,7 @@ def mutatea():
     # process wastewater metadata
     section_start = time.perf_counter()
     try:
-        metadata = process_metadata(args.wastewater_metadata)
+        metadata = process_metadata(args.wastewater_metadata, getattr(args, 'grouping', 'month'))
     except Exception as e:
         return f"Error processing metadata: {e}"
     
@@ -159,7 +164,7 @@ def mutatea():
             clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files)
 
             # export processed clinical metadata
-            clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.subtype}.csv"), index=False)
+            clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.pathogen}.csv"), index=False)
         except Exception as e:
             return f"Error loading in the clinical files: {e}" 
     logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s\n")
@@ -172,12 +177,12 @@ def mutatea():
     # determine which read type was provided
     if args.single_reads:
         try:
-            wastewater_reads = find_wastewater_reads(args.single_reads, args.subtype, single_reads=True)
+            wastewater_reads = find_wastewater_reads(args.single_reads, args.pathogen, single_reads=True)
         except Exception as e:
             return f"Error finding the wastewater reads: {e}" 
     else:
         try:
-            wastewater_reads = find_wastewater_reads(args.paired_reads, args.subtype, single_reads=False)
+            wastewater_reads = find_wastewater_reads(args.paired_reads, args.pathogen, single_reads=False)
         except Exception as e:
             return f"Error finding the wastewater reads: {e}" 
     logger.info(f"Finding wastewater reads: {time.perf_counter() - section_start:.2f}s")
@@ -198,7 +203,7 @@ def mutatea():
     logger.info("\nAligning wastewater reads to given reference genome")
     section_start = time.perf_counter()
     try:
-        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], subtype=args.subtype, workers=cpu_count if args.fast else 4)
+        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, workers=cpu_count if args.fast else 4)
     except Exception as e:
         return f"Error aligning the wastewater reads: {e}" 
     logger.info(f"Wastewater alignment: {time.perf_counter() - section_start:.2f}s")

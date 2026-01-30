@@ -1,5 +1,5 @@
 # mutatea
-This is a framework comparing the mutational spectra of virome sequencing data between sources/cohorts.
+This is a framework comparing the mutational spectra of pathogen sequencing data between sources/cohorts.
 
 `Inputs`:
 1. metadata
@@ -41,34 +41,43 @@ conda install -c bioconda minimap2 samtools
 
 # Usage
 ```bash
-mutatea -s <VIRUS_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_READS> -ref <REFERENCE_FILES>
+mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER_READS> -ref <REFERENCE_FILES>
 ```
 
 # Required arguments
 ## crm: need to adjust, it's not just IAV subtype
 
-- `-s`, `--subtype`: Influenza A subtype (H1N1, H3N2, H5N1) ????
+- `-p`, `--pathogen`: Pathogen to process, name should match the naming of the reads
 - `-m`, `--wastewater_metadata`: Path to folder containing the wastewater metadata files (.xlsx)
-- `-ref`, `--reference_files`: Path to folder containing the reference files fna(.gz) and gff(.gz)
+- `-ref`, `--references`: Path to folder containing the reference files fna(.gz) and gff(.gz)
 ## crm: why do they have different file formats accepted for each read type? should be the same for both inputs
 ## crm: paired reads is not the accurate term
 ### Either
 - `-pr`, `--paired_reads`: Path to folder containing paired wastewater reads (fastq)
 - `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fastq)
+# crm: single reads can be fasta or fastq rn
 
 # Optional arguments
-- `-o`, `--output_dir`: Path to desired output directory 
-- `-c`, `--clinical_files`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
-- `a`, `--all`: Keep all intermediate alignment files (otherwise deleted)
-- `d`, `--dictionary`: Input custom mapping dictionary, can be used to map cities to any region (public health region, county, state, etc)
-- `f`, `--fast`: Override default for parallel workers, will run with all available cpus
-- `-my`, `--monthly_only`: Only group wastewater samples by month (overrides default of being grouped by both month and month_region)
-- `-t`, `--time_range`: Print time range of wastewater samples
+
+## Data Configuration
+- `-c`, `--clinical`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
+- `-my`, `--monthly_only`: Only group wastewater samples by month, overrides default of being grouped by both month and month_region
+- `-d`, `--dictionary`: Input custom mapping dictionary to map cities to any region (public health region, county, state, etc), overrides default of mapping cities to Texas public health regions
+- `-g`, `--grouping`: Group samples by month, week, or day, overrides the default of samples grouped by month
+
+## Output and Performance
+- `-o`, `--output`: Path to desired output directory 
+- `-f`, `--fast`: Override default for parallel workers, will run with all available cpus
+- `-a`, `--all`: Keep all intermediate alignment files (otherwise deleted)
+- `-l`, `--logger`: Export a detailed logger file
+
+## Information
+- `-tr`, `--time_range`: Print time range covered by the wastewater samples (clinical data should be time matched)
 - `-v`, `--version`: Print the current version of mutatea
 
 
 
 # Example
 ``` bash
-mutatea -s H1N1 -m path/to/wastewater/metadata -pr /path/to/paired/wastewater/reads -ref path/to/ref/files -c path/to/clinical/files
+mutatea -p H1N1 -m path/to/wastewater/metadata -pr /path/to/paired/wastewater/reads -ref path/to/ref/files -c path/to/clinical/files
 ```

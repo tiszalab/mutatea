@@ -83,7 +83,7 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
     return fna_path, gff_path
 
 # load in and merge metadata files
-def process_metadata(metadata_folder:str) -> pd.DataFrame:
+def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFrame:
     metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
     if not metadata_files:
         return pd.DataFrame()
@@ -104,9 +104,15 @@ def process_metadata(metadata_folder:str) -> pd.DataFrame:
     # merge into metadata
     metadata=pd.concat(md_list, ignore_index=True)
 
-    # add month_year column to metadata
+    # add column for time unit to metadata
     metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
-    metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
+
+    if grouping == "day":
+        metadata["Day_Year"] = metadata["Date"].dt.strftime("%Y-%m-%d")
+    elif grouping == "week":
+        metadata["Week"] = metadata["Date"].dt.strftime("%Y-%U")
+    else:
+        metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
     
     # add a sitecode column to metadata if not already present (older metadata files don't have this column)
     if "SiteCode" not in metadata.columns:
@@ -216,20 +222,20 @@ def split_clinical_fasta_by_month(clinical_fasta_path: str, lists_dir: str, outp
         clinical_fasta_month = os.path.join(output_dir, f"{month_year}.fasta")
         SeqIO.write(month_accessions, clinical_fasta_month, "fasta")
 
-# find wastewater reads from pools for the subtype of interest
-def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool = True) -> dict:
+# find wastewater reads from pools for the pathogen of interest
+def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool = True) -> dict:
     # create empty dictionary to store reads by pool
     reads_by_pool = {}
 
     # for single reads
     if single_reads:
-        # find all fasta and fastq files matching the subtype
-        fasta_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fasta")))
-        fastq_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{subtype}.fastq")))
+        # find all fasta and fastq files matching the pathogen
+        fasta_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fasta")))
+        fastq_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fastq")))
         all_files = fasta_files + fastq_files
         
         if not all_files:
-            print(f"No FASTA or FASTQ files found for {subtype} in {pools_base_dir}")
+            print(f"No FASTA or FASTQ files found for {pathogen} in {pools_base_dir}")
             return reads_by_pool
         
         # group files by pool_id (extracted from filename)
@@ -258,7 +264,7 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
             # skip the folder if it is not a directory or doesn't match the naming of the pools
             if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
                 continue
-            r1_files = glob.glob(os.path.join(pool_dir, "**", f"*{subtype}.R1.fastq"), recursive=True)
+            r1_files = glob.glob(os.path.join(pool_dir, "**", f"*{pathogen}.R1.fastq"), recursive=True)
 
             # create empty list for the paired reads
             read_pairs=[]
@@ -278,14 +284,14 @@ def find_wastewater_reads(pools_base_dir: str, subtype: str, single_reads: bool 
             if read_pairs:
                 reads_by_pool[pool_id] = read_pairs
 
-        # let user know if no reads were found for that subtype in that pool
+        # let user know if no reads were found for that pathogen in that pool
         if not reads_by_pool:
-            print(f"No R1 files were found for {subtype} in {pool_id}")
+            print(f"No R1 files were found for {pathogen} in {pool_id}")
 
     return reads_by_pool
 
 # helper function for later alignment of wastewater reads
-def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, subtype: str, threads: int) -> list:
+def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, pathogen: str, threads: int) -> list:
     # create list to capture output BAM file paths
     bam_files = []
 
@@ -326,9 +332,9 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             if pool_id in parts:
                 parts.remove(pool_id)
 
-            # remove subtype if it's there
-            if subtype:
-                parts = [p for p in parts if p.lower() != subtype.lower()]
+            # remove pathogen if it's there
+            if pathogen:
+                parts = [p for p in parts if p.lower() != pathogen.lower()]
             
             # get sample name
             sample_name = ".".join(parts) if parts else "unknown"
@@ -355,7 +361,7 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
     return bam_files
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subtype: str, threads: int = 8, workers: int = 4) -> list:
+def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, threads: int = 8, workers: int = 4) -> list:
     # create list to capture output
     bam_files = []
     
@@ -365,7 +371,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, subty
     # prepare tasks
     tasks = []
     for pool_id, read_files in reads_by_pool.items():
-        tasks.append((pool_id, read_files, fna_path, pools, subtype, threads))
+        tasks.append((pool_id, read_files, fna_path, pools, pathogen, threads))
 
     # crm: print line is now saying number of tasks run with number of workers
     print(f"Aligning wastewater reads from {len(tasks)} pools using {workers} parallel workers")

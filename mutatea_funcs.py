@@ -108,13 +108,13 @@ def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFram
     metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
 
     if grouping == "day":
-        metadata["Day_Month_Year"] = metadata["Date"].dt.strftime("%Y-%m-%d")
+        metadata["Day_Month_Year"] = metadata["Date"].dt.strftime("%d_%m_%Y")
     elif grouping == "week":
-        metadata["Week_Year"] = metadata["Date"].dt.strftime("%Y-%U")
+        metadata["Week_Year"] = metadata["Date"].dt.strftime("%U_%Y")
     elif grouping == "year":
         metadata["Year"] = metadata["Date"].dt.strftime("%Y")
     else:
-        metadata["Month_Year"] = metadata["Date"].dt.strftime("%m.%Y")
+        metadata["Month_Year"] = metadata["Date"].dt.strftime("%m_%Y")
     
     # add a sitecode column to metadata if not already present (older metadata files don't have this column)
     if "SiteCode" not in metadata.columns:
@@ -192,13 +192,13 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month") -> tupl
     
     # add unit of time column to the clinical metadata
     if grouping == "day":
-        clinical_metadata["Day_Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%Y-%m-%d")
+        clinical_metadata["Day_Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%d_%m_%Y")
     elif grouping == "week":
-        clinical_metadata["Week_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%Y-%U")
+        clinical_metadata["Week_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%U_%Y")
     elif grouping == "year":
         clinical_metadata["Year"] = clinical_metadata["Collection_Date"].dt.strftime("%Y")
     else:
-        clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m.%Y")
+        clinical_metadata["Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%m_%Y")
 
     # find the fasta in the clinical_metadata_path
     fasta_file = glob.glob(os.path.join(clinical_file_path, "*.fasta"))
@@ -215,13 +215,18 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
     # map grouping types to their corresponding column names
     grouping_columns = {
         "day": "Day_Month_Year",
-        "week": "Week", 
+        "week": "Week_Year", 
         "year": "Year",
         "month": "Month_Year" 
     }
     
-    # get column name (default is Month_Year)
-    group_column = grouping_columns.get(grouping, "Month_Year")
+    # get column name by checking which grouping column exists in metadata (default is "Month_Year")
+    group_column = "Month_Year"
+    
+    for grouping_type, column_name in grouping_columns.items():
+        if column_name in clinical_metadata.columns:
+            group_column = column_name
+            break
     
     # single loop for all grouping types
     for time, group in clinical_metadata.groupby(group_column):
@@ -241,7 +246,7 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         time_accessions = [records_by_id[a] for a in accessions if a in records_by_id]
 
         # get the unit of time from the file name
-        time = list_file.name.split("_")[0]
+        time = list_file.name.split(".")[0]
 
         # export clinical fasta by unit of time
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
@@ -423,15 +428,21 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     # map grouping types to their corresponding column names
     grouping_columns = {
         "day": "Day_Month_Year",
-        "week": "Week", 
+        "week": "Week_Year", 
         "year": "Year",
         "month": "Month_Year" 
     }
     
     # get column name (default is Month_Year)
-    group_column = grouping_columns.get(grouping, "Month_Year")
+    group_column = "Month_Year"  # default
+    max_unique = 0
+    
+    for grouping_type, column_name in grouping_columns.items():
+        if column_name in metadata.columns:
+            group_column = column_name
+            break
 
-    for time, group in metadata.groupby("group_column"):
+    for time, group in metadata.groupby(group_column):
         # create empty list for the bam paths
         bam_paths=[]
 
@@ -534,17 +545,8 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
 
 ## if include clinical: align clinical reads to reference
 # helper function for later alignment of clinical reads
-def _align_clinical_reads(fasta_file, fna_path, output_dir, threads):
-    # map grouping types to their corresponding column names
-    grouping_columns = {
-        "day": "Day_Month_Year",
-        "week": "Week", 
-        "year": "Year",
-        "month": "Month_Year" 
-    }
-    
-    # get column name (default is Month_Year)
-    group_column = grouping_columns.get(grouping, "Month_Year")
+def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping):
+
 
     # get the base name by removing the extension (can be for either time or month_region)
     month_year = os.path.basename(fasta_file).replace(".fasta", "")
@@ -573,7 +575,7 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads):
         return None
 
 # align clinical reads to reference files
-def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str, threads: int = 8, workers: int = 4) -> list:
+def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str, threads: int = 8, workers: int = 4, grouping: str = "month") -> list:
     # create empty list to catch outputted bam files
     bam_files = []
 
@@ -584,7 +586,7 @@ def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str
     tasks = []
     for fasta_file in fasta_files:
         # for all clinical reads, append the arguments to the tasks
-        tasks.append((fasta_file, fna_path, output_dir, threads))
+        tasks.append((fasta_file, fna_path, output_dir, threads, grouping))
 
     # print line is now saying number of tasks run with number of workers
     print(f"Aligning {len(tasks)} clinical fasta files using {workers} parallel workers")

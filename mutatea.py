@@ -72,11 +72,19 @@ def mutatea():
     # argument to save detailed loggger file
     parser.add_argument("-l", "--logger", action='store_true', help="Export a detailed logger file")
 
+    # crm: wants to add in the statistic argument
+    # argument to save statistics of the groupings
+    parser.add_argument("-s", "--statistics", action='store_true', help="Export a file detailign the genome depth and coverage for each grouping") 
+    
     # argument to change the unit of time by which the samples are organized (default is month)
     parser.add_argument("-g", "--grouping", choices=["month", "week", "day", "year"], help="Group samples by year, month, week, or day (default is month)")
 
     # parse arguments
     args = parser.parse_args()
+
+    # ensure grouping is lowercase and without spaces
+    if args.grouping:
+        args.grouping = args.grouping.lower().replace(" ", "")
 
     ## boolean checks
     # check if clinical files are included
@@ -161,7 +169,7 @@ def mutatea():
     # load in clinical metadata and fasta
     if include_clinical:
         try:
-            clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files)
+            clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files, args.grouping)
 
             # export processed clinical metadata
             clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.pathogen}.csv"), index=False)
@@ -352,7 +360,7 @@ def mutatea():
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], fna_path, dirs["clinical_bam_month"], workers=cpu_count if args.fast else 4)
+            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], fna_path, dirs["clinical_bam_month"], workers=cpu_count if args.fast else 4, grouping=args.grouping)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Clinical alignment: {time.perf_counter() - section_start:.2f}s")

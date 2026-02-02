@@ -64,6 +64,11 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-my`, `--monthly_only`: Only group wastewater samples by month, overrides default of being grouped by both month and month_region
 - `-d`, `--dictionary`: Input custom mapping dictionary to map cities to any region (public health region, county, state, etc), overrides default of mapping cities to Texas public health regions
 - `-g`, `--grouping`: Group samples by year, month, week, or day, overrides the default of samples grouped by month
+- `-mw`, `--minimap_wastewater`: Overwrite minimap2 preset for the wastewater alignment (default is ax -sr)
+- `-mc`, `--minimap_clinical`: Overwrite minimap2 preset for the clinical alignment (default is -ax asm10)
+
+# crm: confirm that these are the default minimap2 presets I'm keeping (before publishing package)
+
 
 ## Output and Performance
 - `-o`, `--output`: Path to desired output directory 
@@ -71,10 +76,9 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-a`, `--all`: Keep all intermediate alignment files (otherwise deleted)
 - `-l`, `--logger`: Export a detailed logger file
 - `-s`, `--statistic`: See statistics on genome depth and coverage for each grouping
-# crm: want to add in the statistic argument
 
 ## Information
-- `-tr`, `--time_range`: Print time range covered by the wastewater samples (clinical data should be time matched)
+- `-tr`, `--timerange`: Print time range covered by the wastewater samples (clinical data should be time matched)
 - `-v`, `--version`: Print the current version of mutatea
 
 

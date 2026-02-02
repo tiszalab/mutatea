@@ -55,7 +55,7 @@ def mutatea():
     parser.add_argument("-my", "--month_only", action='store_true', help="Override default split of month and region, will only split the wastewater data by month")
 
     # argument to view time range covered by wastewater metadata
-    parser.add_argument("-tr", "--time_range", action='store_true', help="View time range covered by wastewater sample collection")
+    parser.add_argument("-tr", "--timerange", action='store_true', help="View time range covered by wastewater sample collection")
 
     # argument to view current version
     parser.add_argument("-v", "--version", action='store_true', help="View current version")
@@ -151,7 +151,7 @@ def mutatea():
             return f"Error adding region to the metadata: {e}" 
 
     # optionally give time range of the wastewater samples
-    if args.time_range:
+    if args.timerange:
         earliest, latest = metadata["Date"].min(), metadata["Date"].max()
         logger.info(f"Date range covered by wastewater data: {earliest.strftime('%Y-%m-%d')} to {latest.strftime('%Y-%m-%d')}")
 

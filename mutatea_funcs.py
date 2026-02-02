@@ -38,12 +38,12 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
 
         # make sure the reference file is not already in the reference_dir
         if os.path.exists(out_path):
-            print(f"Existing reference file found in reference directory: {filename}")
+            print(f"Existing file found in reference directory: {filename}")
             output_paths.append(out_path)
             continue
         if src_path != out_path:
             shutil.copy(src_path, out_path)
-        print(f"Reference file was already unzipped, was copied to: {out_path}")
+        print(f"Unzipped reference file was copied to: {out_path}")
         output_paths.append(out_path)
 
     # find all zipped files
@@ -76,9 +76,9 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
 
     # detailed error messages
     if not fna_path:
-        raise ValueError(f"No fna(.gz) files found in the reference directory {reference_dir}")
+        raise ValueError(f"No fna(.gz) file found in the reference directory {reference_dir}")
     if not gff_path:
-        raise ValueError(f"No gff(.gz) files found in the reference directory {reference_dir}")
+        raise ValueError(f"No gff(.gz) file found in the reference directory {reference_dir}")
 
     return fna_path, gff_path
 
@@ -107,6 +107,7 @@ def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFram
     # add column for time unit to metadata
     metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
 
+    # crm: maybe need to add a filter, if there is no grouping column it shouldn't assume month_year (filter everywhere)
     if grouping == "day":
         metadata["Day_Month_Year"] = metadata["Date"].dt.strftime("%d_%m_%Y")
     elif grouping == "week":
@@ -220,9 +221,11 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
         "month": "Month_Year" 
     }
     
-    # get column name by checking which grouping column exists in metadata (default is "Month_Year")
+    # set default of "Month_Year"
+    # crm: do I need to set default here again?
     group_column = "Month_Year"
     
+    # get column name by checking which grouping column exists in metadata
     for grouping_type, column_name in grouping_columns.items():
         if column_name in clinical_metadata.columns:
             group_column = column_name
@@ -403,7 +406,6 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     for pool_id, read_files in reads_by_pool.items():
         tasks.append((pool_id, read_files, fna_path, pools, pathogen, threads))
 
-    # crm: print line is now saying number of tasks run with number of workers
     print(f"Aligning wastewater reads from {len(tasks)} pools using {workers} parallel workers")
 
     # run multiprocess
@@ -473,7 +475,7 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
         # create empty dictionary to store bam path lists by region
         bam_path_lists_region = {}
     
-        # time + region: loop through the metadata and create bam path lists
+        # time_region: loop through the metadata and create bam path lists
         for (time, region), group in metadata.groupby([group_column, "Region"]):
             # create empty list for the bam paths
             bam_paths_region = []
@@ -491,7 +493,7 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
                 if os.path.exists(bam_path):
                     bam_paths_region.append(bam_path)
 
-            # create a combination time + region
+            # create a combination time_region
             time_region = f"{time}_{region}"
 
             # add the list to the dictionary
@@ -509,13 +511,13 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     else:
         return month_output_dir
 
-# merge bam files by time and time+region
+# merge bam files by time and time_region
 def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> list:
     # create empty list to catch output
     merged_bams = []
 
     for list_file in glob.glob(os.path.join(list_dir, "*.txt")):
-        # get the base name by removing the extension (can be for either time or time+region)
+        # get the base name by removing the extension (can be for either time or time_region)
         list_name = os.path.basename(list_file).replace("_list.txt", "")
 
         # read BAM file paths from the list
@@ -527,7 +529,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
 
         # samtools merge | samtools sort
         bam_paths_str = " ".join(bam_paths)
-        cmd = f"samtools merge -@ {threads} -f - {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
+        cmd = f"samtools merge -@ {threads} -f {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
 
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
@@ -548,13 +550,13 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
 def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping):
 
 
-    # get the base name by removing the extension (can be for either time or month_region)
+    # get the base name by removing the extension (can be for either time or time_region)
     month_year = os.path.basename(fasta_file).replace(".fasta", "")
 
     # catch output bam
     output_bam = os.path.join(output_dir, f"{month_year}.sort.bam")
 
-    # crm: need to add in a skip if the BAM is already created
+    # crm: do I need to add in a skip if the BAM is already created?
     if os.path.exists(output_bam):
         return output_bam
         

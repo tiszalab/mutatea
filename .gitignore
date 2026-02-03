@@ -32,4 +32,5 @@ H3N2_align/
 H5N1_align/
 slurm_outputs/
 covid_align/
+clinical_input_data_ecoli/
 slurm_scripts/

@@ -528,8 +528,8 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
         output_bam = os.path.join(output_dir, f"{list_name}.sort.bam")
 
         # samtools merge | samtools sort
-        bam_paths_str = " ".join(bam_paths)
-        cmd = f"samtools merge -@ {threads} -f {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
+        # bam_paths_str = " ".join(bam_paths)
+        cmd = f"samtools merge -@ {threads} -b - {list_file} | samtools sort -@ {threads} -o {output_bam}"
 
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)

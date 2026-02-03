@@ -3,11 +3,12 @@ This is a framework comparing the mutational spectra of pathogen sequencing data
 
 `Inputs`:
 1. metadata
-2. either Illumina paired-end short reads or single reads
-## crm: we don't use paired-end short reads, ONT doesn't do that
-## crm: need to add an argument, minimap2 alignment depends on the type of sequencing read being run (can set default as ONT since that's what we use)
+2. either paired-end short reads or single reads (Illumina is default)
 
-3. reference fna and gff
+## crm: goal is to make this usable for reads of other sequencing types, remove limiting input (not just Illumina)
+## crm: need to add an argument, minimap2 alignment depends on the type of sequencing read being run (can set default as Illumina seq since that's what we use)
+
+3. reference fna(.gz) and gff(.gz)
 
 `Outputs`:
 ## crm: output is unclear
@@ -30,12 +31,26 @@ conda install -c bioconda minimap2 samtools
 
 ## Steps
 1. Clone this github repository
+```
+git clone https://github.com/tiszalab/mutatea.git
+```
 
-2. Install the Python package and dependencies (pandas, biopython, openpyxl)
+2. Confirm installation of Python and required dependencies (pandas, biopython, openpyxl)
 
 3. Activate conda environment with required packages
 
-## 4. crm: pip install package and run as function
+4. cd into mutatea folder and pip install `mutatea` package 
+```
+cd mutatea
+```
+```
+pip install -e .
+```
+
+5. Confirm installation of function
+```
+mutatea -h
+```
 
 ## crm: probably needs more steps
 
@@ -45,8 +60,6 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 ```
 
 # Required arguments
-## crm: need to adjust, it's not just IAV subtype
-
 - `-p`, `--pathogen`: Pathogen to process, name should match the naming of the reads
 - `-m`, `--wastewater_metadata`: Path to folder containing the wastewater metadata files (.xlsx)
 - `-ref`, `--references`: Path to folder containing the reference files fna(.gz) and gff(.gz)

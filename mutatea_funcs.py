@@ -265,10 +265,11 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
         # find all fasta and fastq files matching the pathogen
         fasta_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fasta")))
         fastq_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fastq")))
-        all_files = fasta_files + fastq_files
+        fastq_gz_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fastq.gz")))
+        all_files = fasta_files + fastq_files + fastq_gz_files
         
         if not all_files:
-            print(f"No FASTA or FASTQ files found for {pathogen} in {pools_base_dir}")
+            print(f"No FASTA, FASTQ, or FASTQ.GZ files found for {pathogen} in {pools_base_dir}")
             return reads_by_pool
         
         # group files by pool_id (extracted from filename)

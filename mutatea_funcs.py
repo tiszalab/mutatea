@@ -305,7 +305,8 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
                 f"*{pathogen}.R1.fastq",
                 f"*{pathogen}.R1.fastq.gz",
                 f"*{pathogen}.R1.fasta",
-                f"*{pathogen}_1.fastq"
+                f"*{pathogen}_1.fastq",
+                f"*{pathogen}_1.fastq.gz"
             ]
 
             # find R1 reads
@@ -324,6 +325,8 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
                     r2_candidates = [
                         r1_file.replace(".R1.", ".R2."),
                         r1_file.replace("_1.fastq", "_2.fastq"),
+                        r1_file.replace(".R1.fastq.gz", ".R2.fastq.gz"),
+                        r1_file.replace("_1.fastq.gz", "_2.fastq.gz"),
                     ]
                     
                     r2_file = next((p for p in r2_candidates if os.path.exists(p)), None)
@@ -576,9 +579,8 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
         # create filename for outputted merged bam
         output_bam = os.path.join(output_dir, f"{list_name}.sort.bam")
 
-        # samtools merge | samtools sort
-        bam_paths_str = " ".join(bam_paths)
-        cmd = f"samtools merge -@ {threads} -f - {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
+        # samtools merge | samtools sort using list file to avoid argument list too long
+        cmd = f"samtools merge -@ {threads} -f -b {list_file} - | samtools sort -@ {threads} -o {output_bam}"
 
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)

@@ -1,7 +1,6 @@
 import pandas as pd
 import gzip
 import shutil
-from pathlib import Path
 from Bio import SeqIO
 import glob
 import os
@@ -142,7 +141,8 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
         "Athens, TX": "4_5N",
         "Dallas, TX": "2_3",
         "DFW Airport, TX": "2_3",
-        "Katy, TX": "6_5S"
+        "Katy, TX": "6_5S",
+        "San Antonio, TX": "8"
     }
 
     # use custom mapping if user inputted
@@ -233,7 +233,8 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
     
     # single loop for all grouping types
     for time, group in clinical_metadata.groupby(group_column):
-        out_path = Path(output_dir) / f"{time}_list.txt"
+        out_path = os.path.join(output_dir, f"{time}_list.txt")
+        # out_path = Path(output_dir) / f"{time}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
 
 # if include clinical: split clinical FASTA file by unit of time
@@ -241,7 +242,7 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
     # load clinical fasta as dictionary
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
     # loop through lists and split the clinical fasta by selected unit of time
-    for list_file in Path(lists_dir).glob("*.txt"):
+    for list_file in glob.glob(os.path.join(lists_dir, "*.txt")):
         with open(list_file) as f:
             accessions = f.read().splitlines()
 
@@ -249,7 +250,7 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         time_accessions = [records_by_id[a] for a in accessions if a in records_by_id]
 
         # get the unit of time from the file name
-        time = list_file.name.split(".")[0]
+        time = os.path.basename(list_file).replace("_list.txt", "")
 
         # export clinical fasta by unit of time
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
@@ -298,7 +299,20 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
             # skip the folder if it is not a directory or doesn't match the naming of the pools
             if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
                 continue
-            r1_files = glob.glob(os.path.join(pool_dir, "**", f"*{pathogen}.R1.fastq"), recursive=True)
+
+            # set possible r1_patterns
+            r1_patterns = [
+                f"*{pathogen}.R1.fastq",
+                f"*{pathogen}.R1.fastq.gz",
+                f"*{pathogen}.R1.fasta",
+                f"*{pathogen}_1.fastq"
+            ]
+
+            # find R1 reads
+            r1_files = []
+            for pattern in r1_patterns:
+                r1_files.extend(glob.glob(os.path.join(pool_dir, "**", pattern), recursive=True))
+            r1_files = sorted(set(r1_files))
 
             # create empty list for the paired reads
             read_pairs=[]
@@ -306,10 +320,15 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
             if r1_files:
                 # crm: this is assuming that the respective r2 would be kept next to r1 (same pool), but maybe need to confirm that
                 for r1_file in r1_files:
-                    r2_file = r1_file.replace("R1.fastq", "R2.fastq")
+                    # try multiple R2 patterns
+                    r2_candidates = [
+                        r1_file.replace(".R1.", ".R2."),
+                        r1_file.replace("_1.fastq", "_2.fastq"),
+                    ]
+                    
+                    r2_file = next((p for p in r2_candidates if os.path.exists(p)), None)
 
-                    # make sure r2 actually exists
-                    if os.path.exists(r2_file):
+                    if r2_file:
                         read_pairs.append((r1_file, r2_file))
                     else:
                         print(f"No R2 file found for {r1_file}")
@@ -325,7 +344,7 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
     return reads_by_pool
 
 # helper function for later alignment of wastewater reads
-def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, pathogen: str, threads: int) -> list:
+def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, pathogen: str, threads: int, minimap_preset: str = "sr") -> list:
     # create list to capture output BAM file paths
     bam_files = []
 
@@ -352,7 +371,7 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
             # minimap2 | samtools view | samtools sort
-            cmd = f"minimap2 -t {threads} -ax sr {fna_path} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"  
+            cmd = f"minimap2 -t {threads} -ax {minimap_preset} {fna_path} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"  
         # single reads
         else:
             # extract sample_name from filename   
@@ -377,7 +396,7 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
             # minimap2 | samtools view | samtools sort
-            cmd = f"minimap2 -t {threads} -ax sr {fna_path} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+            cmd = f"minimap2 -t {threads} -ax {minimap_preset} {fna_path} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
         
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
@@ -391,11 +410,11 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
         except subprocess.CalledProcessError as e:
             print(f"Error processing {sample_name}: {e}")
             continue
-            
+
     return bam_files
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, threads: int = 8, workers: int = 4) -> list:
+def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4) -> list:
     # create list to capture output
     bam_files = []
     
@@ -405,7 +424,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     # prepare tasks
     tasks = []
     for pool_id, read_files in reads_by_pool.items():
-        tasks.append((pool_id, read_files, fna_path, pools, pathogen, threads))
+        tasks.append((pool_id, read_files, fna_path, pools, pathogen, threads, minimap_preset))
 
     print(f"Aligning wastewater reads from {len(tasks)} pools using {workers} parallel workers")
 
@@ -452,14 +471,29 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
         # loop through each row in the group and get the sample_id and pool_id
         for i in range(len(group)):
             sample_id = group.iloc[i]["Sample_ID"]
-            pool_id = group.iloc[i]["PoolID"]
+            
+            # default pool
+            pool_id = "p0001"  
+            for bam_file in bam_files:
+                if sample_id in os.path.basename(bam_file):
+                    pool_id = os.path.basename(os.path.dirname(bam_file))
+                    break
 
             # find file path for each sample
-            bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
+            bam_path = None
+            for bam_file in bam_files:
+                if sample_id in os.path.basename(bam_file) and pool_id in bam_file:
+                    bam_path = bam_file
+                    break
+            
+            # If no specific BAM found, construct the expected path
+            if not bam_path:
+                bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
 
             # make sure the file exists before adding
             if os.path.exists(bam_path):
                 bam_paths.append(bam_path)
+
         # add the list to the dictionary
         bam_path_lists[time] = bam_paths
 
@@ -485,10 +519,24 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
             # crm: make sure you can explain iloc
             for i in range(len(group)):
                 sample_id = group.iloc[i]["Sample_ID"]
-                pool_id = group.iloc[i]["PoolID"]
+                
+                # default pool
+                pool_id = "p0001"
+                for bam_file in bam_files:
+                    if sample_id in os.path.basename(bam_file):
+                        pool_id = os.path.basename(os.path.dirname(bam_file))
+                        break
 
                 # find file path for each sample
-                bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
+                bam_path = None
+                for bam_file in bam_files:
+                    if sample_id in os.path.basename(bam_file) and pool_id in bam_file:
+                        bam_path = bam_file
+                        break
+                
+                # If no specific BAM found, construct the expected path
+                if not bam_path:
+                    bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
 
                 # make sure the file exists before adding
                 if os.path.exists(bam_path):
@@ -529,8 +577,8 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
         output_bam = os.path.join(output_dir, f"{list_name}.sort.bam")
 
         # samtools merge | samtools sort
-        # bam_paths_str = " ".join(bam_paths)
-        cmd = f"samtools merge -@ {threads} -b - {list_file} | samtools sort -@ {threads} -o {output_bam}"
+        bam_paths_str = " ".join(bam_paths)
+        cmd = f"samtools merge -@ {threads} -f - {bam_paths_str} | samtools sort -@ {threads} -o {output_bam}"
 
         try:
             subprocess.run(cmd, shell=True, check=True, capture_output=True)
@@ -548,7 +596,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
 
 ## if include clinical: align clinical reads to reference
 # helper function for later alignment of clinical reads
-def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping):
+def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping, minimap_preset: str = "asm10"):
 
 
     # get the base name by removing the extension (can be for either time or time_region)
@@ -562,9 +610,8 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping):
         return output_bam
         
     try:
-        # crm: changed this to asm 10, not sure how it will work
         # minimap2 | samtools view | samtools sort
-        cmd = f"minimap2 -ax asm10 {fna_path} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
+        cmd = f"minimap2 -ax {minimap_preset} {fna_path} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
         subprocess.run(cmd, shell=True, check=True, capture_output=True)
             
         # index the sorted bam files
@@ -578,7 +625,7 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping):
         return None
 
 # align clinical reads to reference files
-def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str, threads: int = 8, workers: int = 4, grouping: str = "month") -> list:
+def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str, minimap_preset: str = "asm10", threads: int = 8, workers: int = 4, grouping: str = "month") -> list:
     # create empty list to catch outputted bam files
     bam_files = []
 
@@ -589,7 +636,7 @@ def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str
     tasks = []
     for fasta_file in fasta_files:
         # for all clinical reads, append the arguments to the tasks
-        tasks.append((fasta_file, fna_path, output_dir, threads, grouping))
+        tasks.append((fasta_file, fna_path, output_dir, threads, grouping, minimap_preset))
 
     # print line is now saying number of tasks run with number of workers
     print(f"Aligning {len(tasks)} clinical fasta files using {workers} parallel workers")

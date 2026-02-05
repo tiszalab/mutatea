@@ -25,6 +25,7 @@ env/
 
 # Input directories
 test_input_data/clinical_input_data_covid/
+test_input_data/input_data_ecoli/
 
 # Output directories
 H1N1_align/
@@ -32,5 +33,5 @@ H3N2_align/
 H5N1_align/
 slurm_outputs/
 covid_align/
-clinical_input_data_ecoli/
+ecoli_align/
 slurm_scripts/

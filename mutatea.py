@@ -79,6 +79,12 @@ def mutatea():
     # argument to change the unit of time by which the samples are organized (default is month)
     parser.add_argument("-g", "--grouping", choices=["month", "week", "day", "year"], help="Group samples by year, month, week, or day (default is month)")
 
+    # argument to overwrite minimap2 preset for the wastewater alignment (default is -ax sr)
+    parser.add_argument("-mw", "--minimap_wastewater", type=str, default="sr", help="Override minimap2 preset for wastewater alignment (default is sr)")
+
+    # argument to overwrite minimap2 preset for the clinical alignment (default is -ax asm10)
+    parser.add_argument("-mc", "--minimap_clinical", type=str, default="asm10", help="Override minimap2 preset for clinical alignment (default is asm10)")
+
     # parse arguments
     args = parser.parse_args()
 
@@ -211,7 +217,7 @@ def mutatea():
     logger.info("\nAligning wastewater reads to given reference genome")
     section_start = time.perf_counter()
     try:
-        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, workers=cpu_count if args.fast else 4)
+        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4)
     except Exception as e:
         return f"Error aligning the wastewater reads: {e}" 
     logger.info(f"Wastewater alignment: {time.perf_counter() - section_start:.2f}s")
@@ -360,7 +366,7 @@ def mutatea():
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], fna_path, dirs["clinical_bam_month"], workers=cpu_count if args.fast else 4, grouping=args.grouping)
+            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], fna_path, dirs["clinical_bam_month"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Clinical alignment: {time.perf_counter() - section_start:.2f}s")

@@ -14,9 +14,9 @@ cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
+    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint, create_geojson_visualizations
 except:
-    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint
+    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint, create_geojson_visualizations
 
 # entry point function for the CLI
 def mutatea():
@@ -72,7 +72,7 @@ def mutatea():
     # argument to save detailed loggger file
     parser.add_argument("-l", "--logger", action='store_true', help="Export a detailed logger file")
 
-    # crm: wants to add in the statistic argument
+    # crm: wants to add in the statistics argument
     # argument to save statistics of the groupings
     parser.add_argument("-s", "--statistics", action='store_true', help="Export a file detailign the genome depth and coverage for each grouping") 
     
@@ -84,6 +84,9 @@ def mutatea():
 
     # argument to overwrite minimap2 preset for the clinical alignment (default is -ax asm10)
     parser.add_argument("-mc", "--minimap_clinical", type=str, default="asm10", help="Override minimap2 preset for clinical alignment (default is asm10)")
+
+    # argument to create GeoJSON visualizations
+    parser.add_argument("-viz", "--visualize", action='store_true', help="Create GeoJSON visualizations of sample locations")
 
     # parse arguments
     args = parser.parse_args()
@@ -379,6 +382,16 @@ def mutatea():
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")
+
+    # GeoJSON visualization
+    if args.visualize:
+        logger.info("\nCreating GeoJSON visualizations")
+        section_start = time.perf_counter()
+        try:
+            create_geojson_visualizations(dirs["metadata_dir"], args.pathogen, dirs["output"])
+        except Exception as e:
+            logger.error(f"Error creating visualizations: {e}")
+        logger.info(f"Visualization creation: {time.perf_counter() - section_start:.2f}s")
 
     # delete alignment files if not requested
     if not args.all:

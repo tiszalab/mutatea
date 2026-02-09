@@ -88,7 +88,7 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-f`, `--fast`: Override default for parallel workers, will run with all available cpus
 - `-a`, `--all`: Keep all intermediate alignment files (otherwise deleted)
 - `-l`, `--logger`: Export a detailed logger file
-- `-s`, `--statistic`: See statistics on genome depth and coverage for each grouping
+- `-s`, `--statistics`: See statistics on genome depth and coverage for each grouping
 
 ## Information
 - `-tr`, `--timerange`: Print time range covered by the wastewater samples (clinical data should be time matched)

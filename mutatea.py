@@ -14,9 +14,9 @@ cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint, create_geojson_visualizations
+    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_lofreq, varmint
 except:
-    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, varmint, create_geojson_visualizations
+    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_lofreq, varmint
 
 # entry point function for the CLI
 def mutatea():
@@ -310,22 +310,44 @@ def mutatea():
 
         dirs["tsv_month_region"] = os.path.join(dirs["tsv_output"], "month_region")
         os.makedirs(dirs["tsv_month_region"], exist_ok=True)
-            
-    # varmint for wastewater
-    logger.info("\nAnnotating coding effects of mutations with varmint (wastewater samples)")
+    
+    # create vcf output directory
+    dirs["vcf_output"] = os.path.join(dirs["wastewater_dir"], "vcf_files")
+    os.makedirs(dirs["vcf_output"], exist_ok=True)
+
+    # run LoFreq on wastewater samples
+    logger.info("\nCalling variants with LoFreq (wastewater samples)")
     section_start = time.perf_counter()
 
     if include_region:
         try:
-            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_month"], workers=cpu_count if args.fast else 4)
-            varmint(merged_bams_month_region, fna_path, gff_path, dirs["tsv_month_region"], workers=cpu_count if args.fast else 4)
+            vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_output"])
+            vcf_files_region = run_lofreq(merged_bams_month_region, fna_path, dirs["vcf_output"])
         except Exception as e:
-            return f"Error running varmint on alignment files: {e}" 
+            return f"Error running LoFreq: {e}"
     else:
         try:
-            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
+            vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_output"])
         except Exception as e:
-            return f"Error running varmint on alignment files: {e}" 
+            return f"Error running LoFreq: {e}"
+    
+    logger.info(f"LoFreq variant calling: {time.perf_counter() - section_start:.2f}s")
+    
+    # Run varmint on VCF files
+    logger.info("\nAnnotating coding effects of mutations with varmint (wastewater samples)")
+    section_start = time.perf_counter()
+    
+    if include_region:
+        try:
+            varmint(vcf_files_month, fna_path, gff_path, dirs["tsv_month"], workers=cpu_count if args.fast else 4)
+            varmint(vcf_files_region, fna_path, gff_path, dirs["tsv_month_region"], workers=cpu_count if args.fast else 4)
+        except Exception as e:
+            return f"Error running varmint on VCF files: {e}"
+    else:
+        try:
+            varmint(vcf_files_month, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
+        except Exception as e:
+            return f"Error running varmint on VCF files: {e}"
     
     logger.info(f"Varmint (wastewater): {time.perf_counter() - section_start:.2f}s")
 
@@ -378,20 +400,20 @@ def mutatea():
         logger.info("\nAnnotating coding effects of mutations with varmint (clinical samples)")
         section_start = time.perf_counter()
         try:
-            varmint(bam_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)
+            varmint(vcf_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")
 
     # GeoJSON visualization
-    if args.visualize:
-        logger.info("\nCreating GeoJSON visualizations")
-        section_start = time.perf_counter()
-        try:
-            create_geojson_visualizations(dirs["metadata_dir"], args.pathogen, dirs["output"])
-        except Exception as e:
-            logger.error(f"Error creating visualizations: {e}")
-        logger.info(f"Visualization creation: {time.perf_counter() - section_start:.2f}s")
+    # if args.visualize:
+    #    logger.info("\nCreating GeoJSON visualizations")
+    #    section_start = time.perf_counter()
+    #    try:
+    #        create_geojson_visualizations(dirs["metadata_dir"], args.pathogen, dirs["output"])
+    #    except Exception as e:
+    #        logger.error(f"Error creating visualizations: {e}")
+    #    logger.info(f"Visualization creation: {time.perf_counter() - section_start:.2f}s")
 
     # delete alignment files if not requested
     if not args.all:

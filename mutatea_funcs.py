@@ -68,10 +68,33 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
             shutil.copyfileobj(f_in, f_out)
         print(f"Unzipped reference file to: {out_path}")
         output_paths.append(out_path)
+    
+    # replace file extension for reference fasta
+    for filename in os.listdir(reference_dir):
+        if '.fna' in filename:
+            fasta = filename.replace('.fna', '.fa')
+        else:
+            continue
+
+        # rename the file
+        old_path = os.path.join(reference_dir, filename)
+        new_path = os.path.join(reference_dir, fasta)
+        
+        # save new .fa file to reference directory
+        os.rename(old_path, new_path)
 
     # save paths to unzipped reference files
-    fna_path = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
+    fna_path = glob.glob(os.path.join(reference_dir, "*.fa"))[0]
     gff_path = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
+
+    # index reference file for later use with LoFreq
+    fai_path = fna_path + ".fai"
+    if not os.path.exists(fai_path):
+        try:
+            subprocess.run(["samtools", "faidx", fna_path], check=True, capture_output=True)
+            print(f"Indexed reference file: {fna_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Failed to index reference file: {e}")
 
     # detailed error messages
     if not fna_path:
@@ -659,10 +682,34 @@ def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str
 
     return bam_files
 
+# run lofreq
+def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
+    vcf_files=[]
+    
+    for bam_file in bam_files:
+        # get base name from BAM file
+        merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
+
+        # create output VCF
+        output_vcf = os.path.join(output_dir, f"{merge_name}.vcf")
+
+        try:
+            # lofreq
+            cmd = f"lofreq call -f {fna_path} -o {output_vcf} {bam_file}"
+            subprocess.run(cmd, shell=True, check=True, capture_output=True)
+            vcf_files.append(output_vcf)
+        
+        # error
+        except subprocess.CalledProcessError as e:
+            print(f"Error running LoFreq on {merge_name}: {e}")
+            # crm test
+            continue
+    return vcf_files
+
 # helper function for later running of varmint on merged bam files
-def _varmint(bam_file, fna_path, gff_path, output_dir):
+def _varmint(vcf_file, fna_path, gff_path, output_dir):
     # get the base name by removing the extension (can be for either month or month_region)
-    merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
+    merge_name = os.path.basename(vcf_file).replace(".vcf", "")
 
     # create filename for outputted tsv
     output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
@@ -670,7 +717,7 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
     # varmint
     try:
         df = met_variant_alleles(
-            bam_path = bam_file,
+            vcf_path = vcf_file,
             fasta_path = fna_path,
             gff_path = gff_path,
             min_base_qual = 20,
@@ -689,15 +736,15 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
         return f"Error processing {merge_name}: {e}"
 
 # run varmint on merged bam files
-def varmint(bam_files: list, fna_path: str, gff_path: str, output_dir: str, workers: int = 4) -> None:    
+def varmint(vcf_files: list, fna_path: str, gff_path: str, output_dir: str, workers: int = 4) -> None:    
     # prepare tasks
     tasks = []
-    for bam_file in bam_files:
+    for vcf_file in vcf_files:
         # for all reads, append the arguments to the tasks
-        tasks.append((bam_file, fna_path, gff_path, output_dir))
+        tasks.append((vcf_file, fna_path, gff_path, output_dir))
     
     # print line is now saying number of tasks run with number of workers, not number of reads/total per pool
-    print(f"Running varmint on {len(tasks)} BAM files using {workers} parallel workers")
+    print(f"Running varmint on {len(tasks)} VCF files using {workers} parallel workers")
     
     # run multiprocess 
     with Pool(processes=workers) as pool:

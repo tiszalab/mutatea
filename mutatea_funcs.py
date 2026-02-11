@@ -682,6 +682,45 @@ def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str
 
     return bam_files
 
+# crm: update comment to reflect what I'm doing in run_stats function
+# optional statistics to get depth/breadth of genome coverage
+def run_stats(bam_files:list, output_dir:str) -> list:
+    stats_files = []
+
+    for bam_file in bam_files:
+        # get base name from BAM file
+        merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
+
+        try: 
+            # filter: use number of reads aligned from each bam to only save stats files with content
+            cmd_filter = ["samtools", "view", "-c", "-F", "4", bam_file]
+            result = subprocess.run(cmd_filter, check=True, capture_output=True)
+            aligned_reads = int(result.stdout.strip()) 
+
+            # crm test to confirm that the stats file has content before saving
+            if aligned_reads > 0:
+                # create coverage file
+                output_cov = os.path.join(output_dir, f"{merge_name}.coverage.out")
+                cmd_cov = ["samtools", "coverage", bam_file, "-o", output_cov]
+                subprocess.run(cmd_cov, check=True, capture_output=True)
+                stats_files.append(output_cov)
+                
+                # create stats file
+                output_stats = os.path.join(output_dir, f"{merge_name}.stats.out")
+                cmd_stats = f"samtools stats {bam_file} > {output_stats}"
+                subprocess.run(cmd_stats, shell=True, check=True)
+                stats_files.append(output_stats)
+            else:
+                print (f"Skipping {merge_name}: contained no aligned reads")
+                continue
+                
+        # error
+        except subprocess.CalledProcessError as e:
+            print(f"Error running samtools on {merge_name}: {e}")
+            # crm test
+            continue
+    return stats_files
+
 # run lofreq
 def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
     vcf_files=[]

@@ -14,9 +14,9 @@ cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_lofreq, varmint
+    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
 except:
-    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_lofreq, varmint
+    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
 
 # entry point function for the CLI
 def mutatea():
@@ -74,7 +74,7 @@ def mutatea():
 
     # crm: wants to add in the statistics argument
     # argument to save statistics of the groupings
-    parser.add_argument("-s", "--statistics", action='store_true', help="Export a file detailign the genome depth and coverage for each grouping") 
+    parser.add_argument("-s", "--statistics", action='store_true', help="Export a file detailing the genome depth and coverage for each grouping") 
     
     # argument to change the unit of time by which the samples are organized (default is month)
     parser.add_argument("-g", "--grouping", choices=["month", "week", "day", "year"], help="Group samples by year, month, week, or day (default is month)")
@@ -202,7 +202,7 @@ def mutatea():
             wastewater_reads = find_wastewater_reads(args.paired_reads, args.pathogen, single_reads=False)
         except Exception as e:
             return f"Error finding the wastewater reads: {e}" 
-    logger.info(f"Finding wastewater reads: {time.perf_counter() - section_start:.2f}s")
+    logger.info(f"Finding reads (wastewater): {time.perf_counter() - section_start:.2f}s")
     
     # create file directory for alignment files
     dirs["alignment_dir"] = os.path.join(dirs["output"], "alignment_files")
@@ -223,7 +223,7 @@ def mutatea():
         bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4)
     except Exception as e:
         return f"Error aligning the wastewater reads: {e}" 
-    logger.info(f"Wastewater alignment: {time.perf_counter() - section_start:.2f}s")
+    logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
 
     # create directory for wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
@@ -283,6 +283,61 @@ def mutatea():
             return f"Error creating the lists for merging wastewater alignment files by month and region: {e}" 
         logger.info(f"Merging BAMs by month+region: {time.perf_counter() - section_start:.2f}s")
     
+    # get genome coverage if statistics included
+    if args.statistics:
+        logger.info("\nGetting coverage statistics of wastewater BAMs with samtools")
+        section_start = time.perf_counter()
+
+        # create stats folder to later catch tsv files
+        dirs["statistics"] = os.path.join(dirs["output"], "statistics")
+        os.makedirs(dirs["statistics"], exist_ok=True)
+
+        # create subfolders if clinical included
+        if include_clinical:
+            # split output statistics files by source
+            dirs["stats_wastewater"] = os.path.join(dirs["statistics"], "wastewater")
+            os.makedirs(dirs["stats_wastewater"], exist_ok=True)
+            dirs["stats_clinical"] = os.path.join(dirs["statistics"], "clinical")
+            os.makedirs(dirs["stats_clinical"], exist_ok=True)
+            
+            # split wastewater output by grouping method
+            if include_region:
+                # create subfolders
+                dirs["statistics_month"] = os.path.join(dirs["stats_wastewater"], "statistics_month")
+                os.makedirs(dirs["statistics_month"], exist_ok=True)
+                dirs["statistics_month_region"] = os.path.join(dirs["stats_wastewater"], "statistics_month_region")
+                os.makedirs(dirs["statistics_month_region"], exist_ok=True)
+                
+                try:
+                    statistics = run_stats(merged_bams_month, dirs["statistics_month"])
+                    statistics = run_stats(merged_bams_month_region, dirs["statistics_month_region"])
+                except Exception as e:
+                    return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
+            else:
+                try:
+                    statistics = run_stats(merged_bams_month, dirs["stats_wastewater"])
+                except Exception as e:
+                    return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
+
+        else:
+            if include_region:
+                dirs["statistics_month"] = os.path.join(dirs["statistics"], "statistics_month")
+                os.makedirs(dirs["statistics_month"], exist_ok=True)
+                dirs["statistics_month_region"] = os.path.join(dirs["statistics"], "statistics_month_region")
+                os.makedirs(dirs["statistics_month_region"], exist_ok=True)
+                
+                try:
+                    statistics = run_stats(merged_bams_month, dirs["statistics_month"])
+                    statistics = run_stats(merged_bams_month_region, dirs["statistics_month_region"])
+                except Exception as e:
+                    return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
+            else:
+                try:
+                    statistics = run_stats(merged_bams_month, dirs["statistics"])
+                except Exception as e:
+                    return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
+        logger.info(f"Running statistics on merged BAMs (wastewater): {time.perf_counter() - section_start:.2f}s")
+
     # create tsv_output folder to later catch tsv files
     dirs["tsv_output"] = os.path.join(dirs["output"], "tsv_output")
     os.makedirs(dirs["tsv_output"], exist_ok=True)
@@ -338,7 +393,7 @@ def mutatea():
         except Exception as e:
             return f"Error running LoFreq: {e}"
     
-    logger.info(f"LoFreq variant calling: {time.perf_counter() - section_start:.2f}s")
+    logger.info(f"LoFreq variant calling (wastewater): {time.perf_counter() - section_start:.2f}s")
     
     # Run varmint on VCF files
     logger.info("\nAnnotating coding effects of mutations with varmint (wastewater samples)")
@@ -388,7 +443,7 @@ def mutatea():
             split_clinical_fasta_by_time(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
         except Exception as e:
             return f"Error splitting clinical FASTA by month: {e}" 
-        logger.info(f"Splitting clinical FASTA: {time.perf_counter() - section_start:.2f}s")
+        logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the clinical bam files that were merged by month
         dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
@@ -401,7 +456,19 @@ def mutatea():
             bam_files = align_clinical_reads(dirs["clinical_fasta_month"], fna_path, dirs["clinical_bam_month"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
-        logger.info(f"Clinical alignment: {time.perf_counter() - section_start:.2f}s")
+        logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")
+
+        # get genome coverage if statistics included
+        if args.statistics:
+            # run statistics
+            logger.info("\nGetting coverage statistics of clinical BAMs with samtools")
+            section_start = time.perf_counter()
+            try:
+                statistics = run_stats(bam_files, dirs["stats_clinical"])
+            except Exception as e:
+                return f"Error getting coverage statistics of clinical BAMs with samtools: {e}"
+            logger.info(f"Creating coverage statistics from BAMs (clinical): {time.perf_counter() - section_start:.2f}s")
+
 
         # create vcf output directory
         dirs["vcf_clin"] = os.path.join(dirs["clinical"], "vcf_files")
@@ -417,7 +484,7 @@ def mutatea():
         logger.info(f"LoFreq variant calling (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # varmint for clinical
-        logger.info("\nAnnotating coding effects of mutations with varmint (clinical samples)")
+        logger.info("\nAnnotating coding effects of mutations with varmint (clinical)")
         section_start = time.perf_counter()
         try:
             varmint(bam_files, vcf_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)

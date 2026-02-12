@@ -315,57 +315,53 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
                 reads_by_pool[pool_id].append(all_file)
     # for paired reads            
     else:
+        known_r1_pattern = None
+        known_r2_swap = None
+
         for pool_dir in sorted(glob.glob(os.path.join(pools_base_dir, "*"))):
             pool_id = os.path.basename(pool_dir)
-
-            # crm: this may not be the way most people name their pools
-            # skip the folder if it is not a directory or doesn't match the naming of the pools
             if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
                 continue
 
-            # set possible r1_patterns
-            r1_patterns = [
-                f"*{pathogen}.R1.fastq",
-                f"*{pathogen}.R1.fastq.gz",
-                f"*{pathogen}.R1.fasta",
-                f"*{pathogen}_1.fastq",
-                f"*{pathogen}_1.fastq.gz"
-            ]
-
-            # find R1 reads
             r1_files = []
-            for pattern in r1_patterns:
-                r1_files.extend(glob.glob(os.path.join(pool_dir, "**", pattern), recursive=True))
-            r1_files = sorted(set(r1_files))
 
-            # create empty list for the paired reads
-            read_pairs=[]
-            # loop through all existing r1 reads to find their r2 read
-            if r1_files:
-                # crm: this is assuming that the respective r2 would be kept next to r1 (same pool), but maybe need to confirm that
+            # if we already know the pattern, use it directly
+            if known_r1_pattern:
+                r1_files = sorted(glob.glob(os.path.join(pool_dir, "**", known_r1_pattern), recursive=True))
+            else:
+                # try each pattern until one hits
+                r1_patterns = [
+                    (f"*{pathogen}.R1.fastq",    (".R1.", ".R2.")),
+                    (f"*{pathogen}.R1.fastq.gz", (".R1.", ".R2.")),
+                    (f"*{pathogen}.R1.fasta",    (".R1.", ".R2.")),
+                    (f"*{pathogen}_1.fastq",     ("_1.fastq", "_2.fastq")),
+                    (f"*{pathogen}_1.fastq.gz",  ("_1.fastq.gz", "_2.fastq.gz")),
+                ]
+                for pattern, swap in r1_patterns:
+                    hits = glob.glob(os.path.join(pool_dir, "**", pattern), recursive=True)
+                    if hits:
+                        r1_files = sorted(hits)
+                        known_r1_pattern = pattern
+                        known_r2_swap = swap
+                        print(f"Detected read pattern: {pattern}")
+                        break
+
+            read_pairs = []
+            if r1_files and known_r2_swap:
                 for r1_file in r1_files:
-                    # try multiple R2 patterns
-                    r2_candidates = [
-                        r1_file.replace(".R1.", ".R2."),
-                        r1_file.replace("_1.fastq", "_2.fastq"),
-                        r1_file.replace(".R1.fastq.gz", ".R2.fastq.gz"),
-                        r1_file.replace("_1.fastq.gz", "_2.fastq.gz"),
-                    ]
-                    
-                    r2_file = next((p for p in r2_candidates if os.path.exists(p)), None)
-
-                    if r2_file:
+                    r2_file = r1_file.replace(known_r2_swap[0], known_r2_swap[1])
+                    if os.path.exists(r2_file):
                         read_pairs.append((r1_file, r2_file))
                     else:
                         print(f"No R2 file found for {r1_file}")
 
-            # add them to the dictionary
-            if read_pairs:
-                reads_by_pool[pool_id] = read_pairs
+                # add them to the dictionary
+                if read_pairs:
+                    reads_by_pool[pool_id] = read_pairs
 
         # let user know if no reads were found for that pathogen in that pool
         if not reads_by_pool:
-            print(f"No R1 files were found for {pathogen} in {pool_id}")
+            print(f"No R1 files were found for {pathogen} in {pools_base_dir}")
 
     return reads_by_pool
 
@@ -472,7 +468,14 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     # get bam directory from the inputted bam_files
     bam_dir = os.path.dirname(os.path.dirname(bam_files[0]))
     
-    # time: loop through the metadata and create bam path lists
+    # build a sample_id -> bam_path lookup dictionary (once, instead of scanning per sample)
+    sample_to_bam = {}
+    for bam_file in bam_files:
+        basename = os.path.basename(bam_file)
+        # extract sample_id from basename (everything before the pool_id)
+        sample_id = basename.split(".")[0]
+        sample_to_bam[sample_id] = bam_file
+
     # map grouping types to their corresponding column names
     grouping_columns = {
         "day": "Day_Month_Year",
@@ -483,7 +486,6 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     
     # get column name (default is Month_Year)
     group_column = "Month_Year"  # default
-    max_unique = 0
     
     for grouping_type, column_name in grouping_columns.items():
         if column_name in metadata.columns:
@@ -494,30 +496,18 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
         # create empty list for the bam paths
         bam_paths=[]
 
-        # loop through each row in the group and get the sample_id and pool_id
-        for i in range(len(group)):
-            sample_id = group.iloc[i]["Sample_ID"]
+        # loop through each row in the group and get the sample_id
+        for sample_id in group["Sample_ID"]:
+            # look up the bam path from the dictionary
+            bam_path = sample_to_bam.get(sample_id)
             
-            # default pool
-            pool_id = "p0001"  
-            for bam_file in bam_files:
-                if sample_id in os.path.basename(bam_file):
-                    pool_id = os.path.basename(os.path.dirname(bam_file))
-                    break
-
-            # find file path for each sample
-            bam_path = None
-            for bam_file in bam_files:
-                if sample_id in os.path.basename(bam_file) and pool_id in bam_file:
-                    bam_path = bam_file
-                    break
-            
+            # crm: need to adjust
             # If no specific BAM found, construct the expected path
             if not bam_path:
-                bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
+                bam_path = os.path.join(bam_dir, "p0001", f"{sample_id}.p0001.sort.bam")
 
             # make sure the file exists before adding
-            if os.path.exists(bam_path):
+            if bam_path and os.path.exists(bam_path):
                 bam_paths.append(bam_path)
 
         # add the list to the dictionary
@@ -541,31 +531,17 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
             # create empty list for the bam paths
             bam_paths_region = []
 
-            # loop through each row in the group and get the sample_id and pool_id
-            # crm: make sure you can explain iloc
-            for i in range(len(group)):
-                sample_id = group.iloc[i]["Sample_ID"]
-                
-                # default pool
-                pool_id = "p0001"
-                for bam_file in bam_files:
-                    if sample_id in os.path.basename(bam_file):
-                        pool_id = os.path.basename(os.path.dirname(bam_file))
-                        break
-
-                # find file path for each sample
-                bam_path = None
-                for bam_file in bam_files:
-                    if sample_id in os.path.basename(bam_file) and pool_id in bam_file:
-                        bam_path = bam_file
-                        break
+            # loop through each row in the group and get the sample_id
+            for sample_id in group["Sample_ID"]:
+                # look up the bam path from the dictionary
+                bam_path = sample_to_bam.get(sample_id)
                 
                 # If no specific BAM found, construct the expected path
                 if not bam_path:
-                    bam_path = os.path.join(bam_dir, pool_id, f"{sample_id}.{pool_id}.sort.bam")
+                    bam_path = os.path.join(bam_dir, "p0001", f"{sample_id}.p0001.sort.bam")
 
                 # make sure the file exists before adding
-                if os.path.exists(bam_path):
+                if bam_path and os.path.exists(bam_path):
                     bam_paths_region.append(bam_path)
 
             # create a combination time_region

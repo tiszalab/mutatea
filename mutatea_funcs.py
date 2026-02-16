@@ -705,15 +705,23 @@ def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
         # get base name from BAM file
         merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
+        # create unfiltered (intermediary) vcf
+        unfiltered_vcf = os.path.join(output_dir, f"{merge_name}.unfiltered.vcf")
+
         # create output VCF
         output_vcf = os.path.join(output_dir, f"{merge_name}.vcf")
 
         # lofreq
         try: 
-            cmd = ["lofreq", "call", "-f", fna_path, "-o", output_vcf, bam_file]
+            cmd = ["lofreq", "call", "--no-default-filter", "-f", fna_path, "-o", unfiltered_vcf, bam_file]
             subprocess.run(cmd, check=True, capture_output=True)
+
+            # apply filters (annotates FILTER column with PASS or specific filter it failed on)
+            cmd_filter = ["lofreq", "filter", "-i", unfiltered_vcf, "-o", output_vcf, "--print-all"]
+            subprocess.run(cmd_filter, check=True, capture_output=True)
+
             vcf_files.append(output_vcf)
-        
+
         # error
         except subprocess.CalledProcessError as e:
             print(f"Error running LoFreq on {merge_name}: {e}")

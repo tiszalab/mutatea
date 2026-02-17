@@ -713,7 +713,7 @@ def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
 
         # lofreq
         try: 
-            cmd = ["lofreq", "call", "--no-default-filter", "--verbose" "-f", fna_path, "-o", unfiltered_vcf, bam_file]
+            cmd = ["lofreq", "call", "--no-default-filter", "--verbose", "-f", fna_path, "-o", unfiltered_vcf, bam_file]
             subprocess.run(cmd, check=True, capture_output=True)
 
             # apply filters (annotates FILTER column with PASS or specific filter it failed on)

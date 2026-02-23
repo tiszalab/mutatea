@@ -77,8 +77,8 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-my`, `--monthly_only`: Only group wastewater samples by month, overrides default of being grouped by both month and month_region
 - `-d`, `--dictionary`: Input custom mapping dictionary to map cities to any region (public health region, county, state, etc), overrides default of mapping cities to Texas public health regions
 - `-g`, `--grouping`: Group samples by year, month, week, or day, overrides the default of samples grouped by month
-- `-mw`, `--minimap_wastewater`: Overwrite minimap2 preset for the wastewater alignment (default is ax -sr)
-- `-mc`, `--minimap_clinical`: Overwrite minimap2 preset for the clinical alignment (default is -ax asm10)
+- `-mw`, `--minimap_wastewater`: Overwrite minimap2 preset for the wastewater alignment (default is sr)
+- `-mc`, `--minimap_clinical`: Overwrite minimap2 preset for the clinical alignment (default is asm10)
 
 # crm: confirm that these are the default minimap2 presets I'm keeping (before publishing package)
 

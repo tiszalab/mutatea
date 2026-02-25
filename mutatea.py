@@ -14,9 +14,9 @@ cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
+    from .mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
 except:
-    from mutatea_funcs import process_reference_file, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
+    from mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
 
 # entry point function for the CLI
 def mutatea():
@@ -135,7 +135,7 @@ def mutatea():
     ## process reference files
     section_start = time.perf_counter()
     try:
-        fna_path, gff_path = process_reference_file(args.reference_files, dirs["reference_dir"])
+        fna_path, gff_path = process_reference_files(args.reference_files, dirs["reference_dir"])
     except Exception as e:
         return f"Error processing the reference files: {e}"  
     logger.info(f"Reference processing: {time.perf_counter() - section_start:.2f}s\n")

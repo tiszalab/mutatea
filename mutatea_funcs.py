@@ -11,7 +11,7 @@ from multiprocessing import Pool
 from variant_funcs import met_variant_alleles
 
 # process reference files
-def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,str]:
+def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,str]:
     # make sure reference_dir exists
     os.makedirs(reference_dir, exist_ok=True)
     output_paths=[]
@@ -68,20 +68,6 @@ def process_reference_file(input_folder: str, reference_dir: str) -> tuple[str,s
             shutil.copyfileobj(f_in, f_out)
         print(f"Unzipped reference file to: {out_path}")
         output_paths.append(out_path)
-    
-    # replace file extension for reference fasta
-    #for filename in os.listdir(reference_dir):
-    #    if '.fna' in filename:
-    #        fasta = filename.replace('.fna', '.fa')
-    #    else:
-    #        continue
-
-        # rename the file
-    #    old_path = os.path.join(reference_dir, filename)
-    #    new_path = os.path.join(reference_dir, fasta)
-        
-        # save new .fa file to reference directory
-    #    os.rename(old_path, new_path)
 
     # save paths to unzipped reference files
     fna_path = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
@@ -181,9 +167,10 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
 
     # use dictionary to add a "Region" column to the metadata
     metadata["Region"] = metadata["City"].map(city_region)
-    # add a warning for any unexpected cities, that way the user will know if they need to update the city_region dictionary
-    if len(metadata.loc[metadata["Region"].isna(), "City"].unique()) > 0:
-        print("Unknown cities:", metadata.loc[metadata["Region"].isna(), "City"].unique())
+    # add an error for any unexpected cities, that way the user will know if they need to update the city_region dictionary
+    unknown_cities = metadata.loc[metadata["Region"].isna(), "City"].unique()
+    if len(unknown_cities) > 0:
+        raise ValueError(f"Unknown cities found: {unknown_cities}. Please update the city_region dictionary to include these cities.")
     else:
         print("All cities in the metadata were successfully assigned to public health regions!\n")
     return metadata
@@ -257,7 +244,6 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
     # single loop for all grouping types
     for time, group in clinical_metadata.groupby(group_column):
         out_path = os.path.join(output_dir, f"{time}_list.txt")
-        # out_path = Path(output_dir) / f"{time}_list.txt"
         group["Accession"].to_csv(out_path, index=False, header=False)
 
 # if include clinical: split clinical FASTA file by unit of time

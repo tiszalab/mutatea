@@ -6,8 +6,8 @@ import argparse
 import sys, os
 import logging
 import shutil
-import time
-from datetime import timedelta
+import time                         # used for granular timing of each function called in
+from datetime import timedelta      # used to determine total runtime of mutatea run
 
 # CPU detection for fast mode
 cpu_count = os.cpu_count() or 4

@@ -1,14 +1,14 @@
-import pandas as pd
-import gzip
-import shutil
-from Bio import SeqIO
-import glob
-import os
-import re
-import subprocess
-import json
-from multiprocessing import Pool
-from variant_funcs import met_variant_alleles
+import pandas as pd                             # contains the polygons for later geoviz
+import gzip                                     # needed for unzipping reference files
+import shutil                                   # needed for copying files
+from Bio import SeqIO                           # needed for parsing fasta files
+import glob                                     # needed for finding files
+import os                                       # needed for file operations
+import re                                       # needed for regular expressions (used for pulling out poolIDs)
+import subprocess                               # needed for running shell commands
+import json                                     # needed for parsing json files (custom dictionaries)
+from multiprocessing import Pool                # needed for parallel processing
+from variant_funcs import met_variant_alleles   # needed for variant labelling
 
 # process reference files
 def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,str]:

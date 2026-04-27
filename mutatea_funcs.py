@@ -749,7 +749,7 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
 def varmint(bam_files: list, fna_path: str, gff_path: str, output_dir: str, workers: int = 4) -> None:    
     # prepare tasks
     tasks = []
-    for bam_file in zip(bam_files):
+    for bam_file in bam_files:
         # for all reads, append the arguments to the tasks
         tasks.append((bam_file, fna_path, gff_path, output_dir))
     

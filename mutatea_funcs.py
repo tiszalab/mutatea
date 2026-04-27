@@ -699,7 +699,9 @@ def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
 
         # lofreq
         try: 
-            cmd = ["lofreq", "call", "--no-default-filter", "--verbose", "-f", fna_path, "-o", unfiltered_vcf, bam_file]
+            # crm adjusted this step with sig 1 to override any filtering out of variants due to Poisson normalization
+            # crm planning to do separate ZINB normalization downstream 
+            cmd = ["lofreq", "call", "--no-default-filter", "--sig", "1", "--bonf", "1", "--verbose", "-f", fna_path, "-o", unfiltered_vcf, bam_file]
             subprocess.run(cmd, check=True, capture_output=True)
 
             # apply filters (annotates FILTER column with PASS or specific filter it failed on)

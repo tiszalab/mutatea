@@ -730,6 +730,7 @@ def _varmint(bam_file, fna_path, gff_path, output_dir):
         df = met_variant_alleles(
             bam_path = bam_file,
             fasta_path = fna_path,
+            gff_path = gff_path,
             min_base_qual = 20,
             min_depth = 1,
             min_map_qual =0

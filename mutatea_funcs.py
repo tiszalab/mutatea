@@ -718,9 +718,9 @@ def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
     return vcf_files
 
 # helper function for later running of varmint on merged bam files
-def _varmint(bam_file, vcf_file, fna_path, gff_path, output_dir):
+def _varmint(bam_file, fna_path, gff_path, output_dir):
     # get the base name by removing the extension (can be for either month or month_region)
-    merge_name = os.path.basename(vcf_file).replace(".vcf", "")
+    merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
     # create filename for outputted tsv
     output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
@@ -730,8 +730,6 @@ def _varmint(bam_file, vcf_file, fna_path, gff_path, output_dir):
         df = met_variant_alleles(
             bam_path = bam_file,
             fasta_path = fna_path,
-            gff_path = gff_path,
-            vcf_path = vcf_file,
             min_base_qual = 20,
             min_depth = 1,
             min_map_qual =0
@@ -748,15 +746,15 @@ def _varmint(bam_file, vcf_file, fna_path, gff_path, output_dir):
         return f"Error processing {merge_name}: {e}"
 
 # run varmint on merged bam files
-def varmint(bam_files: list, vcf_files: list, fna_path: str, gff_path: str, output_dir: str, workers: int = 4) -> None:    
+def varmint(bam_files: list, fna_path: str, gff_path: str, output_dir: str, workers: int = 4) -> None:    
     # prepare tasks
     tasks = []
-    for vcf_file, bam_file in zip(vcf_files, bam_files):
+    for bam_file in zip(bam_files):
         # for all reads, append the arguments to the tasks
-        tasks.append((bam_file, vcf_file, fna_path, gff_path, output_dir))
+        tasks.append((bam_file, fna_path, gff_path, output_dir))
     
     # print line is now saying number of tasks run with number of workers, not number of reads/total per pool
-    print(f"Running varmint on {len(tasks)} VCF files using {workers} parallel workers")
+    print(f"Running varmint using {workers} parallel workers")
     
     # run multiprocess 
     with Pool(processes=workers) as pool:

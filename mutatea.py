@@ -367,49 +367,49 @@ def mutatea():
         os.makedirs(dirs["tsv_month_region"], exist_ok=True)
     
     # create vcf output directory
-    dirs["vcf_output"] = os.path.join(dirs["wastewater_dir"], "vcf_files")
-    os.makedirs(dirs["vcf_output"], exist_ok=True)
+    # dirs["vcf_output"] = os.path.join(dirs["wastewater_dir"], "vcf_files")
+    # os.makedirs(dirs["vcf_output"], exist_ok=True)
 
-    # run LoFreq on wastewater samples
-    logger.info("\nCalling variants with LoFreq (wastewater samples)")
-    section_start = time.perf_counter()
+    # # run LoFreq on wastewater samples
+    # logger.info("\nCalling variants with LoFreq (wastewater samples)")
+    # section_start = time.perf_counter()
 
-    # LoFreq
-    if include_region:
-        try:
-            # create subfolders if including regional grouping
-            dirs["vcf_files_month"] = os.path.join(dirs["vcf_output"], "vcf_files_month")
-            os.makedirs(dirs["vcf_files_month"], exist_ok=True)
-            dirs["vcf_files_month_region"] = os.path.join(dirs["vcf_output"], "vcf_files_month_region")
-            os.makedirs(dirs["vcf_files_month_region"], exist_ok=True)
+    # # LoFreq
+    # if include_region:
+    #     try:
+    #         # create subfolders if including regional grouping
+    #         dirs["vcf_files_month"] = os.path.join(dirs["vcf_output"], "vcf_files_month")
+    #         os.makedirs(dirs["vcf_files_month"], exist_ok=True)
+    #         dirs["vcf_files_month_region"] = os.path.join(dirs["vcf_output"], "vcf_files_month_region")
+    #         os.makedirs(dirs["vcf_files_month_region"], exist_ok=True)
 
-            vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_files_month"])
-            vcf_files_region = run_lofreq(merged_bams_month_region, fna_path, dirs["vcf_files_month_region"])
-        except Exception as e:
-            return f"Error running LoFreq: {e}"
-    else:
-        try:
-            vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_output"])
-        except Exception as e:
-            return f"Error running LoFreq: {e}"
+    #         vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_files_month"])
+    #         vcf_files_region = run_lofreq(merged_bams_month_region, fna_path, dirs["vcf_files_month_region"])
+    #     except Exception as e:
+    #         return f"Error running LoFreq: {e}"
+    # else:
+    #     try:
+    #         vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_output"])
+    #     except Exception as e:
+    #         return f"Error running LoFreq: {e}"
     
-    logger.info(f"LoFreq variant calling (wastewater): {time.perf_counter() - section_start:.2f}s")
+    # logger.info(f"LoFreq variant calling (wastewater): {time.perf_counter() - section_start:.2f}s")
     
-    # Run varmint on VCF files
+    # Run varmint
     logger.info("\nAnnotating coding effects of mutations with varmint (wastewater samples)")
     section_start = time.perf_counter()
     
     if include_region:
         try:
-            varmint(merged_bams_month, vcf_files_month, fna_path, gff_path, dirs["tsv_month"], workers=cpu_count if args.fast else 4)
-            varmint(merged_bams_month_region, vcf_files_region, fna_path, gff_path, dirs["tsv_month_region"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_month"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_month_region, fna_path, gff_path, dirs["tsv_month_region"], workers=cpu_count if args.fast else 4)
         except Exception as e:
-            return f"Error running varmint on VCF files: {e}"
+            return f"Error running varmint: {e}"
     else:
         try:
-            varmint(merged_bams_month, vcf_files_month, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
         except Exception as e:
-            return f"Error running varmint on VCF files: {e}"
+            return f"Error running varmint: {e}"
     
     logger.info(f"Varmint (wastewater): {time.perf_counter() - section_start:.2f}s")
 
@@ -470,24 +470,24 @@ def mutatea():
             logger.info(f"Creating coverage statistics from BAMs (clinical): {time.perf_counter() - section_start:.2f}s")
 
 
-        # create vcf output directory
-        dirs["vcf_clin"] = os.path.join(dirs["clinical"], "vcf_files")
-        os.makedirs(dirs["vcf_clin"], exist_ok=True)
+        # # create vcf output directory
+        # dirs["vcf_clin"] = os.path.join(dirs["clinical"], "vcf_files")
+        # os.makedirs(dirs["vcf_clin"], exist_ok=True)
 
-        # run LoFreq on clinical samples
-        logger.info("\nCalling variants with LoFreq (clinical samples)")
-        section_start = time.perf_counter()
-        try:
-            vcf_files = run_lofreq(bam_files, fna_path, dirs["vcf_clin"])
-        except Exception as e:
-            return f"Error running LoFreq on clinical samples: {e}"
-        logger.info(f"LoFreq variant calling (clinical): {time.perf_counter() - section_start:.2f}s")
+        # # run LoFreq on clinical samples
+        # logger.info("\nCalling variants with LoFreq (clinical samples)")
+        # section_start = time.perf_counter()
+        # try:
+        #     vcf_files = run_lofreq(bam_files, fna_path, dirs["vcf_clin"])
+        # except Exception as e:
+        #     return f"Error running LoFreq on clinical samples: {e}"
+        # logger.info(f"LoFreq variant calling (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # varmint for clinical
         logger.info("\nAnnotating coding effects of mutations with varmint (clinical)")
         section_start = time.perf_counter()
         try:
-            varmint(bam_files, vcf_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)
+            varmint(bam_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")

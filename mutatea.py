@@ -14,9 +14,9 @@ cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
+    from .mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint, alignment_quality_filter
 except:
-    from mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint
+    from mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint, alignment_quality_filter
 
 # entry point function for the CLI
 def mutatea():
@@ -224,6 +224,19 @@ def mutatea():
     except Exception as e:
         return f"Error aligning the wastewater reads: {e}" 
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
+
+    # create directory for mapq filtered reads
+    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "filtered_bams")
+    os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
+
+    # filter bams for mapping quality
+    logger.info(f"Filtering wastewater reads for mapping quality")
+    section_start = time.perf_counter()
+    try:
+        bam_files = alignment_quality_filter(bam_files, dirs["wastewater_filtered"])
+    except Exception as e:
+        return f"Error filtering wastewater reads for mapping quality: {e}" 
+    logger.info(f"Filtering reads for mapping quality (wastewater): {time.perf_counter() - section_start:.2f}s")
 
     # create directory for wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
@@ -457,6 +470,29 @@ def mutatea():
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")
+
+        # create folder for the filtered clinical bam files that were merged by month
+        dirs["clinical_bam_month_filtered"] = os.path.join(dirs["clinical_bam_month"], "clinical_bam_month_filtered")
+        os.makedirs(dirs["clinical_bam_month_filtered"], exist_ok=True)
+
+        # filter clinical reads for alignment quality
+        logger.info("\nFiltering clinical reads for mapping quality")
+        section_start = time.perf_counter()
+        try:
+            bam_files = alignment_quality_filter(bam_files, dirs["clinical_bam_month_filtered"])
+        except Exception as e:
+            return f"Error filtering clinical reads for mapping quality: {e}" 
+        logger.info(f"Filtering reads for mapping quality (clinical): {time.perf_counter() - section_start:.2f}s")
+
+
+
+
+
+
+
+
+
+
 
         # get genome coverage if statistics included
         if args.statistics:

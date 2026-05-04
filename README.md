@@ -12,7 +12,7 @@ This is a framework comparing the mutational spectra of pathogen sequencing data
 
 `Outputs`:
 ## crm: output is unclear
-1. tsv of mutations found in the data of each month 
+1. TSV files describing mutations found in the grouped data 
 
 2. optional: alignment files of the reads
 
@@ -64,7 +64,6 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-m`, `--wastewater_metadata`: Path to folder containing the wastewater metadata files (.xlsx)
 - `-ref`, `--references`: Path to folder containing the reference files fna(.gz) and gff(.gz)
 ## crm: why do they have different file formats accepted for each read type? should be the same for both inputs
-## crm: paired reads is not the accurate term
 ### Either
 - `-pr`, `--paired_reads`: Path to folder containing paired wastewater reads (fastq)
 - `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fastq)
@@ -74,6 +73,7 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 
 ## Data Configuration
 - `-c`, `--clinical`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
+# crm: update to remove monthly, should be "time_only"
 - `-my`, `--monthly_only`: Only group wastewater samples by month, overrides default of being grouped by both month and month_region
 - `-d`, `--dictionary`: Input custom mapping dictionary to map cities to any region (public health region, county, state, etc), overrides default of mapping cities to Texas public health regions
 - `-g`, `--grouping`: Group samples by year, month, week, or day, overrides the default of samples grouped by month

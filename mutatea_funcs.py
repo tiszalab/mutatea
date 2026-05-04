@@ -9,6 +9,7 @@ import subprocess                               # needed for running shell comma
 import json                                     # needed for parsing json files (custom dictionaries)
 from multiprocessing import Pool                # needed for parallel processing
 from variant_funcs import met_variant_alleles   # needed for variant labelling
+import pysam                                    # needed for alingment quality filtering
 
 # process reference files
 def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,str]:
@@ -73,6 +74,7 @@ def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,
     fna_path = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
     gff_path = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
 
+    # crm could maybe remove the indexing since no longer using LoFreq
     # index reference file for later use with LoFreq
     fai_path = fna_path + ".fai"
     if not os.path.exists(fai_path):
@@ -445,6 +447,34 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
         bam_files.extend(pool_bam_files)
     
     return bam_files
+
+# crm: need to confirm mapq of 20 makes sense
+# filter bam files for alignment quality
+def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 27) -> list:
+    # create list to capture output
+    filtered_bams = []
+    # find bam files
+    for bam_file in bam_files:
+        # replace file name with mapq file name
+        basename = os.path.basename(bam_file).replace(".sort.bam", ".mapq.sort.bam")
+        output_bam = os.path.join(output_dir, basename)
+
+        if os.path.exists(output_bam):
+            filtered_bams.append(output_bam)
+            continue
+
+        bam_in = pysam.AlignmentFile(bam_file, "rb")
+        bam_out = pysam.AlignmentFile(output_bam, "wb", header=bam_in.header)
+        for read in bam_in:
+            if read.mapping_quality >= min_mapq:
+                bam_out.write(read)
+        bam_in.close()
+        bam_out.close()
+        # need to reindex to get the bai for later
+        pysam.index(output_bam)
+        filtered_bams.append(output_bam)
+
+    return filtered_bams
 
 # use wastewater metadata to group bam files by unit of time (option for if including region)
 def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:

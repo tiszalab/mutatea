@@ -267,6 +267,8 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
+
+# crm: realizing that it accepts fastq.gz reads but isn't unzipping them if they find them
 # find wastewater reads from pools for the pathogen of interest
 def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool = True) -> dict:
     # create empty dictionary to store reads by pool

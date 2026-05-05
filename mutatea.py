@@ -51,8 +51,8 @@ def mutatea():
     # argument for nondefault output directory
     parser.add_argument("-o", "--output_dir", type=str, default=output_path_default, help="Path to chosen output directory")
 
-    # argument to only split wastewater metadata by month
-    parser.add_argument("-my", "--month_only", action='store_true', help="Override default split of month and region, will only split the wastewater data by month")
+    # argument to only split wastewater metadata by time
+    parser.add_argument("-ty", "--time_only", action='store_true', help="Override default split of time and region, will only split the wastewater data by time")
 
     # argument to view time range covered by wastewater metadata
     parser.add_argument("-tr", "--timerange", action='store_true', help="View time range covered by wastewater sample collection")
@@ -100,7 +100,7 @@ def mutatea():
     include_clinical = bool(args.clinical_files)
 
     # check if region is included
-    include_region = not args.month_only
+    include_region = not args.time_only
 
     # initialize directories dictionary
     dirs = {}
@@ -151,8 +151,8 @@ def mutatea():
         logger.error("No metadata files found in the specified directory.")
         sys.exit(1)
 
-    # add region column to the metadata if user didn't specify month only
-    if not args.month_only:
+    # add region column to the metadata if user didn't specify time_only grouping
+    if not args.time_only:
         try:
             # add region column to metadata
             metadata = add_region(metadata, args.dictionary)
@@ -226,7 +226,7 @@ def mutatea():
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
 
     # create directory for mapq filtered reads
-    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "filtered_bams")
+    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "wastewater_bam_month_filtered")
     os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
 
     # filter bams for mapping quality

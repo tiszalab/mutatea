@@ -65,16 +65,14 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-ref`, `--references`: Path to folder containing the reference files fna(.gz) and gff(.gz)
 ## crm: why do they have different file formats accepted for each read type? should be the same for both inputs
 ### Either
-- `-pr`, `--paired_reads`: Path to folder containing paired wastewater reads (fastq)
-- `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fastq)
-# crm: single reads can be fasta or fastq rn
+- `-pr`, `--paired_reads`: Path to folder containing paired wastewater reads (fasta or fastq)
+- `-sr`, `--single_reads`: Path to folder containing single wastewater reads (fasta or fastq)
 
 # Optional arguments
 
 ## Data Configuration
 - `-c`, `--clinical`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
-# crm: update to remove monthly, should be "time_only"
-- `-my`, `--monthly_only`: Only group wastewater samples by month, overrides default of being grouped by both month and month_region
+- `-ty`, `--time_only`: Only group wastewater samples by time, overrides default of being grouped by both time and time_region
 - `-d`, `--dictionary`: Input custom mapping dictionary to map cities to any region (public health region, county, state, etc), overrides default of mapping cities to Texas public health regions
 - `-g`, `--grouping`: Group samples by year, month, week, or day, overrides the default of samples grouped by month
 - `-mw`, `--minimap_wastewater`: Overwrite minimap2 preset for the wastewater alignment (default is sr)

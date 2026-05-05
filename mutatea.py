@@ -85,9 +85,6 @@ def mutatea():
     # argument to overwrite minimap2 preset for the clinical alignment (default is -ax asm10)
     parser.add_argument("-mc", "--minimap_clinical", type=str, default="asm10", help="Override minimap2 preset for clinical alignment (default is asm10)")
 
-    # argument to create GeoJSON visualizations
-    parser.add_argument("-viz", "--visualize", action='store_true', help="Create GeoJSON visualizations of sample locations")
-
     # parse arguments
     args = parser.parse_args()
 
@@ -230,13 +227,16 @@ def mutatea():
     os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
 
     # filter bams for mapping quality
-    logger.info(f"Filtering wastewater reads for mapping quality")
+    logger.info(f"\nFiltering wastewater reads for mapping quality")
     section_start = time.perf_counter()
     try:
         bam_files = alignment_quality_filter(bam_files, dirs["wastewater_filtered"])
     except Exception as e:
         return f"Error filtering wastewater reads for mapping quality: {e}" 
     logger.info(f"Filtering reads for mapping quality (wastewater): {time.perf_counter() - section_start:.2f}s")
+
+
+    # crm: need to add in a print line explaining how many reads were removed and from where (also for clinical)
 
     # create directory for wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
@@ -527,16 +527,6 @@ def mutatea():
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")
-
-    # GeoJSON visualization
-    # if args.visualize:
-    #    logger.info("\nCreating GeoJSON visualizations")
-    #    section_start = time.perf_counter()
-    #    try:
-    #        create_geojson_visualizations(dirs["metadata_dir"], args.pathogen, dirs["output"])
-    #    except Exception as e:
-    #        logger.error(f"Error creating visualizations: {e}")
-    #    logger.info(f"Visualization creation: {time.perf_counter() - section_start:.2f}s")
 
     # delete alignment files if not requested
     if not args.all:

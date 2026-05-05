@@ -1,4 +1,3 @@
-import pandas as pd                             # contains the polygons for later geoviz
 import gzip                                     # needed for unzipping reference files
 import shutil                                   # needed for copying files
 from Bio import SeqIO                           # needed for parsing fasta files

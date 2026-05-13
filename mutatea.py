@@ -281,8 +281,8 @@ def mutatea():
     try:
         merged_bams_month = merge_wastewater_bams(month_list_dir, dirs[f"merged_bams_{grouping}"])
     except Exception as e:
-        return f"Error merging wastewater alignment files by chosen time grouping: {e}" 
-    logger.info(f"Merging BAMs by chosen time grouping: {time.perf_counter() - section_start:.2f}s")
+        return f"Error merging wastewater alignment files by {grouping}: {e}" 
+    logger.info(f"Merging BAMs by {grouping}: {time.perf_counter() - section_start:.2f}s")
 
     # create subfolder: wastewater bams merged by chosen time grouping and region
     if include_region:
@@ -455,7 +455,7 @@ def mutatea():
         try:
             split_clinical_fasta_by_time(clinical_fasta, dirs[f"clinical_lists_{grouping}"], dirs[f"clinical_fasta_{grouping}"])
         except Exception as e:
-            return f"Error splitting clinical FASTA by chosen time grouping: {e}" 
+            return f"Error splitting clinical FASTA by {grouping}: {e}" 
         logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the clinical bam files that were merged by chosen time grouping

@@ -91,7 +91,7 @@ def mutatea():
     # ensure grouping is lowercase and without spaces
     if args.grouping:
         args.grouping = args.grouping.lower().replace(" ", "")
-        grouping = args.grouping or "month"
+    grouping = args.grouping or "month"
 
     ## boolean checks
     # check if clinical files are included

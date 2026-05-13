@@ -9,6 +9,7 @@ import json                                     # needed for parsing json files 
 from multiprocessing import Pool                # needed for parallel processing
 from variant_funcs import met_variant_alleles   # needed for variant labelling
 import pysam                                    # needed for alingment quality filtering
+import pandas as pd                             # needed for metadata processing
 
 # process reference files
 def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,str]:

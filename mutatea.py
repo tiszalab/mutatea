@@ -91,6 +91,7 @@ def mutatea():
     # ensure grouping is lowercase and without spaces
     if args.grouping:
         args.grouping = args.grouping.lower().replace(" ", "")
+        grouping = args.grouping or "month"
 
     ## boolean checks
     # check if clinical files are included
@@ -223,7 +224,7 @@ def mutatea():
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
 
     # create directory for mapq filtered reads
-    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "wastewater_bam_month_filtered")
+    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], f"wastewater_bam_{getattr(args, 'grouping', None) or 'month'}_filtered")
     os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
 
     # filter bams for mapping quality
@@ -244,25 +245,25 @@ def mutatea():
 
     # create subfolders for wastewater lists
     if include_region:
-        dirs["wastewater_list_month"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month")
-        os.makedirs(dirs["wastewater_list_month"], exist_ok=True)
-        dirs["wastewater_list_region"] = os.path.join(dirs["wastewater_lists_dir"], "lists_month_region")
+        dirs[f"wastewater_list_{grouping}"] = os.path.join(dirs["wastewater_lists_dir"], f"lists_{grouping}")
+        os.makedirs(dirs[f"wastewater_list_{grouping}"], exist_ok=True)
+        dirs["wastewater_list_region"] = os.path.join(dirs["wastewater_lists_dir"], f"lists_{grouping}_region")
         os.makedirs(dirs["wastewater_list_region"], exist_ok=True)
     else:
-        dirs["wastewater_list_month"] = dirs["wastewater_lists_dir"]
+        dirs[f"wastewater_list_{grouping}"] = dirs["wastewater_lists_dir"]
 
-    # create list of monthly accessions for downstream merge key creation
+    # create list of accessions by time grouping for downstream merge key creation
     if include_region:
-        logger.info("\nMerging wastewater alignment files by month and public health region")
+        logger.info(f"\nMerging wastewater alignment files by {grouping} and public health region")
     else:
-        logger.info("\nMerging wastewater alignment files by month")
+        logger.info(f"\nMerging wastewater alignment files by {grouping}")
 
     section_start = time.perf_counter()
     try:
         if include_region:
-            month_list_dir, region_list_dir = create_wastewater_bam_groups(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
+            month_list_dir, region_list_dir = create_wastewater_bam_groups(bam_files, metadata, dirs[f"wastewater_list_{grouping}"], dirs.get("wastewater_list_region"), include_region)
         else:
-            month_list_dir = create_wastewater_bam_groups(bam_files, metadata, dirs["wastewater_list_month"], dirs.get("wastewater_list_region"), include_region)
+            month_list_dir = create_wastewater_bam_groups(bam_files, metadata, dirs[f"wastewater_list_{grouping}"], dirs.get("wastewater_list_region"), include_region)
     except Exception as e:
         return f"Error creating the lists for merging wastewater alignment files: {e}" 
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")
@@ -271,30 +272,30 @@ def mutatea():
     dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
     os.makedirs(dirs["merged_bams"], exist_ok=True)
 
-    # create subfolder: wastewater bams merged by month
-    dirs["merged_bams_month"] = os.path.join(dirs["merged_bams"], "merged_bams_month")        
-    os.makedirs(dirs["merged_bams_month"], exist_ok=True)
+    # create subfolder: wastewater bams merged by chosen time grouping
+    dirs[f"merged_bams_{grouping}"] = os.path.join(dirs["merged_bams"], f"merged_bams_{grouping}")        
+    os.makedirs(dirs[f"merged_bams_{grouping}"], exist_ok=True)
 
-    # merge wastewater bams by month
+    # merge wastewater bams by chosen time grouping
     section_start = time.perf_counter()
     try:
-        merged_bams_month = merge_wastewater_bams(month_list_dir, dirs["merged_bams_month"])
+        merged_bams_month = merge_wastewater_bams(month_list_dir, dirs[f"merged_bams_{grouping}"])
     except Exception as e:
-        return f"Error merging wastewater alignment files by month: {e}" 
-    logger.info(f"Merging BAMs by month: {time.perf_counter() - section_start:.2f}s")
+        return f"Error merging wastewater alignment files by chosen time grouping: {e}" 
+    logger.info(f"Merging BAMs by chosen time grouping: {time.perf_counter() - section_start:.2f}s")
 
-    # create subfolder: wastewater bams merged by month and region
+    # create subfolder: wastewater bams merged by chosen time grouping and region
     if include_region:
-        dirs["merged_bams_month_region"] = os.path.join(dirs["merged_bams"], "merged_bams_month_region")
-        os.makedirs(dirs["merged_bams_month_region"], exist_ok=True)
+        dirs[f"merged_bams_{grouping}_region"] = os.path.join(dirs["merged_bams"], f"merged_bams_{grouping}_region")
+        os.makedirs(dirs[f"merged_bams_{grouping}_region"], exist_ok=True)
         
-        # merge wastewater bams by month and region
+        # merge wastewater bams by chosen time grouping and region
         section_start = time.perf_counter()
         try:
-            merged_bams_month_region = merge_wastewater_bams(region_list_dir, dirs["merged_bams_month_region"])
+            merged_bams_month_region = merge_wastewater_bams(region_list_dir, dirs[f"merged_bams_{grouping}_region"])
         except Exception as e:
-            return f"Error creating the lists for merging wastewater alignment files by month and region: {e}" 
-        logger.info(f"Merging BAMs by month+region: {time.perf_counter() - section_start:.2f}s")
+            return f"Error creating the lists for merging wastewater alignment files by chose time grouping and region: {e}" 
+        logger.info(f"Merging BAMs by time+region: {time.perf_counter() - section_start:.2f}s")
     
     # get genome coverage if statistics included
     if args.statistics:
@@ -316,14 +317,14 @@ def mutatea():
             # split wastewater output by grouping method
             if include_region:
                 # create subfolders
-                dirs["statistics_month"] = os.path.join(dirs["stats_wastewater"], "statistics_month")
-                os.makedirs(dirs["statistics_month"], exist_ok=True)
-                dirs["statistics_month_region"] = os.path.join(dirs["stats_wastewater"], "statistics_month_region")
-                os.makedirs(dirs["statistics_month_region"], exist_ok=True)
+                dirs[f"statistics_{grouping}"] = os.path.join(dirs["stats_wastewater"], f"statistics_{grouping}")
+                os.makedirs(dirs[f"statistics_{grouping}"], exist_ok=True)
+                dirs[f"statistics_{grouping}_region"] = os.path.join(dirs["stats_wastewater"], f"statistics_{grouping}_region")
+                os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_month, dirs["statistics_month"])
-                    statistics = run_stats(merged_bams_month_region, dirs["statistics_month_region"])
+                    statistics = run_stats(merged_bams_month, dirs[f"statistics_{grouping}"])
+                    statistics = run_stats(merged_bams_month_region, dirs[f"statistics_{grouping}_region"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
@@ -334,14 +335,14 @@ def mutatea():
 
         else:
             if include_region:
-                dirs["statistics_month"] = os.path.join(dirs["statistics"], "statistics_month")
-                os.makedirs(dirs["statistics_month"], exist_ok=True)
-                dirs["statistics_month_region"] = os.path.join(dirs["statistics"], "statistics_month_region")
-                os.makedirs(dirs["statistics_month_region"], exist_ok=True)
+                dirs["statistics_month"] = os.path.join(dirs["statistics"], f"statistics_{grouping}")
+                os.makedirs(dirs[f"statistics_{grouping}"], exist_ok=True)
+                dirs["statistics_month_region"] = os.path.join(dirs["statistics"], f"statistics_{grouping}_region")
+                os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_month, dirs["statistics_month"])
-                    statistics = run_stats(merged_bams_month_region, dirs["statistics_month_region"])
+                    statistics = run_stats(merged_bams_month, dirs[f"statistics_{grouping}"])
+                    statistics = run_stats(merged_bams_month_region, dirs[f"statistics_{grouping}_region"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
@@ -366,18 +367,18 @@ def mutatea():
         
         # split clinical output by grouping method
         if include_region:
-            dirs["tsv_month"] = os.path.join(dirs["tsv_wastewater"], "month")
-            os.makedirs(dirs["tsv_month"], exist_ok=True)
-            dirs["tsv_month_region"] = os.path.join(dirs["tsv_wastewater"], "month_region")
-            os.makedirs(dirs["tsv_month_region"], exist_ok=True)
+            dirs[f"tsv_{grouping}"] = os.path.join(dirs["tsv_wastewater"], f"{grouping}")
+            os.makedirs(dirs[f"tsv_{grouping}"], exist_ok=True)
+            dirs[f"tsv_{grouping}_region"] = os.path.join(dirs["tsv_wastewater"], f"{grouping}_region")
+            os.makedirs(dirs[f"tsv_{grouping}_region"], exist_ok=True)
 
     # or just split clinical output by grouping method
     else:
-        dirs["tsv_month"] = os.path.join(dirs["tsv_output"], "month")
-        os.makedirs(dirs["tsv_month"], exist_ok=True)
+        dirs[f"tsv_{grouping}"] = os.path.join(dirs["tsv_output"], f"{grouping}")
+        os.makedirs(dirs[f"tsv_{grouping}"], exist_ok=True)
 
-        dirs["tsv_month_region"] = os.path.join(dirs["tsv_output"], "month_region")
-        os.makedirs(dirs["tsv_month_region"], exist_ok=True)
+        dirs[f"tsv_{grouping}_region"] = os.path.join(dirs["tsv_output"], f"{grouping}_region")
+        os.makedirs(dirs[f"tsv_{grouping}_region"], exist_ok=True)
     
     # create vcf output directory
     # dirs["vcf_output"] = os.path.join(dirs["wastewater_dir"], "vcf_files")
@@ -414,8 +415,8 @@ def mutatea():
     
     if include_region:
         try:
-            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_month"], workers=cpu_count if args.fast else 4)
-            varmint(merged_bams_month_region, fna_path, gff_path, dirs["tsv_month_region"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_month, fna_path, gff_path, dirs[f"tsv_{grouping}"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_month_region, fna_path, gff_path, dirs[f"tsv_{grouping}_region"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint: {e}"
     else:
@@ -432,54 +433,53 @@ def mutatea():
         dirs["clinical"] = os.path.join(dirs["alignment_dir"], "clinical")
         os.makedirs(dirs["clinical"], exist_ok=True)
 
-        # create folder for the lists of accessions by month
-        dirs["clinical_lists_month"] = os.path.join(dirs["clinical"], "clinical_lists_month")
-        os.makedirs(dirs["clinical_lists_month"], exist_ok=True)
+        # create folder for the lists of accessions by chosen time grouping
+        dirs[f"clinical_lists_{grouping}"] = os.path.join(dirs["clinical"], f"clinical_lists_{grouping}")
+        os.makedirs(dirs[f"clinical_lists_{grouping}"], exist_ok=True)
 
         # create monthly lists of accessions
         # crm: I want to delete this logger line, which I could go forward with if I am saving the monthly lists to tempdir
         #logger.info("\nCreating monthly lists of accessions")
         try:
-            create_grouped_accession_lists(clinical_metadata, dirs["clinical_lists_month"])
+            create_grouped_accession_lists(clinical_metadata, dirs[f"clinical_lists_{grouping}"])
         except Exception as e:
-            return f"Error creating monthly lists of accessions for clinical data: {e}" 
+            return f"Error creating lists of accessions grouped by time for clinical data: {e}" 
 
-        # crm: want to later remove these clinical fasta files, want to use tempfile to instead save them to a temp dir
-        # create folder for the clinical fastas split by month
-        dirs["clinical_fasta_month"] = os.path.join(dirs["clinical"], "clinical_fasta_month")
-        os.makedirs(dirs["clinical_fasta_month"], exist_ok=True)
+        # create folder for the clinical fastas split by chosen time grouping
+        dirs[f"clinical_fasta_{grouping}"] = os.path.join(dirs["clinical"], f"clinical_fasta_{grouping}")
+        os.makedirs(dirs[f"clinical_fasta_{grouping}"], exist_ok=True)
 
-        # split clinical fasta by monthly lists
-        logger.info("\nSplitting clinical FASTA by month")
+        # split clinical fasta by time-grouped lists
+        logger.info(f"\nSplitting clinical FASTA by {grouping}")
         section_start = time.perf_counter()
         try:
-            split_clinical_fasta_by_time(clinical_fasta, dirs["clinical_lists_month"], dirs["clinical_fasta_month"])
+            split_clinical_fasta_by_time(clinical_fasta, dirs[f"clinical_lists_{grouping}"], dirs[f"clinical_fasta_{grouping}"])
         except Exception as e:
-            return f"Error splitting clinical FASTA by month: {e}" 
+            return f"Error splitting clinical FASTA by chosen time grouping: {e}" 
         logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")
 
-        # create folder for the clinical bam files that were merged by month
-        dirs["clinical_bam_month"] = os.path.join(dirs["clinical"], "clinical_bam_month")
-        os.makedirs(dirs["clinical_bam_month"], exist_ok=True)
+        # create folder for the clinical bam files that were merged by chosen time grouping
+        dirs[f"clinical_bam_{grouping}"] = os.path.join(dirs["clinical"], f"clinical_bam_{grouping}")
+        os.makedirs(dirs[f"clinical_bam_{grouping}"], exist_ok=True)
 
         # align clinical reads to reference
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs["clinical_fasta_month"], fna_path, dirs["clinical_bam_month"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
+            bam_files = align_clinical_reads(dirs[f"clinical_fasta_{grouping}"], fna_path, dirs[f"clinical_bam_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")
 
-        # create folder for the filtered clinical bam files that were merged by month
-        dirs["clinical_bam_month_filtered"] = os.path.join(dirs["clinical_bam_month"], "clinical_bam_month_filtered")
-        os.makedirs(dirs["clinical_bam_month_filtered"], exist_ok=True)
+        # create folder for the filtered clinical bam files that were merged by chosen time grouping
+        dirs[f"clinical_bam_{grouping}_filtered"] = os.path.join(dirs[f"clinical_bam_{grouping}"], f"clinical_bam_{grouping}_filtered")
+        os.makedirs(dirs[f"clinical_bam_{grouping}_filtered"], exist_ok=True)
 
         # filter clinical reads for alignment quality
         logger.info("\nFiltering clinical reads for mapping quality")
         section_start = time.perf_counter()
         try:
-            bam_files = alignment_quality_filter(bam_files, dirs["clinical_bam_month_filtered"])
+            bam_files = alignment_quality_filter(bam_files, dirs[f"clinical_bam_{grouping}_filtered"])
         except Exception as e:
             return f"Error filtering clinical reads for mapping quality: {e}" 
         logger.info(f"Filtering reads for mapping quality (clinical): {time.perf_counter() - section_start:.2f}s")

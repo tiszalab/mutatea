@@ -74,6 +74,7 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-c`, `--clinical`: Path to folder containing the clinical metadata files (.xlsx) and fasta if parallel analysis is desired
 - `-ty`, `--time_only`: Only group wastewater samples by time, overrides default of being grouped by both time and time_region
 - `-d`, `--dictionary`: Input custom mapping dictionary to map cities to any region (public health region, county, state, etc), overrides default of mapping cities to Texas public health regions
+# crm: I think I can adjust dictionary to allow different grouping (e.g. patient ID to clinical outcomes)
 - `-g`, `--grouping`: Group samples by year, month, week, or day, overrides the default of samples grouped by month
 - `-mw`, `--minimap_wastewater`: Overwrite minimap2 preset for the wastewater alignment (default is sr)
 - `-mc`, `--minimap_clinical`: Overwrite minimap2 preset for the clinical alignment (default is asm10)

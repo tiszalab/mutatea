@@ -450,7 +450,7 @@ def mutatea():
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the filtered clinical bam files that were merged by chosen time grouping
-        dirs[f"bams_{grouping}_filtered"] = os.path.join(dirs[f"bams_{grouping}"], f"bams_{grouping}_filtered")
+        dirs[f"bams_{grouping}_filtered"] = os.path.join(dirs[f"clinical"], f"bams_{grouping}_filtered")
         os.makedirs(dirs[f"bams_{grouping}_filtered"], exist_ok=True)
 
         # filter clinical reads for alignment quality

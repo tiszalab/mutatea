@@ -14,9 +14,9 @@ cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint, alignment_quality_filter
+    from .mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, varmint, alignment_quality_filter
 except:
-    from mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, run_lofreq, varmint, alignment_quality_filter
+    from mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, varmint, alignment_quality_filter
 
 # entry point function for the CLI
 def mutatea():
@@ -224,7 +224,7 @@ def mutatea():
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
 
     # create directory for mapq filtered reads
-    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], f"wastewater_bam_{getattr(args, 'grouping', None) or 'month'}_filtered")
+    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "filtered_merged_bams")
     os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
 
     # filter bams for mapping quality
@@ -380,35 +380,6 @@ def mutatea():
         dirs[f"tsv_{grouping}_region"] = os.path.join(dirs["tsv_output"], f"{grouping}_region")
         os.makedirs(dirs[f"tsv_{grouping}_region"], exist_ok=True)
     
-    # create vcf output directory
-    # dirs["vcf_output"] = os.path.join(dirs["wastewater_dir"], "vcf_files")
-    # os.makedirs(dirs["vcf_output"], exist_ok=True)
-
-    # # run LoFreq on wastewater samples
-    # logger.info("\nCalling variants with LoFreq (wastewater samples)")
-    # section_start = time.perf_counter()
-
-    # # LoFreq
-    # if include_region:
-    #     try:
-    #         # create subfolders if including regional grouping
-    #         dirs["vcf_files_month"] = os.path.join(dirs["vcf_output"], "vcf_files_month")
-    #         os.makedirs(dirs["vcf_files_month"], exist_ok=True)
-    #         dirs["vcf_files_month_region"] = os.path.join(dirs["vcf_output"], "vcf_files_month_region")
-    #         os.makedirs(dirs["vcf_files_month_region"], exist_ok=True)
-
-    #         vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_files_month"])
-    #         vcf_files_region = run_lofreq(merged_bams_month_region, fna_path, dirs["vcf_files_month_region"])
-    #     except Exception as e:
-    #         return f"Error running LoFreq: {e}"
-    # else:
-    #     try:
-    #         vcf_files_month = run_lofreq(merged_bams_month, fna_path, dirs["vcf_output"])
-    #     except Exception as e:
-    #         return f"Error running LoFreq: {e}"
-    
-    # logger.info(f"LoFreq variant calling (wastewater): {time.perf_counter() - section_start:.2f}s")
-    
     # Run varmint
     logger.info("\nAnnotating coding effects of mutations with varmint (wastewater samples)")
     section_start = time.perf_counter()
@@ -504,20 +475,6 @@ def mutatea():
             except Exception as e:
                 return f"Error getting coverage statistics of clinical BAMs with samtools: {e}"
             logger.info(f"Creating coverage statistics from BAMs (clinical): {time.perf_counter() - section_start:.2f}s")
-
-
-        # # create vcf output directory
-        # dirs["vcf_clin"] = os.path.join(dirs["clinical"], "vcf_files")
-        # os.makedirs(dirs["vcf_clin"], exist_ok=True)
-
-        # # run LoFreq on clinical samples
-        # logger.info("\nCalling variants with LoFreq (clinical samples)")
-        # section_start = time.perf_counter()
-        # try:
-        #     vcf_files = run_lofreq(bam_files, fna_path, dirs["vcf_clin"])
-        # except Exception as e:
-        #     return f"Error running LoFreq on clinical samples: {e}"
-        # logger.info(f"LoFreq variant calling (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # varmint for clinical
         logger.info("\nAnnotating coding effects of mutations with varmint (clinical)")

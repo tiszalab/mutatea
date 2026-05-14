@@ -76,13 +76,13 @@ def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,
 
     # crm could maybe remove the indexing since no longer using LoFreq
     # index reference file for later use with LoFreq
-    fai_path = fna_path + ".fai"
-    if not os.path.exists(fai_path):
-        try:
-            subprocess.run(["samtools", "faidx", fna_path], check=True, capture_output=True)
-            print(f"Indexed reference file: {fna_path}")
-        except subprocess.CalledProcessError as e:
-            print(f"Warning: Failed to index reference file: {e}")
+    #fai_path = fna_path + ".fai"
+    #if not os.path.exists(fai_path):
+    #    try:
+    #        subprocess.run(["samtools", "faidx", fna_path], check=True, capture_output=True)
+    #        print(f"Indexed reference file: {fna_path}")
+    #    except subprocess.CalledProcessError as e:
+    #        print(f"Warning: Failed to index reference file: {e}")
 
     # detailed error messages
     if not fna_path:
@@ -594,7 +594,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
             bam_paths = f.read().splitlines()
 
         # create filename for outputted merged bam
-        output_bam = os.path.join(output_dir, f"{list_name}.sort.bam")
+        output_bam = os.path.join(output_dir, f"{list_name}.mapq.sort.bam")
 
         # samtools merge | samtools sort using list file to avoid argument list too long
         cmd = f"samtools merge -@ {threads} -f -b {list_file} - | samtools sort -@ {threads} -o {output_bam}"
@@ -714,40 +714,6 @@ def run_stats(bam_files:list, output_dir:str) -> list:
             # crm test
             continue
     return stats_files
-
-# run lofreq
-def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
-    vcf_files=[]
-    
-    for bam_file in bam_files:
-        # get base name from BAM file
-        merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
-
-        # create unfiltered (intermediary) vcf
-        unfiltered_vcf = os.path.join(output_dir, f"{merge_name}.unfiltered.vcf")
-
-        # create output VCF
-        output_vcf = os.path.join(output_dir, f"{merge_name}.vcf")
-
-        # lofreq
-        try: 
-            # crm adjusted this step with sig 1 to override any filtering out of variants due to Poisson normalization
-            # crm planning to do separate ZINB normalization downstream 
-            cmd = ["lofreq", "call", "--no-default-filter", "--sig", "1", "--bonf", "1", "--verbose", "-f", fna_path, "-o", unfiltered_vcf, bam_file]
-            subprocess.run(cmd, check=True, capture_output=True)
-
-            # apply filters (annotates FILTER column with PASS or specific filter it failed on)
-            cmd_filter = ["lofreq", "filter", "-i", unfiltered_vcf, "-o", output_vcf, "--print-all"]
-            subprocess.run(cmd_filter, check=True, capture_output=True)
-
-            vcf_files.append(output_vcf)
-
-        # error
-        except subprocess.CalledProcessError as e:
-            print(f"Error running LoFreq on {merge_name}: {e}")
-            # crm test
-            continue
-    return vcf_files
 
 # helper function for later running of varmint on merged bam files
 def _varmint(bam_file, fna_path, gff_path, output_dir):

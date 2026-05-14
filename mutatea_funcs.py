@@ -673,7 +673,7 @@ def run_stats(bam_files:list, output_dir:str) -> list:
 
     for bam_file in bam_files:
         # get base name from BAM file
-        merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
+        merge_name = os.path.basename(bam_file).replace("mapq.sort.bam", "")
 
         try: 
             # filter: use number of reads aligned from each bam to only save stats files with content

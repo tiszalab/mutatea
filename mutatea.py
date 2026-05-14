@@ -295,7 +295,7 @@ def mutatea():
             merged_bams_time_region = merge_wastewater_bams(region_list_dir, dirs[f"merged_bams_{grouping}_region"])
         except Exception as e:
             return f"Error creating the lists for merging wastewater alignment files by chose time grouping and region: {e}" 
-        logger.info(f"Merging BAMs by time+region: {time.perf_counter() - section_start:.2f}s")
+        logger.info(f"Merging BAMs by {grouping} and region: {time.perf_counter() - section_start:.2f}s")
     
     # get genome coverage if statistics included
     if args.statistics:

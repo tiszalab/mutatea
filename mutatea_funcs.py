@@ -752,7 +752,7 @@ def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
 # helper function for later running of varmint on merged bam files
 def _varmint(bam_file, fna_path, gff_path, output_dir):
     # get the base name by removing the extension (can be for either time or time+region)
-    merge_name = os.path.basename(bam_file).replace("mapq.sort.bam", "")
+    merge_name = os.path.basename(bam_file).replace(".mapq.sort.bam", "")
 
     # create filename for outputted tsv
     output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")

@@ -231,7 +231,7 @@ def mutatea():
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
 
     # create directory for mapq filtered reads
-    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "bams_filtered")
+    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "bams_filtered_unmerged")
     os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
 
     # filter bams for mapping quality
@@ -276,11 +276,11 @@ def mutatea():
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")
 
     # wastewater merged bams
-    dirs["bams_merged"] = os.path.join(dirs["wastewater_dir"], "bams_merged")
-    os.makedirs(dirs["bams_merged"], exist_ok=True)
+    dirs["bams_filtered_merged"] = os.path.join(dirs["wastewater_dir"], "bams_filtered_merged")
+    os.makedirs(dirs["bams_filtered_merged"], exist_ok=True)
 
     # create subfolder: wastewater bams merged by chosen time grouping
-    dirs[f"bams_{grouping}"] = os.path.join(dirs["bams_merged"], f"bams_{grouping}")        
+    dirs[f"bams_{grouping}"] = os.path.join(dirs["bams_filtered_merged"], f"bams_{grouping}")        
     os.makedirs(dirs[f"bams_{grouping}"], exist_ok=True)
 
     # merge wastewater bams by chosen time grouping
@@ -293,7 +293,7 @@ def mutatea():
 
     # create subfolder: wastewater bams merged by chosen time grouping and region
     if include_region:
-        dirs[f"bams_{grouping}_region"] = os.path.join(dirs["bams_merged"], f"bams_{grouping}_region")
+        dirs[f"bams_{grouping}_region"] = os.path.join(dirs["bams_filtered_merged"], f"bams_{grouping}_region")
         os.makedirs(dirs[f"bams_{grouping}_region"], exist_ok=True)
         
         # merge wastewater bams by chosen time grouping and region

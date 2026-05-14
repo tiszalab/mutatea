@@ -231,7 +231,7 @@ def mutatea():
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
 
     # create directory for mapq filtered reads
-    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "filtered_merged_bams")
+    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "bams_filtered")
     os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
 
     # filter bams for mapping quality
@@ -276,30 +276,30 @@ def mutatea():
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")
 
     # wastewater merged bams
-    dirs["merged_bams"] = os.path.join(dirs["wastewater_dir"], "merged_bams")
-    os.makedirs(dirs["merged_bams"], exist_ok=True)
+    dirs["bams_merged"] = os.path.join(dirs["wastewater_dir"], "bams_merged")
+    os.makedirs(dirs["bams_merged"], exist_ok=True)
 
     # create subfolder: wastewater bams merged by chosen time grouping
-    dirs[f"merged_bams_{grouping}"] = os.path.join(dirs["merged_bams"], f"merged_bams_{grouping}")        
-    os.makedirs(dirs[f"merged_bams_{grouping}"], exist_ok=True)
+    dirs[f"bams_{grouping}"] = os.path.join(dirs["bams_merged"], f"bams_{grouping}")        
+    os.makedirs(dirs[f"bams_{grouping}"], exist_ok=True)
 
     # merge wastewater bams by chosen time grouping
     section_start = time.perf_counter()
     try:
-        merged_bams_time = merge_wastewater_bams(month_list_dir, dirs[f"merged_bams_{grouping}"])
+        merged_bams_time = merge_wastewater_bams(month_list_dir, dirs[f"bams_{grouping}"])
     except Exception as e:
         return f"Error merging wastewater alignment files by {grouping}: {e}" 
     logger.info(f"Merging BAMs by {grouping}: {time.perf_counter() - section_start:.2f}s")
 
     # create subfolder: wastewater bams merged by chosen time grouping and region
     if include_region:
-        dirs[f"merged_bams_{grouping}_region"] = os.path.join(dirs["merged_bams"], f"merged_bams_{grouping}_region")
-        os.makedirs(dirs[f"merged_bams_{grouping}_region"], exist_ok=True)
+        dirs[f"bams_{grouping}_region"] = os.path.join(dirs["bams_merged"], f"bams_{grouping}_region")
+        os.makedirs(dirs[f"bams_{grouping}_region"], exist_ok=True)
         
         # merge wastewater bams by chosen time grouping and region
         section_start = time.perf_counter()
         try:
-            merged_bams_time_region = merge_wastewater_bams(region_list_dir, dirs[f"merged_bams_{grouping}_region"])
+            merged_bams_time_region = merge_wastewater_bams(region_list_dir, dirs[f"bams_{grouping}_region"])
         except Exception as e:
             return f"Error creating the lists for merging wastewater alignment files by chose time grouping and region: {e}" 
         logger.info(f"Merging BAMs by {grouping} and region: {time.perf_counter() - section_start:.2f}s")
@@ -437,14 +437,14 @@ def mutatea():
         logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the clinical bam files that were merged by chosen time grouping
-        dirs[f"bam_{grouping}"] = os.path.join(dirs["clinical"], f"bam_{grouping}")
-        os.makedirs(dirs[f"bam_{grouping}"], exist_ok=True)
+        dirs[f"bams_{grouping}"] = os.path.join(dirs["clinical"], f"bams_{grouping}")
+        os.makedirs(dirs[f"bams_{grouping}"], exist_ok=True)
 
         # align clinical reads to reference
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bam_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
+            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")

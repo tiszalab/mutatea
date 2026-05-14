@@ -74,16 +74,6 @@ def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,
     fna_path = glob.glob(os.path.join(reference_dir, "*.fna"))[0]
     gff_path = glob.glob(os.path.join(reference_dir, "*.gff"))[0]
 
-    # crm could maybe remove the indexing since no longer using LoFreq
-    # index reference file for later use with LoFreq
-    #fai_path = fna_path + ".fai"
-    #if not os.path.exists(fai_path):
-    #    try:
-    #        subprocess.run(["samtools", "faidx", fna_path], check=True, capture_output=True)
-    #        print(f"Indexed reference file: {fna_path}")
-    #    except subprocess.CalledProcessError as e:
-    #        print(f"Warning: Failed to index reference file: {e}")
-
     # detailed error messages
     if not fna_path:
         raise ValueError(f"No fna(.gz) file found in the reference directory {reference_dir}")

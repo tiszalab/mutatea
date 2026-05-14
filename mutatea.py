@@ -107,6 +107,7 @@ def mutatea():
     dirs["output"] = os.path.join(args.output_dir, f"{args.pathogen}_align")
     os.makedirs(dirs["output"], exist_ok=True)
 
+    # crm: maybe add more here
     # define logger
     logger = logging.getLogger("mutatea_logger")
     logger.setLevel(logging.DEBUG)
@@ -114,9 +115,15 @@ def mutatea():
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.DEBUG)
 
-    # crm: not sure if I also need filehandler, but it would be put in this section fyi
-
     logger.addHandler(stream_handler)
+
+    # save detailed log file if user requested
+    if args.logger:
+        log_file = os.path.join(dirs["output"], f"{args.pathogen}_mutatea.log")
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+        logger.addHandler(file_handler)
     
     ############################## process reference and metadata files ##############################
     # optionally give current version

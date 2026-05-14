@@ -479,7 +479,7 @@ def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 2
     return filtered_bams
 
 # use wastewater metadata to group bam files by unit of time (option for if including region)
-def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
+def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
     # create empty dictionary to store file path lists
     bam_path_lists = {}
     
@@ -535,7 +535,7 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
     for time, bam_path_list in bam_path_lists.items():
         # only create the txt file if the list contains bam paths
         if bam_path_list:
-            out_path = os.path.join(month_output_dir, f"{time}_list.txt")
+            out_path = os.path.join(time_output_dir, f"{time}_list.txt")
             with open(out_path, "w") as f:
                 f.write("\n".join(bam_path_list))
 
@@ -576,9 +576,9 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, month_
                 with open(out_path, "w") as f:
                     f.write("\n".join(bam_path_list))
     if include_region:
-        return month_output_dir, region_output_dir
+        return time_output_dir, region_output_dir
     else:
-        return month_output_dir
+        return time_output_dir
 
 # merge bam files by time and time_region
 def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> list:
@@ -619,10 +619,10 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping, m
 
 
     # get the base name by removing the extension (can be for either time or time_region)
-    month_year = os.path.basename(fasta_file).replace(".fasta", "")
+    time = os.path.basename(fasta_file).replace(".fasta", "")
 
     # catch output bam
-    output_bam = os.path.join(output_dir, f"{month_year}.sort.bam")
+    output_bam = os.path.join(output_dir, f"{time}.sort.bam")
 
     # crm: do I need to add in a skip if the BAM is already created?
     if os.path.exists(output_bam):
@@ -640,16 +640,16 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping, m
        
     # error
     except subprocess.CalledProcessError as e:
-        print(f"Error processing {month_year}: {e}")
+        print(f"Error processing {time}: {e}")
         return None
 
 # align clinical reads to reference files
-def align_clinical_reads(clinical_fasta_month:str, fna_path:str, output_dir: str, minimap_preset: str = "asm10", threads: int = 8, workers: int = 4, grouping: str = "month") -> list:
+def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str, minimap_preset: str = "asm10", threads: int = 8, workers: int = 4, grouping: str = "month") -> list:
     # create empty list to catch outputted bam files
     bam_files = []
 
     # find fasta files in the clinical fasta folder
-    fasta_files = sorted(glob.glob(os.path.join(clinical_fasta_month, "*.fasta")))
+    fasta_files = sorted(glob.glob(os.path.join(clinical_fasta_time, "*.fasta")))
 
     # prepare tasks
     tasks = []
@@ -751,8 +751,8 @@ def run_lofreq(bam_files:str, fna_path: str, output_dir: str) -> str:
 
 # helper function for later running of varmint on merged bam files
 def _varmint(bam_file, fna_path, gff_path, output_dir):
-    # get the base name by removing the extension (can be for either month or month_region)
-    merge_name = os.path.basename(bam_file).replace(".sort.bam", "")
+    # get the base name by removing the extension (can be for either time or time+region)
+    merge_name = os.path.basename(bam_file).replace("mapq.sort.bam", "")
 
     # create filename for outputted tsv
     output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")

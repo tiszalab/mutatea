@@ -279,7 +279,7 @@ def mutatea():
     # merge wastewater bams by chosen time grouping
     section_start = time.perf_counter()
     try:
-        merged_bams_month = merge_wastewater_bams(month_list_dir, dirs[f"merged_bams_{grouping}"])
+        merged_bams_time = merge_wastewater_bams(month_list_dir, dirs[f"merged_bams_{grouping}"])
     except Exception as e:
         return f"Error merging wastewater alignment files by {grouping}: {e}" 
     logger.info(f"Merging BAMs by {grouping}: {time.perf_counter() - section_start:.2f}s")
@@ -292,7 +292,7 @@ def mutatea():
         # merge wastewater bams by chosen time grouping and region
         section_start = time.perf_counter()
         try:
-            merged_bams_month_region = merge_wastewater_bams(region_list_dir, dirs[f"merged_bams_{grouping}_region"])
+            merged_bams_time_region = merge_wastewater_bams(region_list_dir, dirs[f"merged_bams_{grouping}_region"])
         except Exception as e:
             return f"Error creating the lists for merging wastewater alignment files by chose time grouping and region: {e}" 
         logger.info(f"Merging BAMs by time+region: {time.perf_counter() - section_start:.2f}s")
@@ -323,31 +323,31 @@ def mutatea():
                 os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_month, dirs[f"statistics_{grouping}"])
-                    statistics = run_stats(merged_bams_month_region, dirs[f"statistics_{grouping}_region"])
+                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"])
+                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
                 try:
-                    statistics = run_stats(merged_bams_month, dirs["stats_wastewater"])
+                    statistics = run_stats(merged_bams_time, dirs["stats_wastewater"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
 
         else:
             if include_region:
-                dirs["statistics_month"] = os.path.join(dirs["statistics"], f"statistics_{grouping}")
+                dirs[f"statistics_{grouping}"] = os.path.join(dirs["statistics"], f"statistics_{grouping}")
                 os.makedirs(dirs[f"statistics_{grouping}"], exist_ok=True)
-                dirs["statistics_month_region"] = os.path.join(dirs["statistics"], f"statistics_{grouping}_region")
+                dirs[f"statistics_{grouping}_region"] = os.path.join(dirs["statistics"], f"statistics_{grouping}_region")
                 os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_month, dirs[f"statistics_{grouping}"])
-                    statistics = run_stats(merged_bams_month_region, dirs[f"statistics_{grouping}_region"])
+                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"])
+                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
                 try:
-                    statistics = run_stats(merged_bams_month, dirs["statistics"])
+                    statistics = run_stats(merged_bams_time, dirs["statistics"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
         logger.info(f"Running statistics on merged BAMs (wastewater): {time.perf_counter() - section_start:.2f}s")
@@ -415,13 +415,13 @@ def mutatea():
     
     if include_region:
         try:
-            varmint(merged_bams_month, fna_path, gff_path, dirs[f"tsv_{grouping}"], workers=cpu_count if args.fast else 4)
-            varmint(merged_bams_month_region, fna_path, gff_path, dirs[f"tsv_{grouping}_region"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_time, fna_path, gff_path, dirs[f"tsv_{grouping}"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_time_region, fna_path, gff_path, dirs[f"tsv_{grouping}_region"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint: {e}"
     else:
         try:
-            varmint(merged_bams_month, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
+            varmint(merged_bams_time, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint: {e}"
     

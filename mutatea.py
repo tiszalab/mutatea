@@ -412,52 +412,52 @@ def mutatea():
         os.makedirs(dirs["clinical"], exist_ok=True)
 
         # create folder for the lists of accessions by chosen time grouping
-        dirs[f"clinical_lists_{grouping}"] = os.path.join(dirs["clinical"], f"clinical_lists_{grouping}")
-        os.makedirs(dirs[f"clinical_lists_{grouping}"], exist_ok=True)
+        dirs[f"lists_{grouping}"] = os.path.join(dirs["clinical"], f"lists_{grouping}")
+        os.makedirs(dirs[f"lists_{grouping}"], exist_ok=True)
 
         # create monthly lists of accessions
         # crm: I want to delete this logger line, which I could go forward with if I am saving the monthly lists to tempdir
         #logger.info("\nCreating monthly lists of accessions")
         try:
-            create_grouped_accession_lists(clinical_metadata, dirs[f"clinical_lists_{grouping}"])
+            create_grouped_accession_lists(clinical_metadata, dirs[f"lists_{grouping}"])
         except Exception as e:
             return f"Error creating lists of accessions grouped by time for clinical data: {e}" 
 
         # create folder for the clinical fastas split by chosen time grouping
-        dirs[f"clinical_fasta_{grouping}"] = os.path.join(dirs["clinical"], f"clinical_fasta_{grouping}")
-        os.makedirs(dirs[f"clinical_fasta_{grouping}"], exist_ok=True)
+        dirs[f"fastas_{grouping}"] = os.path.join(dirs["clinical"], f"fastas_{grouping}")
+        os.makedirs(dirs[f"fastas_{grouping}"], exist_ok=True)
 
         # split clinical fasta by time-grouped lists
         logger.info(f"\nSplitting clinical FASTA by {grouping}")
         section_start = time.perf_counter()
         try:
-            split_clinical_fasta_by_time(clinical_fasta, dirs[f"clinical_lists_{grouping}"], dirs[f"clinical_fasta_{grouping}"])
+            split_clinical_fasta_by_time(clinical_fasta, dirs[f"lists_{grouping}"], dirs[f"fastas_{grouping}"])
         except Exception as e:
             return f"Error splitting clinical FASTA by {grouping}: {e}" 
         logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the clinical bam files that were merged by chosen time grouping
-        dirs[f"clinical_bam_{grouping}"] = os.path.join(dirs["clinical"], f"clinical_bam_{grouping}")
-        os.makedirs(dirs[f"clinical_bam_{grouping}"], exist_ok=True)
+        dirs[f"bam_{grouping}"] = os.path.join(dirs["clinical"], f"bam_{grouping}")
+        os.makedirs(dirs[f"bam_{grouping}"], exist_ok=True)
 
         # align clinical reads to reference
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs[f"clinical_fasta_{grouping}"], fna_path, dirs[f"clinical_bam_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
+            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bam_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"  
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the filtered clinical bam files that were merged by chosen time grouping
-        dirs[f"clinical_bam_{grouping}_filtered"] = os.path.join(dirs[f"clinical_bam_{grouping}"], f"clinical_bam_{grouping}_filtered")
-        os.makedirs(dirs[f"clinical_bam_{grouping}_filtered"], exist_ok=True)
+        dirs[f"bams_{grouping}_filtered"] = os.path.join(dirs[f"bams_{grouping}"], f"bams_{grouping}_filtered")
+        os.makedirs(dirs[f"bams_{grouping}_filtered"], exist_ok=True)
 
         # filter clinical reads for alignment quality
         logger.info("\nFiltering clinical reads for mapping quality")
         section_start = time.perf_counter()
         try:
-            bam_files = alignment_quality_filter(bam_files, dirs[f"clinical_bam_{grouping}_filtered"])
+            bam_files = alignment_quality_filter(bam_files, dirs[f"bams_{grouping}_filtered"])
         except Exception as e:
             return f"Error filtering clinical reads for mapping quality: {e}" 
         logger.info(f"Filtering reads for mapping quality (clinical): {time.perf_counter() - section_start:.2f}s")

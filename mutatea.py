@@ -20,6 +20,13 @@ except:
 
 # entry point function for the CLI
 def mutatea():
+    # print ASCII art over time
+    splash = os.path.join(os.path.dirname(__file__), "mutatea.txt")
+    with open(splash) as f:
+        for line in f:
+            print(line, end="")
+            time.sleep(0.03)
+
     # start timer
     cli_start_time = time.perf_counter()
     # set default file path for output to the current working directory of the user

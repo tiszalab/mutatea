@@ -257,8 +257,6 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
-
-# crm: realizing that it accepts fastq.gz reads but isn't unzipping them if they find them
 # find wastewater reads from pools for the pathogen of interest
 def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool = True) -> dict:
     # create empty dictionary to store reads by pool
@@ -440,9 +438,8 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     
     return bam_files
 
-# crm: need to confirm mapq of 20 makes sense
-# filter bam files for alignment quality
-def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 27) -> list:
+# optional filter for alignment quality
+def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 0) -> list:
     # create list to capture output
     filtered_bams = []
     # find bam files
@@ -666,8 +663,7 @@ def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str,
 
     return bam_files
 
-# crm: update comment to reflect what I'm doing in run_stats function
-# optional statistics to get depth/breadth of genome coverage
+# optional statistics to get depth and breadth of genome coverage
 def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
     stats_files = []
 
@@ -684,13 +680,13 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
             # crm test to confirm that the stats file has content before saving
             if aligned_reads > 0:
                 # create coverage file
-                output_cov = os.path.join(output_dir, f"{merge_name}.coverage.out")
+                output_cov = os.path.join(output_dir, f"{merge_name}coverage.out")
                 cmd_cov = ["samtools", "coverage", bam_file, "-o", output_cov]
                 subprocess.run(cmd_cov, check=True, capture_output=True)
                 stats_files.append(output_cov)
                 
                 # create stats file
-                output_stats = os.path.join(output_dir, f"{merge_name}.stats.out")
+                output_stats = os.path.join(output_dir, f"{merge_name}stats.out")
                 cmd_stats = f"samtools stats {bam_file} > {output_stats}"
                 subprocess.run(cmd_stats, shell=True, check=True)
                 stats_files.append(output_stats)
@@ -753,3 +749,45 @@ def varmint(bam_files: list, fna_path: str, gff_path: str, output_dir: str, work
     for result in results:
         if result.startswith("Error"):
             print(result)
+
+def print_mutatea_banner():
+    return r"""
+                       _             _                  
+   _ __ ___    _   _  | |_    __ _  | |_    ___    __ _ 
+  | '_ ` _ \  | | | | | __|  / _` | | __|  / _ \  / _` |
+  | | | | | | | |_| | | |_  | (_| | | |_  |  __/ | (_| |
+  |_| |_| |_|  \__,_|  \__|  \__,_|  \__|  \___|  \__,_|
+                                                                                                                                                                                                                                                                                                                             
+            <████████████████████████████████>
+         <█████$$$@&MMMMMMMMMMMMMMMMMMW@$$$█████>
+      <█████$@&&WWWWMMM#==>MMMMMMMMMWWWWW&&@$█████>
+   <████$%%&&&&WWWWMMMM*===*###*===>MMWWWW&&&&%%$████>
+ <████@%%%&&&&WWWWMMM###<~~=##>~~==#MMMWWWW&&&&%%%@████>
+<███@@%%%%&&&WWWWMMMM####<~~**~~~*###MMMWWWW&&&%%%%@@███>
+$███@@@%%%%&&&WWWMM>===~=>><~~~~<*####MMMMWWW&&&&%%%@@@███$
+$███@@@%%%&&&&WWWMM*===~~~~+~+~+~~~~~==>MMWWW&&&&%%%@@@███$  <ttttttt>
+$███@@@%%%%&&&WWWMMMM####*>~+=~<>>~~===<MMWWW&&&&%%%@@@███$ <ttttttttt>
+$████@@%%%%&&&WWWWMMMM##*~~~<*~~<#####MMMWWWW&&&%%%%@@████$<ttttttttttt>
+$tt████@%%%&&&&WWWWMMMM<=~~>##=~~=##MMMMWWWW&&&&%%%@████tttttttttttttttt>
+$tttt████$%%&&&&WWWWMM#===*####===<MMMMWWWW&&&&%%$████tttttttttttttttttt>
+$ttttttt█████$@&&WWWWWMMMMMMMMM*==#MMWWWWW&&@$█████ttttttttt/    ttttttt>
+$█tttttttttt███████@&WMMMMMMMMMMMMMMMW&@███████ttttttttttt█      ttttttt>
+$t██tttttttttttttttt███████████████████ttttttttttttttttt█t$      ttttttt>
+$ttt██ttttttttttttttttttttttttttttttttttttttttttttttt██ttt$      ttttttt> 
+$tttttt██ttttttttttttttttttttttttttttttttttttttttt███ttttt$     ttttttt>
+$ttttttttt█████tttttttttttttttttttttttttttttt████ttttttttt$    ttttttt>
+$ttttttttttttttt████████████████████████████tttttttttttttt$   ttttttt>
+$ttttttttttttttttttttttttttttttttttttttttttttttttttttttttt$ tttttttt>
+$█tttttttttttttttttttttttttttttttttttttttttttttttttttttttt█ttttttt>
+$t█tttttttttttttttttttttttttttttttttttttttttttttttttttttt█ttttttt>
+$tt███tttttttttttttttttttttttttttttttttttttttttttttttt███tttttt>
+$ttttt████tttttttttttttttttttttttttttttttttttttttt████tttttttt>
+$ttttttttt██████ttttttttttttttttttttttttttttt█████tttttttttt>
+$tttttttttttttt██████████████████████████████ttttttttttttt>
+ <ttttttttttttttttttttttttt|CRM|tttttttttttttttttttttttt>
+  <ttttttttttttttttttttttttttttttttttttttttttttttttttt>
+    <ttttttttttttttttttttttttttttttttttttttttttttttt>
+       <tttttttttttttttttttttttttttttttttttttttttt>
+           <ttttttttttttttttttttttttttttttttttt>
+               <tttttttt|Tisza Lab|tttttttt>
+"""

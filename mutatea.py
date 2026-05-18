@@ -6,26 +6,28 @@ import argparse
 import sys, os
 import logging
 import shutil
-import time                         # used for granular timing of each function called in
-from datetime import timedelta      # used to determine total runtime of mutatea run
+import time                         
+from datetime import timedelta      
 
 # CPU detection for fast mode
 cpu_count = os.cpu_count() or 4
 
 # load in functions from mutatea.funcs
 try:
-    from .mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, varmint, alignment_quality_filter
+    from .mutatea_funcs import (process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, 
+    split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
+    run_stats, varmint, alignment_quality_filter, print_mutatea_banner)
 except:
-    from mutatea_funcs import process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, run_stats, varmint, alignment_quality_filter
+    from mutatea_funcs import (process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, 
+    split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
+    run_stats, varmint, alignment_quality_filter, print_mutatea_banner)
 
 # entry point function for the CLI
 def mutatea():
     # print ASCII art over time
-    splash = os.path.join(os.path.dirname(__file__), "mutatea.txt")
-    with open(splash) as f:
-        for line in f:
-            print(line, end="")
-            time.sleep(0.03)
+    for line in print_mutatea_banner().splitlines():
+        print(line)
+        time.sleep(0.04)
 
     # start timer
     cli_start_time = time.perf_counter()
@@ -79,7 +81,6 @@ def mutatea():
     # argument to save detailed loggger file
     parser.add_argument("-l", "--logger", action='store_true', help="Export a detailed logger file")
 
-    # crm: wants to add in the statistics argument
     # argument to save statistics of the groupings
     parser.add_argument("-s", "--statistics", action='store_true', help="Export a file detailing the genome depth and coverage for each grouping") 
     
@@ -117,7 +118,6 @@ def mutatea():
     dirs["output"] = os.path.join(args.output_dir, f"{args.pathogen}_align")
     os.makedirs(dirs["output"], exist_ok=True)
 
-    # crm: maybe add more here
     # define logger
     logger = logging.getLogger("mutatea_logger")
     logger.setLevel(logging.DEBUG)
@@ -144,7 +144,6 @@ def mutatea():
     dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
     os.makedirs(dirs["reference_dir"], exist_ok=True)
 
-    # crm: being too specific about spacing, I know my character flaws
     logger.info("")
 
     ## process reference files
@@ -252,7 +251,6 @@ def mutatea():
     except Exception as e:
         return f"Error filtering wastewater reads for mapping quality: {e}" 
     logger.info(f"Filtering reads for mapping quality (wastewater): {time.perf_counter() - section_start:.2f}s")
-
 
     # crm: need to add in a print line explaining how many reads were removed and from where (also for clinical)
 
@@ -426,8 +424,6 @@ def mutatea():
         os.makedirs(dirs[f"lists_{grouping}"], exist_ok=True)
 
         # create monthly lists of accessions
-        # crm: I want to delete this logger line, which I could go forward with if I am saving the monthly lists to tempdir
-        #logger.info("\nCreating monthly lists of accessions")
         try:
             create_grouped_accession_lists(clinical_metadata, dirs[f"lists_{grouping}"])
         except Exception as e:

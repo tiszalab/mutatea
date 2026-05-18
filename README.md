@@ -88,8 +88,7 @@ mutatea -p <PATHOGEN_NAME> -m <WASTEWATER_METADATA_FILES> -pr <PAIRED_WASTEWATER
 - `-a`, `--all`: Keep all intermediate alignment files (otherwise deleted)
 - `-l`, `--logger`: Export a detailed logger file
 - `-s`, `--statistics`: See statistics on genome depth and coverage for each grouping
-- `-mq`, `--mapq`: Set minimum mapping quality score (default: 0) 
-# crm: set a default
+- `-q`, `--mapq`: Set minimum mapping quality score (default: 0) 
 
 ## Information
 - `-tr`, `--timerange`: Print time range covered by the wastewater samples (clinical data should be time matched)

@@ -668,7 +668,7 @@ def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str,
 
 # crm: update comment to reflect what I'm doing in run_stats function
 # optional statistics to get depth/breadth of genome coverage
-def run_stats(bam_files:list, output_dir:str) -> list:
+def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
     stats_files = []
 
     for bam_file in bam_files:
@@ -695,7 +695,7 @@ def run_stats(bam_files:list, output_dir:str) -> list:
                 subprocess.run(cmd_stats, shell=True, check=True)
                 stats_files.append(output_stats)
             else:
-                print (f"Skipping {merge_name}: contained no aligned reads")
+                if logger: logger.debug(f"Skipping {merge_name}: contained no aligned reads")
                 continue
                 
         # error

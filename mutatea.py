@@ -92,6 +92,9 @@ def mutatea():
     # argument to overwrite minimap2 preset for the clinical alignment (default is -ax asm10)
     parser.add_argument("-mc", "--minimap_clinical", type=str, default="asm10", help="Override minimap2 preset for clinical alignment (default is asm10)")
 
+    # argument to overwrite default mapq filter (default is 0)
+    parser.add_argument("-q", "--mapq", type=int, default=0, help="Minimum mapping quality (MAPQ) threshold for filtering reads (default is 0)")
+    
     # parse arguments
     args = parser.parse_args()
 
@@ -120,7 +123,7 @@ def mutatea():
     logger.setLevel(logging.DEBUG)
 
     stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setLevel(logging.INFO)
 
     logger.addHandler(stream_handler)
 
@@ -245,7 +248,7 @@ def mutatea():
     logger.info(f"\nFiltering wastewater reads for mapping quality")
     section_start = time.perf_counter()
     try:
-        bam_files = alignment_quality_filter(bam_files, dirs["wastewater_filtered"])
+        bam_files = alignment_quality_filter(bam_files, dirs["wastewater_filtered"], min_mapq=args.mapq)
     except Exception as e:
         return f"Error filtering wastewater reads for mapping quality: {e}" 
     logger.info(f"Filtering reads for mapping quality (wastewater): {time.perf_counter() - section_start:.2f}s")
@@ -337,13 +340,13 @@ def mutatea():
                 os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"])
-                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"])
+                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"], logger=logger)
+                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"], logger=logger)
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
                 try:
-                    statistics = run_stats(merged_bams_time, dirs["stats_wastewater"])
+                    statistics = run_stats(merged_bams_time, dirs["stats_wastewater"], logger=logger)
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
 
@@ -355,13 +358,13 @@ def mutatea():
                 os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"])
-                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"])
+                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"], logger=logger)
+                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"], logger=logger)
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
                 try:
-                    statistics = run_stats(merged_bams_time, dirs["statistics"])
+                    statistics = run_stats(merged_bams_time, dirs["statistics"], logger=logger)
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
         logger.info(f"Running statistics on merged BAMs (wastewater): {time.perf_counter() - section_start:.2f}s")
@@ -464,7 +467,7 @@ def mutatea():
         logger.info("\nFiltering clinical reads for mapping quality")
         section_start = time.perf_counter()
         try:
-            bam_files = alignment_quality_filter(bam_files, dirs[f"bams_{grouping}_filtered"])
+            bam_files = alignment_quality_filter(bam_files, dirs[f"bams_{grouping}_filtered"], min_mapq=args.mapq)
         except Exception as e:
             return f"Error filtering clinical reads for mapping quality: {e}" 
         logger.info(f"Filtering reads for mapping quality (clinical): {time.perf_counter() - section_start:.2f}s")
@@ -485,7 +488,7 @@ def mutatea():
             logger.info("\nGetting coverage statistics of clinical BAMs with samtools")
             section_start = time.perf_counter()
             try:
-                statistics = run_stats(bam_files, dirs["stats_clinical"])
+                statistics = run_stats(bam_files, dirs["stats_clinical"], logger=logger)
             except Exception as e:
                 return f"Error getting coverage statistics of clinical BAMs with samtools: {e}"
             logger.info(f"Creating coverage statistics from BAMs (clinical): {time.perf_counter() - section_start:.2f}s")

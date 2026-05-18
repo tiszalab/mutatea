@@ -239,7 +239,7 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
         group["Accession"].to_csv(out_path, index=False, header=False)
 
 # if include clinical: split clinical FASTA file by unit of time
-def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, output_dir: str) -> None:
+def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, output_dir: str, logger=None) -> None:
     # load clinical fasta as dictionary
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
     # loop through lists and split the clinical fasta by selected unit of time
@@ -252,6 +252,11 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
 
         # get the unit of time from the file name
         time = os.path.basename(list_file).replace("_list.txt", "")
+
+        # skip if no accessions matched the fasta records
+        if not time_accessions:
+            if logger: logger.debug(f"Skipping {time}: no matching sequences found in clinical FASTA")
+            continue
 
         # export clinical fasta by unit of time
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
@@ -452,13 +457,11 @@ def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 0
             filtered_bams.append(output_bam)
             continue
 
-        bam_in = pysam.AlignmentFile(bam_file, "rb")
-        bam_out = pysam.AlignmentFile(output_bam, "wb", header=bam_in.header)
-        for read in bam_in:
-            if read.mapping_quality >= min_mapq:
-                bam_out.write(read)
-        bam_in.close()
-        bam_out.close()
+        with pysam.AlignmentFile(bam_file, "rb") as bam_in, pysam.AlignmentFile(output_bam, "wb", header=bam_in.header) as bam_out:
+            for read in bam_in:
+                if read.mapping_quality >= min_mapq:
+                    bam_out.write(read)
+
         # need to reindex to get the bai for later
         pysam.index(output_bam)
         filtered_bams.append(output_bam)
@@ -772,7 +775,7 @@ $tt████@%%%&&&&WWWWMMMM<=~~>##=~~=##MMMMWWWW&&&&%%%@████tttttttt
 $tttt████$%%&&&&WWWWMM#===*####===<MMMMWWWW&&&&%%$████tttttttttttttttttt>
 $ttttttt█████$@&&WWWWWMMMMMMMMM*==#MMWWWWW&&@$█████ttttttttt/    ttttttt>
 $█tttttttttt███████@&WMMMMMMMMMMMMMMMW&@███████ttttttttttt█      ttttttt>
-$t██tttttttttttttttt███████████████████ttttttttttttttttt█t$      ttttttt>
+$t██tttttttttttttttt███████████████████ttttttttttttttttt██$      ttttttt>
 $ttt██ttttttttttttttttttttttttttttttttttttttttttttttt██ttt$      ttttttt> 
 $tttttt██ttttttttttttttttttttttttttttttttttttttttt███ttttt$     ttttttt>
 $ttttttttt█████tttttttttttttttttttttttttttttt████ttttttttt$    ttttttt>

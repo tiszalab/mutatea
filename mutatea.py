@@ -437,7 +437,7 @@ def mutatea():
         logger.info(f"\nSplitting clinical FASTA by {grouping}")
         section_start = time.perf_counter()
         try:
-            split_clinical_fasta_by_time(clinical_fasta, dirs[f"lists_{grouping}"], dirs[f"fastas_{grouping}"])
+            split_clinical_fasta_by_time(clinical_fasta, dirs[f"lists_{grouping}"], dirs[f"fastas_{grouping}"], logger=logger)
         except Exception as e:
             return f"Error splitting clinical FASTA by {grouping}: {e}" 
         logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")

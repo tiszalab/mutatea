@@ -456,8 +456,17 @@ def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 0
         output_bam = os.path.join(output_dir, basename)
         sample_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
+        # crm: added in case the bams already exist, I can just take the stats from there
+        # crm: could replace with an error? Or overwrite the mapq filtered bam?
         if os.path.exists(output_bam):
-            filtered_bams.append(output_bam)
+            with pysam.AlignmentFile(bam_file, "rb") as bam_in, pysam.AlignmentFile(output_bam, "rb") as bam_cached:
+                total = bam_in.count(until_eof=True)
+                kept = bam_cached.count(until_eof=True)
+            filter_stats[sample_name] = (total, kept)
+
+            # remove the bam file if no reads are kept
+            if kept > 0:
+                filtered_bams.append(output_bam)
             continue
 
         total = 0
@@ -471,9 +480,11 @@ def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 0
 
         filter_stats[sample_name] = (total, kept)
 
-        # need to reindex to get the bai for later
-        pysam.index(output_bam)
-        filtered_bams.append(output_bam)
+        # only keep bam file if it contains reads
+        if kept > 0:
+            # need to reindex to get the bai for later
+            pysam.index(output_bam)
+            filtered_bams.append(output_bam)
 
     return filtered_bams, filter_stats
 
@@ -518,11 +529,6 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
             # look up the bam path from the dictionary
             bam_path = sample_to_bam.get(sample_id)
             
-            # crm: need to adjust
-            # If no specific BAM found, construct the expected path
-            if not bam_path:
-                bam_path = os.path.join(bam_dir, "p0001", f"{sample_id}.p0001.sort.bam")
-
             # make sure the file exists before adding
             if bam_path and os.path.exists(bam_path):
                 bam_paths.append(bam_path)
@@ -553,10 +559,6 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
                 # look up the bam path from the dictionary
                 bam_path = sample_to_bam.get(sample_id)
                 
-                # If no specific BAM found, construct the expected path
-                if not bam_path:
-                    bam_path = os.path.join(bam_dir, "p0001", f"{sample_id}.p0001.sort.bam")
-
                 # make sure the file exists before adding
                 if bam_path and os.path.exists(bam_path):
                     bam_paths_region.append(bam_path)
@@ -681,7 +683,7 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
 
     for bam_file in bam_files:
         # get base name from BAM file
-        merge_name = os.path.basename(bam_file).replace("mapq.sort.bam", "")
+        merge_name = os.path.basename(bam_file).replace(".mapq.sort.bam", "")
 
         try: 
             # filter: use number of reads aligned from each bam to only save stats files with content

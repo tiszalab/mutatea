@@ -247,12 +247,12 @@ def mutatea():
     logger.info(f"\nFiltering wastewater reads for mapping quality")
     section_start = time.perf_counter()
     try:
-        bam_files = alignment_quality_filter(bam_files, dirs["wastewater_filtered"], min_mapq=args.mapq)
+        bam_files, mapq_stats = alignment_quality_filter(bam_files, dirs["wastewater_filtered"], min_mapq=args.mapq)
     except Exception as e:
         return f"Error filtering wastewater reads for mapping quality: {e}" 
     logger.info(f"Filtering reads for mapping quality (wastewater): {time.perf_counter() - section_start:.2f}s")
-
-    # crm: need to add in a print line explaining how many reads were removed and from where (also for clinical)
+    for sample, (total, kept) in mapq_stats.items():
+        logger.debug(f"{sample}: {total-kept}/{total} reads removed (MAPQ < {args.mapq})")
 
     # create directory for wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
@@ -463,11 +463,13 @@ def mutatea():
         logger.info("\nFiltering clinical reads for mapping quality")
         section_start = time.perf_counter()
         try:
-            bam_files = alignment_quality_filter(bam_files, dirs[f"bams_{grouping}_filtered"], min_mapq=args.mapq)
+            bam_files, mapq_stats = alignment_quality_filter(bam_files, dirs[f"bams_{grouping}_filtered"], min_mapq=args.mapq)
         except Exception as e:
             return f"Error filtering clinical reads for mapping quality: {e}" 
         logger.info(f"Filtering reads for mapping quality (clinical): {time.perf_counter() - section_start:.2f}s")
-
+        for sample, (total, kept) in mapq_stats.items():
+            if total - kept > 0:
+                logger.debug(f"{sample}: {total-kept}/{total} reads removed (MAPQ < {args.mapq})")
 
 
 

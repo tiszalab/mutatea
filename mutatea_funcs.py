@@ -444,29 +444,38 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     return bam_files
 
 # optional filter for alignment quality
-def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 0) -> list:
+def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 0) -> tuple:
     # create list to capture output
     filtered_bams = []
+    # dict mapping sample basename -> (total_reads, kept_reads)
+    filter_stats = {}
     # find bam files
     for bam_file in bam_files:
         # replace file name with mapq file name
         basename = os.path.basename(bam_file).replace(".sort.bam", ".mapq.sort.bam")
         output_bam = os.path.join(output_dir, basename)
+        sample_name = os.path.basename(bam_file).replace(".sort.bam", "")
 
         if os.path.exists(output_bam):
             filtered_bams.append(output_bam)
             continue
 
+        total = 0
+        kept = 0
         with pysam.AlignmentFile(bam_file, "rb") as bam_in, pysam.AlignmentFile(output_bam, "wb", header=bam_in.header) as bam_out:
             for read in bam_in:
+                total += 1
                 if read.mapping_quality >= min_mapq:
+                    kept += 1
                     bam_out.write(read)
+
+        filter_stats[sample_name] = (total, kept)
 
         # need to reindex to get the bai for later
         pysam.index(output_bam)
         filtered_bams.append(output_bam)
 
-    return filtered_bams
+    return filtered_bams, filter_stats
 
 # use wastewater metadata to group bam files by unit of time (option for if including region)
 def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:

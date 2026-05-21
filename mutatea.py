@@ -17,11 +17,11 @@ cpu_count = os.cpu_count() or 4
 try:
     from .mutatea_funcs import (process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, 
     split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
-    run_stats, varmint, alignment_quality_filter, print_mutatea_banner)
+    run_stats, varmint, print_mutatea_banner)
 except:
     from mutatea_funcs import (process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, 
     split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
-    run_stats, varmint, alignment_quality_filter, print_mutatea_banner)
+    run_stats, varmint, print_mutatea_banner)
 
 # entry point function for the CLI
 def mutatea():
@@ -76,7 +76,7 @@ def mutatea():
     # argument to override default number for parallel workers
     parser.add_argument("-f", "--fast", action='store_true', help="Override default number of parallel workers to run with all available cpus")
 
-    # argument to input personal dictionary (default is mapping Texas city to public health region)
+    # argument to input personal dictionary (default is mapping Texas city to Texas public health region)
     parser.add_argument("-d", "--dictionary", type=str, help="Path to JSON file containing city-to-region mapping")
 
     # argument to save detailed loggger file
@@ -231,35 +231,14 @@ def mutatea():
     dirs["pools"] = os.path.join(dirs["wastewater_dir"], "pools")
     os.makedirs(dirs["pools"], exist_ok=True)
     
-    # align wastewater reads to reference genome
+    # align wastewater reads to reference genome, filtering by mapq inline
     logger.info("\nAligning wastewater reads to given reference genome")
     section_start = time.perf_counter()
     try:
-        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4)
+        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq)
     except Exception as e:
-        return f"Error aligning the wastewater reads: {e}" 
-    # remove any empty bam files and report to log
-    all_bams = bam_files
-    bam_files = [b for b in all_bams if pysam.AlignmentFile(b, "rb").count(until_eof=True) > 0]
-    for b in set(all_bams) - set(bam_files):
-        logger.debug(f"{os.path.basename(b)}: removed (0 reads aligned)")
+        return f"Error aligning the wastewater reads: {e}"
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
-
-    # create directory for mapq filtered reads
-    dirs["wastewater_filtered"] = os.path.join(dirs["wastewater_dir"], "bams_filtered_unmerged")
-    os.makedirs(dirs["wastewater_filtered"], exist_ok=True)
-
-    # filter bams for mapping quality
-    logger.info(f"\nFiltering wastewater reads for mapping quality")
-    section_start = time.perf_counter()
-    try:
-        bam_files, mapq_stats = alignment_quality_filter(bam_files, dirs["wastewater_filtered"], min_mapq=args.mapq)
-    except Exception as e:
-        return f"Error filtering wastewater reads for mapping quality: {e}" 
-    logger.info(f"Filtering reads for mapping quality (wastewater): {time.perf_counter() - section_start:.2f}s")
-    for sample, (total, kept) in mapq_stats.items():
-        if total - kept > 0:
-            logger.debug(f"{sample}: {total-kept}/{total} reads removed (MAPQ < {args.mapq})")
 
     # create directory for wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")
@@ -276,7 +255,7 @@ def mutatea():
 
     # create list of accessions by time grouping for downstream merge key creation
     if include_region:
-        logger.info(f"\nMerging wastewater alignment files by {grouping} and public health region")
+        logger.info(f"\nMerging wastewater alignment files by {grouping} and region")
     else:
         logger.info(f"\nMerging wastewater alignment files by {grouping}")
 
@@ -291,30 +270,31 @@ def mutatea():
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")
 
     # wastewater merged bams
-    dirs["bams_filtered_merged"] = os.path.join(dirs["wastewater_dir"], "bams_filtered_merged")
-    os.makedirs(dirs["bams_filtered_merged"], exist_ok=True)
+    merged_dir_name = "bams_filtered_merged" if args.mapq else "bams_merged"
+    dirs["bams_merged"] = os.path.join(dirs["wastewater_dir"], merged_dir_name)
+    os.makedirs(dirs["bams_merged"], exist_ok=True)
 
     # create subfolder: wastewater bams merged by chosen time grouping
-    dirs[f"bams_{grouping}"] = os.path.join(dirs["bams_filtered_merged"], f"bams_{grouping}")        
+    dirs[f"bams_{grouping}"] = os.path.join(dirs["bams_merged"], f"bams_{grouping}")        
     os.makedirs(dirs[f"bams_{grouping}"], exist_ok=True)
 
     # merge wastewater bams by chosen time grouping
     section_start = time.perf_counter()
     try:
-        merged_bams_time = merge_wastewater_bams(month_list_dir, dirs[f"bams_{grouping}"])
+        merged_bams_time = merge_wastewater_bams(month_list_dir, dirs[f"bams_{grouping}"], min_mapq=args.mapq)
     except Exception as e:
         return f"Error merging wastewater alignment files by {grouping}: {e}" 
     logger.info(f"Merging BAMs by {grouping}: {time.perf_counter() - section_start:.2f}s")
 
     # create subfolder: wastewater bams merged by chosen time grouping and region
     if include_region:
-        dirs[f"bams_{grouping}_region"] = os.path.join(dirs["bams_filtered_merged"], f"bams_{grouping}_region")
+        dirs[f"bams_{grouping}_region"] = os.path.join(dirs["bams_merged"], f"bams_{grouping}_region")
         os.makedirs(dirs[f"bams_{grouping}_region"], exist_ok=True)
         
         # merge wastewater bams by chosen time grouping and region
         section_start = time.perf_counter()
         try:
-            merged_bams_time_region = merge_wastewater_bams(region_list_dir, dirs[f"bams_{grouping}_region"])
+            merged_bams_time_region = merge_wastewater_bams(region_list_dir, dirs[f"bams_{grouping}_region"], min_mapq=args.mapq)
         except Exception as e:
             return f"Error creating the lists for merging wastewater alignment files by chose time grouping and region: {e}" 
         logger.info(f"Merging BAMs by {grouping} and region: {time.perf_counter() - section_start:.2f}s")
@@ -420,6 +400,7 @@ def mutatea():
     
     logger.info(f"Varmint (wastewater): {time.perf_counter() - section_start:.2f}s")
 
+
     ############################## clinical ##############################
     if include_clinical:
         # create folder for clinical output
@@ -450,40 +431,18 @@ def mutatea():
         logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # create folder for the clinical bam files that were merged by chosen time grouping
-        dirs[f"bams_{grouping}"] = os.path.join(dirs["clinical"], f"bams_{grouping}")
+        merged_dir_name = f"bams_filtered_{grouping}" if args.mapq else f"bams_{grouping}"
+        dirs[f"bams_{grouping}"] = os.path.join(dirs["clinical"], merged_dir_name)
         os.makedirs(dirs[f"bams_{grouping}"], exist_ok=True)
 
         # align clinical reads to reference
         logger.info("\nAligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping)
+            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping, min_mapq=args.mapq)
         except Exception as e:
-            return f"Error aligning the clinical reads: {e}"  
-        
-        # remove any empty bam files
-        all_bams = bam_files
-        bam_files = [b for b in all_bams if pysam.AlignmentFile(b, "rb").count(until_eof=True) > 0]
-        for b in set(all_bams) - set(bam_files):
-            logger.debug(f"{os.path.basename(b)}: removed (0 reads aligned)")
+            return f"Error aligning the clinical reads: {e}"
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")
-
-
-        # create folder for the filtered clinical bam files that were merged by chosen time grouping
-        dirs[f"bams_{grouping}_filtered"] = os.path.join(dirs[f"clinical"], f"bams_{grouping}_filtered")
-        os.makedirs(dirs[f"bams_{grouping}_filtered"], exist_ok=True)
-
-        # filter clinical reads for alignment quality
-        logger.info("\nFiltering clinical reads for mapping quality")
-        section_start = time.perf_counter()
-        try:
-            bam_files, mapq_stats = alignment_quality_filter(bam_files, dirs[f"bams_{grouping}_filtered"], min_mapq=args.mapq)
-        except Exception as e:
-            return f"Error filtering clinical reads for mapping quality: {e}" 
-        logger.info(f"Filtering reads for mapping quality (clinical): {time.perf_counter() - section_start:.2f}s")
-        for sample, (total, kept) in mapq_stats.items():
-            if total - kept > 0:
-                logger.debug(f"{sample}: {total-kept}/{total} reads removed (MAPQ < {args.mapq})")
 
         # get genome coverage if statistics included
         if args.statistics:

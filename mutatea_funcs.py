@@ -122,7 +122,7 @@ def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFram
         metadata["SiteCode"] = pd.NA
     return metadata
 
-# if include region: add public health region column to merged metadata
+# if include region: add region column to merged metadata
 def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFrame:
     # added filter for if there is not yet a city_region dictionary
     default_city_region = {
@@ -141,7 +141,7 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
         "Palestine, TX": "4_5N",
         "Athens, TX": "4_5N",
         "Dallas, TX": "2_3",
-        "DFW Airport, TX": "2_3",
+        "DFW Airport, TX": "DFW_Airport",
         "Katy, TX": "6_5S",
         "San Antonio, TX": "8"
     }
@@ -162,9 +162,10 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
     # add an error for any unexpected cities, that way the user will know if they need to update the city_region dictionary
     unknown_cities = metadata.loc[metadata["Region"].isna(), "City"].unique()
     if len(unknown_cities) > 0:
-        raise ValueError(f"Unknown cities found: {unknown_cities}. Please update the city_region dictionary to include these cities.")
+        raise ValueError(f"Unknown cities found: {unknown_cities}. Please update the dictionary to include these cities.")
     else:
-        print("All cities in the metadata were successfully assigned to public health regions!\n")
+        # crm: need to adjust this, they may not be assigning cities to regions
+        print("All cities in the metadata were successfully assigned to regions!\n")
     return metadata
 
 # if include clinical: load in clinical metadata and fasta
@@ -284,6 +285,8 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
             filename = os.path.basename(all_file)
 
             # crm: this could be an issue if they have these single reads in folders by poolID (not in the name of the fastq)
+            # crm: may need to adjust for files that are not in folders with the p####
+
             # extract pool_id from filename
             parts = filename.split(".")
             pool_id = None
@@ -349,37 +352,29 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
     return reads_by_pool
 
 # helper function for later alignment of wastewater reads
-def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, pathogen: str, threads: int, minimap_preset: str = "sr") -> list:
+def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, pathogen: str, threads: int, minimap_preset: str = "sr", min_mapq: int = 0) -> list:
     # create list to capture output BAM file paths
     bam_files = []
 
     # create output directory for each pool
     pool_output_dir = os.path.join(pools, pool_id)
     os.makedirs(pool_output_dir, exist_ok=True)
-    
-    
+
     # align and sort wastewater reads
     for read_file in read_files:
         # paired reads
         if isinstance(read_file, tuple):
             r1_file, r2_file = read_file
 
-            # get sample name from the filename of R1
-            filename = os.path.basename(r1_file)
-            parts = filename.split(".")  
-
             # crm: only works if the first item is the sampleid, need to confirm naming
-            # get sample_ID         
-            sample_name = parts[0]
+            # get sample_ID
+            filename = os.path.basename(r1_file)
+            sample_name = filename.split(".")[0]
 
-            # create output BAM filename 
-            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
-
-            # minimap2 | samtools view | samtools sort
-            cmd = f"minimap2 -t {threads} -ax {minimap_preset} {fna_path} {r1_file} {r2_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"  
+            minimap_cmd = ["minimap2", "-t", str(threads), "-ax", minimap_preset, fna_path, r1_file, r2_file]
         # single reads
         else:
-            # extract sample_name from filename   
+            # extract sample_name from filename
             filename = os.path.basename(read_file)
             parts = filename.split(".")
 
@@ -393,33 +388,52 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             # remove pathogen if it's there
             if pathogen:
                 parts = [p for p in parts if p.lower() != pathogen.lower()]
-            
+
             # get sample name
             sample_name = ".".join(parts) if parts else "unknown"
 
-            # create output BAM filename 
+            minimap_cmd = ["minimap2", "-t", str(threads), "-ax", minimap_preset, fna_path, read_file]
+
+        # create output BAM filename
+        if min_mapq > 0:
+            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.mapq.sort.bam")
+        else:
             output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
-            # minimap2 | samtools view | samtools sort
-            cmd = f"minimap2 -t {threads} -ax {minimap_preset} {fna_path} {read_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
-        
+        if os.path.exists(output_bam):
+            with pysam.AlignmentFile(output_bam, "rb") as bam_cached:
+                kept = bam_cached.count(until_eof=True)
+            if kept > 0:
+                bam_files.append(output_bam)
+            continue
+
         try:
-            subprocess.run(cmd, shell=True, check=True, capture_output=True)
-                                    
-            # index the sorted bam files
-            subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
-            
-            # add to list of BAM files
-            bam_files.append(output_bam)
-                                    
-        except subprocess.CalledProcessError as e:
+            # pipe minimap2 stdout into pysam, filter by mapq, write sorted BAM
+            with subprocess.Popen(minimap_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as mini2_proc:
+                with pysam.AlignmentFile(mini2_proc.stdout, "r") as sam_stream:
+                    unsorted_bam = output_bam.replace(".sort.bam", ".bam")
+                    kept = 0
+                    with pysam.AlignmentFile(unsorted_bam, "wb", header=sam_stream.header) as bam_out:
+                        for read in sam_stream:
+                            if read.mapping_quality >= min_mapq:
+                                kept += 1
+                                bam_out.write(read)
+
+            if kept > 0:
+                pysam.sort("-@", str(threads), "-o", output_bam, unsorted_bam)
+                pysam.index(output_bam)
+                bam_files.append(output_bam)
+
+            os.remove(unsorted_bam)
+
+        except Exception as e:
             print(f"Error processing {sample_name}: {e}")
             continue
 
     return bam_files
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4) -> list:
+def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4, min_mapq: int = 0) -> list:
     # create list to capture output
     bam_files = []
     
@@ -429,7 +443,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     # prepare tasks
     tasks = []
     for pool_id, read_files in reads_by_pool.items():
-        tasks.append((pool_id, read_files, fna_path, pools, pathogen, threads, minimap_preset))
+        tasks.append((pool_id, read_files, fna_path, pools, pathogen, threads, minimap_preset, min_mapq))
 
     print(f"Aligning wastewater reads from {len(tasks)} pools using {workers} parallel workers")
 
@@ -442,51 +456,6 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
         bam_files.extend(pool_bam_files)
     
     return bam_files
-
-# optional filter for alignment quality
-def alignment_quality_filter(bam_files: list, output_dir: str, min_mapq: int = 0) -> tuple:
-    # create list to capture output
-    filtered_bams = []
-    # dict mapping sample basename -> (total_reads, kept_reads)
-    filter_stats = {}
-    # find bam files
-    for bam_file in bam_files:
-        # replace file name with mapq file name
-        basename = os.path.basename(bam_file).replace(".sort.bam", ".mapq.sort.bam")
-        output_bam = os.path.join(output_dir, basename)
-        sample_name = os.path.basename(bam_file).replace(".sort.bam", "")
-
-        # crm: added in case the bams already exist, I can just take the stats from there
-        # crm: could replace with an error? Or overwrite the mapq filtered bam?
-        if os.path.exists(output_bam):
-            with pysam.AlignmentFile(bam_file, "rb") as bam_in, pysam.AlignmentFile(output_bam, "rb") as bam_cached:
-                total = bam_in.count(until_eof=True)
-                kept = bam_cached.count(until_eof=True)
-            filter_stats[sample_name] = (total, kept)
-
-            # remove the bam file if no reads are kept
-            if kept > 0:
-                filtered_bams.append(output_bam)
-            continue
-
-        total = 0
-        kept = 0
-        with pysam.AlignmentFile(bam_file, "rb") as bam_in, pysam.AlignmentFile(output_bam, "wb", header=bam_in.header) as bam_out:
-            for read in bam_in:
-                total += 1
-                if read.mapping_quality >= min_mapq:
-                    kept += 1
-                    bam_out.write(read)
-
-        filter_stats[sample_name] = (total, kept)
-
-        # only keep bam file if it contains reads
-        if kept > 0:
-            # need to reindex to get the bai for later
-            pysam.index(output_bam)
-            filtered_bams.append(output_bam)
-
-    return filtered_bams, filter_stats
 
 # use wastewater metadata to group bam files by unit of time (option for if including region)
 def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_output_dir: str, region_output_dir: str = None, include_region: bool = True) -> str:
@@ -582,7 +551,7 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
         return time_output_dir
 
 # merge bam files by time and time_region
-def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> list:
+def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8, min_mapq: int = 0) -> list:
     # create empty list to catch output
     merged_bams = []
 
@@ -595,7 +564,10 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
             bam_paths = f.read().splitlines()
 
         # create filename for outputted merged bam
-        output_bam = os.path.join(output_dir, f"{list_name}.mapq.sort.bam")
+        if min_mapq > 0:
+            output_bam = os.path.join(output_dir, f"{list_name}.mapq.sort.bam")
+        else:
+            output_bam = os.path.join(output_dir, f"{list_name}.sort.bam")
 
         # samtools merge | samtools sort using list file to avoid argument list too long
         cmd = f"samtools merge -@ {threads} -f -b {list_file} - | samtools sort -@ {threads} -o {output_bam}"
@@ -606,8 +578,16 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
             # index the sorted bam file
             subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
 
-            # add to list of created bams
-            merged_bams.append(output_bam)
+            # only keep merged BAM if it contains aligned reads
+            with pysam.AlignmentFile(output_bam, "rb") as bam:
+                aligned = bam.count(until_eof=False)
+            if aligned > 0:
+                merged_bams.append(output_bam)
+            else:
+                os.remove(output_bam)
+                bai = output_bam + ".bai"
+                if os.path.exists(bai):
+                    os.remove(bai)
             
         except subprocess.CalledProcessError as e:
             print(f"Error processing {list_name}: {e}")
@@ -616,36 +596,50 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8) -> l
 
 ## if include clinical: align clinical reads to reference
 # helper function for later alignment of clinical reads
-def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping, minimap_preset: str = "asm10"):
-
+def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping, minimap_preset: str = "asm10", min_mapq: int = 0):
 
     # get the base name by removing the extension (can be for either time or time_region)
     time = os.path.basename(fasta_file).replace(".fasta", "")
 
     # catch output bam
-    output_bam = os.path.join(output_dir, f"{time}.sort.bam")
+    if min_mapq > 0:
+        output_bam = os.path.join(output_dir, f"{time}.mapq.sort.bam")
+    else:
+        output_bam = os.path.join(output_dir, f"{time}.sort.bam")
 
-    # crm: do I need to add in a skip if the BAM is already created?
     if os.path.exists(output_bam):
-        return output_bam
-        
+        with pysam.AlignmentFile(output_bam, "rb") as bam_cached:
+            kept = bam_cached.count(until_eof=True)
+        return output_bam if kept > 0 else None
+
     try:
-        # minimap2 | samtools view | samtools sort
-        cmd = f"minimap2 -ax {minimap_preset} {fna_path} {fasta_file} | samtools view -@ {threads} -bS | samtools sort -@ {threads} -o {output_bam}"
-        subprocess.run(cmd, shell=True, check=True, capture_output=True)
-            
-        # index the sorted bam files
-        subprocess.run(["samtools", "index", output_bam], check=True, capture_output=True)
-            
-        return output_bam
-       
-    # error
-    except subprocess.CalledProcessError as e:
+        minimap_cmd = ["minimap2", "-ax", minimap_preset, fna_path, fasta_file]
+
+        # pipe minimap2 stdout into pysam, filter by mapq, write sorted BAM
+        with subprocess.Popen(minimap_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as mini2_proc:
+            with pysam.AlignmentFile(mini2_proc.stdout, "r") as sam_stream:
+                unsorted_bam = output_bam.replace(".sort.bam", ".bam")
+                kept = 0
+                with pysam.AlignmentFile(unsorted_bam, "wb", header=sam_stream.header) as bam_out:
+                    for read in sam_stream:
+                        if read.mapping_quality >= min_mapq:
+                            kept += 1
+                            bam_out.write(read)
+
+        if kept > 0:
+            pysam.sort("-@", str(threads), "-o", output_bam, unsorted_bam)
+            pysam.index(output_bam)
+
+        os.remove(unsorted_bam)
+
+        return output_bam if kept > 0 else None
+
+    except Exception as e:
         print(f"Error processing {time}: {e}")
         return None
 
 # align clinical reads to reference files
-def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str, minimap_preset: str = "asm10", threads: int = 8, workers: int = 4, grouping: str = "month") -> list:
+def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str, minimap_preset: str = "asm10", threads: int = 8, workers: int = 4, grouping: str = "month", min_mapq: int = 0) -> list:
     # create empty list to catch outputted bam files
     bam_files = []
 
@@ -656,7 +650,7 @@ def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str,
     tasks = []
     for fasta_file in fasta_files:
         # for all clinical reads, append the arguments to the tasks
-        tasks.append((fasta_file, fna_path, output_dir, threads, grouping, minimap_preset))
+        tasks.append((fasta_file, fna_path, output_dir, threads, grouping, minimap_preset, min_mapq))
 
     # print line is now saying number of tasks run with number of workers
     print(f"Aligning {len(tasks)} clinical fasta files using {workers} parallel workers")
@@ -683,7 +677,7 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
 
     for bam_file in bam_files:
         # get base name from BAM file
-        merge_name = os.path.basename(bam_file).replace(".mapq.sort.bam", "")
+        merge_name = os.path.basename(bam_file).replace(".mapq.sort.bam", "").replace(".sort.bam", "")
 
         try: 
             # filter: use number of reads aligned from each bam to only save stats files with content
@@ -718,8 +712,7 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
 # helper function for later running of varmint on merged bam files
 def _varmint(bam_file, fna_path, gff_path, output_dir):
     # get the base name by removing the extension (can be for either time or time+region)
-    merge_name = os.path.basename(bam_file).replace(".mapq.sort.bam", "")
-
+    merge_name = os.path.basename(bam_file).replace(".mapq.sort.bam", "").replace(".sort.bam", "")
     # create filename for outputted tsv
     output_tsv = os.path.join(output_dir, f"{merge_name}.tsv")
 

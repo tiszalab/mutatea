@@ -248,8 +248,15 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         with open(list_file) as f:
             accessions = f.read().splitlines()
 
-        # get all accessions for each unit of time
-        time_accessions = [records_by_id[a] for a in accessions if a in records_by_id]
+        # get all accessions for each unit of time, try accession without version (no ".1" at the end), if not strip version
+        time_accessions = []
+        for a in accessions:
+            if a in records_by_id:
+                time_accessions.append(records_by_id[a])
+            else:
+                versioned = next((k for k in records_by_id if k.split(".")[0] == a), None)
+                if versioned:
+                    time_accessions.append(records_by_id[versioned])
 
         # get the unit of time from the file name
         time = os.path.basename(list_file).replace("_list.txt", "")

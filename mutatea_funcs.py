@@ -83,7 +83,7 @@ def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,
     return fna_path, gff_path
 
 # load in and merge metadata files
-def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFrame:
+def process_metadata(metadata_folder:str, grouping:str = "month", logger=None) -> pd.DataFrame:
     metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
     if not metadata_files:
         return pd.DataFrame()
@@ -107,6 +107,11 @@ def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFram
     # add column for time unit to metadata
     metadata["Date"] = pd.to_datetime(metadata["Date"], errors="coerce")
 
+    # raise warning for rows with unparseable date formats
+    bad_dates = metadata[metadata["Date"].isna()]
+    if not bad_dates.empty:
+        if logger: logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Date")
+
     # crm: maybe need to add a filter, if there is no grouping column it shouldn't assume month_year (filter everywhere)
     if grouping == "day":
         metadata["Day_Month_Year"] = metadata["Date"].dt.strftime("%d_%m_%Y")
@@ -117,6 +122,7 @@ def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFram
     else:
         metadata["Month_Year"] = metadata["Date"].dt.strftime("%m_%Y")
     
+    # crm: not relevant to general user
     # add a sitecode column to metadata if not already present (older metadata files don't have this column)
     if "SiteCode" not in metadata.columns:
         metadata["SiteCode"] = pd.NA
@@ -169,7 +175,7 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
     return metadata
 
 # if include clinical: load in clinical metadata and fasta
-def load_clinical_files(clinical_file_path: str, grouping:str = "month") -> tuple[pd.DataFrame, str]:
+def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=None) -> tuple[pd.DataFrame, str]:
     # find the csv in the clinical_metadata_path
     csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
     
@@ -195,6 +201,26 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month") -> tupl
     # make sure the collection date column is a datetime object
     clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
     
+    # crm: adding fallback filter for month-based clinical data
+    if grouping == "month":
+        # keep clinical data with YYYY-MM values (no day) by converting them to the 1st of the month
+        yr_mo_mask = clinical_metadata["Collection_Date"].isna()
+        fallback = pd.to_datetime(
+            clinical_metadata.loc[yr_mo_mask, "Collection_Date"].astype(str).str.strip() + "-01",
+            format="%Y-%m-%d", errors="coerce"
+        )
+        clinical_metadata.loc[yr_mo_mask, "Collection_Date"] = fallback
+        recovered = yr_mo_mask.sum() - clinical_metadata["Collection_Date"].isna().sum()
+        
+        # let user know we converted
+        print(f"Recovered {recovered} rows with YYYY-MM dates (converted to 1st of month)")
+
+    # raise warning for rows with unparseable date formats
+    bad_dates = clinical_metadata[clinical_metadata["Collection_Date"].isna()]
+    if not bad_dates.empty:
+        if logger: logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Collection_Date")
+        if logger: logger.debug(f"Dropped Collection_Date value counts:\n{bad_dates['Collection_Date'].value_counts(dropna=False).to_string()}")
+
     # add unit of time column to the clinical metadata
     if grouping == "day":
         clinical_metadata["Day_Month_Year"] = clinical_metadata["Collection_Date"].dt.strftime("%d_%m_%Y")

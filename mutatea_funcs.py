@@ -213,7 +213,8 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=
         recovered = yr_mo_mask.sum() - clinical_metadata["Collection_Date"].isna().sum()
         
         # let user know we converted
-        logger.info(f"Recovered {recovered} rows with YYYY-MM dates (converted to 1st day of the month)")
+        if recovered > 0:
+            logger.info(f"Recovered {recovered} rows with YYYY-MM dates (converted to 1st day of the month)")
 
     # fallback filter for year-based clinical data
     if grouping == "year":

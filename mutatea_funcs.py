@@ -181,7 +181,8 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month") -> tupl
         raise ValueError(f"Multiple CSV files found in {clinical_file_path}") 
     
     # read in csv
-    clinical_metadata = pd.read_csv(csv_file[0]) 
+    # crm: added in low_memory to avoid dtypewarning
+    clinical_metadata = pd.read_csv(csv_file[0], low_memory=False) 
 
     # set required columns for metadata csv
     required_columns = ["Accession", "Collection_Date"]
@@ -243,20 +244,21 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
 def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, output_dir: str, logger=None) -> None:
     # load clinical fasta as dictionary
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
+    # build a stripped-key lookup once (e.g. PZ406333 -> PZ406333.1) for version-suffix mismatches
+    stripped_to_full = {k.split(".")[0]: k for k in records_by_id}
     # loop through lists and split the clinical fasta by selected unit of time
     for list_file in glob.glob(os.path.join(lists_dir, "*.txt")):
         with open(list_file) as f:
             accessions = f.read().splitlines()
 
-        # get all accessions for each unit of time, try accession without version (no ".1" at the end), if not strip version
+        # get all accessions for each unit of time
+        # try exact match first, then fall back to stripped version suffix lookup
         time_accessions = []
         for a in accessions:
             if a in records_by_id:
                 time_accessions.append(records_by_id[a])
-            else:
-                versioned = next((k for k in records_by_id if k.split(".")[0] == a), None)
-                if versioned:
-                    time_accessions.append(records_by_id[versioned])
+            elif a in stripped_to_full:
+                time_accessions.append(records_by_id[stripped_to_full[a]])
 
         # get the unit of time from the file name
         time = os.path.basename(list_file).replace("_list.txt", "")

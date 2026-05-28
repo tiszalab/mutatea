@@ -187,7 +187,6 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=
         raise ValueError(f"Multiple CSV files found in {clinical_file_path}") 
     
     # read in csv
-    # crm: added in low_memory to avoid dtypewarning
     clinical_metadata = pd.read_csv(csv_file[0], low_memory=False) 
 
     # set required columns for metadata csv
@@ -199,27 +198,43 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=
             raise ValueError(f"Clinical csv is missing required column: {col}")
 
     # make sure the collection date column is a datetime object
-    clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], errors="coerce")
+    raw_dates = clinical_metadata["Collection_Date"].astype(str)
+    clinical_metadata["Collection_Date"] = pd.to_datetime(clinical_metadata["Collection_Date"], format="%Y-%m-%d", errors="coerce")
     
-    # crm: adding fallback filter for month-based clinical data
-    if grouping == "month":
+    # fallback filter for month-based clinical data
+    if grouping in ("month", "year"):
         # keep clinical data with YYYY-MM values (no day) by converting them to the 1st of the month
         yr_mo_mask = clinical_metadata["Collection_Date"].isna()
         fallback = pd.to_datetime(
-            clinical_metadata.loc[yr_mo_mask, "Collection_Date"].astype(str).str.strip() + "-01",
+            raw_dates.loc[yr_mo_mask].str.strip() + "-01",
             format="%Y-%m-%d", errors="coerce"
         )
         clinical_metadata.loc[yr_mo_mask, "Collection_Date"] = fallback
         recovered = yr_mo_mask.sum() - clinical_metadata["Collection_Date"].isna().sum()
         
         # let user know we converted
-        print(f"Recovered {recovered} rows with YYYY-MM dates (converted to 1st of month)")
+        logger.info(f"Recovered {recovered} rows with YYYY-MM dates (converted to 1st day of the month)")
+
+    # fallback filter for year-based clinical data
+    if grouping == "year":
+        # keep clinical data with YYYY values (no month or day) by converting them to the 1st of the 1st month
+        yr_mask = clinical_metadata["Collection_Date"].isna()
+        fallback = pd.to_datetime(
+            raw_dates.loc[yr_mask].str.strip() + "-01-01",
+            format="%Y-%m-%d", errors="coerce"
+        )
+        clinical_metadata.loc[yr_mask, "Collection_Date"] = fallback
+        recovered = yr_mask.sum() - clinical_metadata["Collection_Date"].isna().sum()
+        
+        # let user know we converted
+        logger.info(f"Recovered {recovered} rows with YYYY dates (converted to 1st day of 1st month)")
+
 
     # raise warning for rows with unparseable date formats
     bad_dates = clinical_metadata[clinical_metadata["Collection_Date"].isna()]
     if not bad_dates.empty:
         if logger: logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Collection_Date")
-        if logger: logger.debug(f"Dropped Collection_Date value counts:\n{bad_dates['Collection_Date'].value_counts(dropna=False).to_string()}")
+        if logger: logger.debug(f"Dropped Collection_Date value counts:\n{raw_dates.loc[bad_dates.index].value_counts(dropna=False).to_string()}")
 
     # add unit of time column to the clinical metadata
     if grouping == "day":
@@ -720,7 +735,6 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
             result = subprocess.run(cmd_filter, check=True, capture_output=True)
             aligned_reads = int(result.stdout.strip()) 
 
-            # crm test to confirm that the stats file has content before saving
             if aligned_reads > 0:
                 # create coverage file
                 output_cov = os.path.join(output_dir, f"{merge_name}coverage.out")
@@ -740,7 +754,6 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
         # error
         except subprocess.CalledProcessError as e:
             print(f"Error running samtools on {merge_name}: {e}")
-            # crm test
             continue
     return stats_files
 

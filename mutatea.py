@@ -158,7 +158,7 @@ def mutatea():
     # process wastewater metadata
     section_start = time.perf_counter()
     try:
-        metadata = process_metadata(args.wastewater_metadata, getattr(args, 'grouping', 'month'), logger=logger)
+        metadata = process_metadata(args.wastewater_metadata, grouping, logger=logger)
     except Exception as e:
         return f"Error processing metadata: {e}"
     
@@ -193,7 +193,7 @@ def mutatea():
     # load in clinical metadata and fasta
     if include_clinical:
         try:
-            clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files, args.grouping, logger=logger)
+            clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files, grouping, logger=logger)
 
             # export processed clinical metadata
             clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.pathogen}.csv"), index=False)

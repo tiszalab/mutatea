@@ -212,7 +212,7 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=
         clinical_metadata.loc[yr_mo_mask, "Collection_Date"] = fallback
         recovered = yr_mo_mask.sum() - clinical_metadata["Collection_Date"].isna().sum()
         
-        # let user know we converted
+        # let user know if we recovered any reads
         if recovered > 0:
             logger.info(f"Recovered {recovered} rows with YYYY-MM dates (converted to 1st day of the month)")
 
@@ -227,8 +227,9 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=
         clinical_metadata.loc[yr_mask, "Collection_Date"] = fallback
         recovered = yr_mask.sum() - clinical_metadata["Collection_Date"].isna().sum()
         
-        # let user know we converted
-        logger.info(f"Recovered {recovered} rows with YYYY dates (converted to 1st day of 1st month)")
+        # let user know if we recovered any reads
+        if recovered > 0:
+            logger.info(f"Recovered {recovered} rows with YYYY dates (converted to 1st day of 1st month)")
 
 
     # raise warning for rows with unparseable date formats
@@ -286,8 +287,10 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
 def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, output_dir: str, logger=None) -> None:
     # load clinical fasta as dictionary
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
+
     # build a stripped-key lookup once (e.g. PZ406333 -> PZ406333.1) for version-suffix mismatches
     stripped_to_full = {k.split(".")[0]: k for k in records_by_id}
+    
     # loop through lists and split the clinical fasta by selected unit of time
     for list_file in glob.glob(os.path.join(lists_dir, "*.txt")):
         with open(list_file) as f:
@@ -451,11 +454,9 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
         else:
             output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
 
+        # if output bam from a previous run exists, skip re-alignment
         if os.path.exists(output_bam):
-            with pysam.AlignmentFile(output_bam, "rb") as bam_cached:
-                kept = bam_cached.count(until_eof=True)
-            if kept > 0:
-                bam_files.append(output_bam)
+            bam_files.append(output_bam)
             continue
 
         try:
@@ -469,7 +470,7 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
                             if read.mapping_quality >= min_mapq:
                                 kept += 1
                                 bam_out.write(read)
-
+            # save only bam files that contain reads post mapq filter
             if kept > 0:
                 pysam.sort("-@", str(threads), "-o", output_bam, unsorted_bam)
                 pysam.index(output_bam)
@@ -647,7 +648,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8, min_
 
 ## if include clinical: align clinical reads to reference
 # helper function for later alignment of clinical reads
-def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, grouping, minimap_preset: str = "asm10", min_mapq: int = 0):
+def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, minimap_preset: str = "asm10", min_mapq: int = 0):
 
     # get the base name by removing the extension (can be for either time or time_region)
     time = os.path.basename(fasta_file).replace(".fasta", "")

@@ -112,7 +112,7 @@ def process_metadata(metadata_folder:str, grouping:str = "month", logger=None) -
     if not bad_dates.empty:
         if logger: logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Date")
 
-    # crm: maybe need to add a filter, if there is no grouping column it shouldn't assume month_year (filter everywhere)
+    # add time unit column to metadata based on grouping
     if grouping == "day":
         metadata["Day_Month_Year"] = metadata["Date"].dt.strftime("%d_%m_%Y")
     elif grouping == "week":
@@ -268,8 +268,7 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
         "month": "Month_Year" 
     }
     
-    # set default of "Month_Year"
-    # crm: do I need to set default here again?
+    # set default grouping of "Month_Year"
     group_column = "Month_Year"
     
     # get column name by checking which grouping column exists in metadata

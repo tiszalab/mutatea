@@ -237,7 +237,7 @@ def mutatea():
     logger.info("Aligning wastewater reads to given reference genome")
     section_start = time.perf_counter()
     try:
-        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq)
+        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq, logger=logger)
     except Exception as e:
         return f"Error aligning the wastewater reads: {e}"
     logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
@@ -304,7 +304,8 @@ def mutatea():
     
     # get genome coverage if statistics included
     if args.statistics:
-        logger.info("\nGetting coverage statistics of wastewater BAMs with samtools")
+        print("")
+        logger.info("Getting coverage statistics of wastewater BAMs with samtools")
         section_start = time.perf_counter()
 
         # create stats folder to later catch tsv files
@@ -392,12 +393,15 @@ def mutatea():
     
     if include_region:
         try:
+            print(f"Running varmint (time) using {cpu_count if args.fast else 4} parallel workers")
             varmint(merged_bams_time, fna_path, gff_path, dirs[f"tsv_{grouping}"], workers=cpu_count if args.fast else 4)
+            print(f"Running varmint (time+region) using {cpu_count if args.fast else 4} parallel workers")
             varmint(merged_bams_time_region, fna_path, gff_path, dirs[f"tsv_{grouping}_region"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint: {e}"
     else:
         try:
+            print(f"Running varmint (time) using {cpu_count if args.fast else 4} parallel workers")
             varmint(merged_bams_time, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint: {e}"
@@ -445,7 +449,7 @@ def mutatea():
         logger.info("Aligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping, min_mapq=args.mapq)
+            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping, min_mapq=args.mapq, logger=logger)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")
@@ -453,7 +457,8 @@ def mutatea():
         # get genome coverage if statistics included
         if args.statistics:
             # run statistics
-            logger.info("\nGetting coverage statistics of clinical BAMs with samtools")
+            print("")
+            logger.info("Getting coverage statistics of clinical BAMs with samtools")
             section_start = time.perf_counter()
             try:
                 statistics = run_stats(bam_files, dirs["stats_clinical"], logger=logger)
@@ -466,6 +471,7 @@ def mutatea():
         logger.info("Annotating coding effects of mutations with varmint (clinical)")
         section_start = time.perf_counter()
         try:
+            print(f"Running varmint (clinical) using {cpu_count if args.fast else 4} parallel workers")
             varmint(bam_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
@@ -482,6 +488,7 @@ def mutatea():
     # print run time
     cli_end_time = time.perf_counter()
     time_taken = round((cli_end_time - cli_start_time), 2) 
+    print("")
     logger.info(f"Run time of mutatea_cli: {timedelta(seconds=time_taken)}")
 
 if __name__ == "__main__":

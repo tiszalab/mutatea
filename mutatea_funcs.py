@@ -749,7 +749,7 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
                 subprocess.run(cmd_stats, shell=True, check=True)
                 stats_files.append(output_stats)
             else:
-                if logger: logger.debug(f"Skipping {merge_name}: contained no aligned reads")
+                if logger: logger.info(f"Skipping {merge_name}: contained no aligned reads")
                 continue
                 
         # error
@@ -793,9 +793,6 @@ def varmint(bam_files: list, fna_path: str, gff_path: str, output_dir: str, work
     for bam_file in bam_files:
         # for all reads, append the arguments to the tasks
         tasks.append((bam_file, fna_path, gff_path, output_dir))
-    
-    # print line is now saying number of tasks run with number of workers, not number of reads/total per pool
-    print(f"Running varmint using {workers} parallel workers")
     
     # run multiprocess 
     with Pool(processes=workers) as pool:

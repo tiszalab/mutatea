@@ -145,7 +145,7 @@ def mutatea():
     dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
     os.makedirs(dirs["reference_dir"], exist_ok=True)
 
-    logger.info("")
+    print("")
 
     ## process reference files
     section_start = time.perf_counter()
@@ -153,7 +153,7 @@ def mutatea():
         fna_path, gff_path = process_reference_files(args.reference_files, dirs["reference_dir"])
     except Exception as e:
         return f"Error processing the reference files: {e}"  
-    logger.info(f"Reference processing: {time.perf_counter() - section_start:.2f}s\n")
+    logger.info(f"Reference processing: {time.perf_counter() - section_start:.2f}s")
 
     # process wastewater metadata
     section_start = time.perf_counter()
@@ -199,11 +199,12 @@ def mutatea():
             clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.pathogen}.csv"), index=False)
         except Exception as e:
             return f"Error loading in the clinical files: {e}" 
-    logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s\n")
+    logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s")
 
     ############################## wastewater ##############################
     # find wastewater reads from pools
     section_start = time.perf_counter()
+    print("")
     logger.info(f"Finding wastewater reads from pools")
 
     # determine which read type was provided
@@ -232,7 +233,8 @@ def mutatea():
     os.makedirs(dirs["pools"], exist_ok=True)
     
     # align wastewater reads to reference genome, filtering by mapq inline
-    logger.info("\nAligning wastewater reads to given reference genome")
+    print("")
+    logger.info("Aligning wastewater reads to given reference genome")
     section_start = time.perf_counter()
     try:
         bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq)
@@ -254,10 +256,11 @@ def mutatea():
         dirs[f"wastewater_list_{grouping}"] = dirs["wastewater_lists_dir"]
 
     # create list of accessions by time grouping for downstream merge key creation
+    print("")
     if include_region:
-        logger.info(f"\nMerging wastewater alignment files by {grouping} and region")
+        logger.info(f"Merging wastewater alignment files by {grouping} and region")
     else:
-        logger.info(f"\nMerging wastewater alignment files by {grouping}")
+        logger.info(f"Merging wastewater alignment files by {grouping}")
 
     section_start = time.perf_counter()
     try:
@@ -383,7 +386,8 @@ def mutatea():
         os.makedirs(dirs[f"tsv_{grouping}_region"], exist_ok=True)
     
     # Run varmint
-    logger.info("\nAnnotating coding effects of mutations with varmint (wastewater samples)")
+    print("")
+    logger.info("Annotating coding effects of mutations with varmint (wastewater samples)")
     section_start = time.perf_counter()
     
     if include_region:
@@ -422,7 +426,8 @@ def mutatea():
         os.makedirs(dirs[f"fastas_{grouping}"], exist_ok=True)
 
         # split clinical fasta by time-grouped lists
-        logger.info(f"\nSplitting clinical FASTA by {grouping}")
+        print("")
+        logger.info(f"Splitting clinical FASTA by {grouping}")
         section_start = time.perf_counter()
         try:
             split_clinical_fasta_by_time(clinical_fasta, dirs[f"lists_{grouping}"], dirs[f"fastas_{grouping}"], logger=logger)
@@ -436,7 +441,8 @@ def mutatea():
         os.makedirs(dirs[f"bams_{grouping}"], exist_ok=True)
 
         # align clinical reads to reference
-        logger.info("\nAligning clinical reads to the reference genome")
+        print("")
+        logger.info("Aligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
             bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping, min_mapq=args.mapq)
@@ -456,7 +462,8 @@ def mutatea():
             logger.info(f"Creating coverage statistics from BAMs (clinical): {time.perf_counter() - section_start:.2f}s")
 
         # varmint for clinical
-        logger.info("\nAnnotating coding effects of mutations with varmint (clinical)")
+        print("")
+        logger.info("Annotating coding effects of mutations with varmint (clinical)")
         section_start = time.perf_counter()
         try:
             varmint(bam_files, fna_path, gff_path, dirs["tsv_clinical"], workers=cpu_count if args.fast else 4)

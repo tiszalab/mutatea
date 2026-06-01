@@ -171,7 +171,8 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
         raise ValueError(f"Unknown cities found: {unknown_cities}. Please update the dictionary to include these cities.")
     else:
         # crm: need to adjust this, they may not be assigning cities to regions
-        print("All cities in the metadata were successfully assigned to regions!\n")
+        
+        print("\nAll cities in the metadata were successfully assigned to regions!\n")
     return metadata
 
 # if include clinical: load in clinical metadata and fasta
@@ -230,7 +231,6 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=
         # let user know if we recovered any reads
         if recovered > 0:
             logger.info(f"Recovered {recovered} rows with YYYY dates (converted to 1st day of 1st month)")
-
 
     # raise warning for rows with unparseable date formats
     bad_dates = clinical_metadata[clinical_metadata["Collection_Date"].isna()]
@@ -701,7 +701,7 @@ def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str,
     tasks = []
     for fasta_file in fasta_files:
         # for all clinical reads, append the arguments to the tasks
-        tasks.append((fasta_file, fna_path, output_dir, threads, grouping, minimap_preset, min_mapq))
+        tasks.append((fasta_file, fna_path, output_dir, threads, minimap_preset, min_mapq))
 
     # print line is now saying number of tasks run with number of workers
     print(f"Aligning {len(tasks)} clinical fasta files using {workers} parallel workers")

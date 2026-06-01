@@ -1,5 +1,5 @@
 # mutatea
-A framework for comparing the mutational spectra of pathogen sequencing data across sources and cohorts (e.g. wastewater vs. clinical).
+A framework for comparing the mutational spectra of pathogen sequencing data across sources and cohorts
 
 ## Inputs
 1. Wastewater metadata (.xlsx)
@@ -76,5 +76,5 @@ One of the following read inputs is required:
 
 # Example
 ```bash
-mutatea -p H1N1 -m path/to/wastewater/metadata -pr /path/to/paired/wastewater/reads -ref path/to/ref/files -c path/to/clinical/files
+mutatea -p H1N1 -m path/to/wastewater/metadata -pr /path/to/paired/wastewater/reads -ref path/to/ref/files -c path/to/clinical/files -f -l
 ```

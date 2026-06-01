@@ -408,6 +408,7 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
 def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, pathogen: str, threads: int, minimap_preset: str = "sr", min_mapq: int = 0) -> list:
     # create list to capture output BAM file paths
     bam_files = []
+    removed_samples = []
 
     # create output directory for each pool
     pool_output_dir = os.path.join(pools, pool_id)
@@ -474,6 +475,8 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
                 pysam.sort("-@", str(threads), "-o", output_bam, unsorted_bam)
                 pysam.index(output_bam)
                 bam_files.append(output_bam)
+            if kept == 0:
+                removed_samples.append(sample_name)
 
             os.remove(unsorted_bam)
 
@@ -481,10 +484,10 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             print(f"Error processing {sample_name}: {e}")
             continue
 
-    return bam_files
+    return bam_files, removed_samples
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4, min_mapq: int = 0) -> list:
+def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4, min_mapq: int = 0, logger = 0) -> list:
     # create list to capture output
     bam_files = []
     
@@ -502,9 +505,15 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     with Pool(processes=workers) as pool:
         results = pool.starmap(_align_wastewater_reads, tasks)
     
-    # combine BAM files by pool
-    for pool_bam_files in results:
+    # combine BAM files by pool; print removed samples in numerical pool order
+    pool_ids = [t[0] for t in tasks]
+    for pool_id, (pool_bam_files, removed) in sorted(
+        zip(pool_ids, results),
+        key=lambda x: int(''.join(filter(str.isdigit, x[0])) or 0)
+    ):
         bam_files.extend(pool_bam_files)
+        if removed:
+            logger.info(f"Pool {pool_id}: Samples with all reads removed: {', '.join(removed)}")
     
     return bam_files
 

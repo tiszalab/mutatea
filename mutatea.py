@@ -449,7 +449,7 @@ def mutatea():
         logger.info("Aligning clinical reads to the reference genome")
         section_start = time.perf_counter()
         try:
-            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping, min_mapq=args.mapq, logger=logger)
+            bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping, min_mapq=args.mapq)
         except Exception as e:
             return f"Error aligning the clinical reads: {e}"
         logger.info(f"Aligning reads to reference genome (clinical): {time.perf_counter() - section_start:.2f}s")

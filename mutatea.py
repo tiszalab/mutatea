@@ -236,6 +236,8 @@ def mutatea():
     print("")
     logger.info("Aligning wastewater reads to given reference genome")
     section_start = time.perf_counter()
+    if args.mapq > 0:
+        logger.info(f"Filtering alignments by MAPQ >= {args.mapq}")
     try:
         bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq, logger=logger)
     except Exception as e:
@@ -448,6 +450,8 @@ def mutatea():
         print("")
         logger.info("Aligning clinical reads to the reference genome")
         section_start = time.perf_counter()
+        if args.mapq > 0:
+            logger.info(f"Filtering alignments by MAPQ >= {args.mapq}")
         try:
             bam_files = align_clinical_reads(dirs[f"fastas_{grouping}"], fna_path, dirs[f"bams_{grouping}"], minimap_preset=args.minimap_clinical, workers=cpu_count if args.fast else 4, grouping=args.grouping, min_mapq=args.mapq)
         except Exception as e:

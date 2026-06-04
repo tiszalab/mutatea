@@ -513,7 +513,7 @@ def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, patho
     ):
         bam_files.extend(pool_bam_files)
         if removed:
-            logger.info(f"Pool {pool_id}: Samples with all reads removed: {', '.join(removed)}")
+            logger.debug(f"Pool {pool_id}: Samples with all reads removed: {', '.join(removed)}")
     
     return bam_files
 

@@ -1,0 +1,16 @@
+name: mutatea
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python>=3.13
+  - pandas
+  - biopython
+  - openpyxl
+  - minimap2
+  - samtools
+  - pysam
+  - pip
+  - pip:
+    - git+https://github.com/tiszalab/varmint.git

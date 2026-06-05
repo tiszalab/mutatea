@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="mutatea_logo.png" width="300" alt="mutatea logo"/>
+</p>
+
 # mutatea
 A framework for comparing the mutational spectra of pathogen sequencing data across sources and cohorts. mutatea aligns wastewater (and optionally clinical) reads to a reference genome, groups samples by time and/or region, and annotates all detected variants with coding effects using [varmint](https://github.com/tiszalab/varmint).
 

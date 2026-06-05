@@ -122,7 +122,6 @@ def process_metadata(metadata_folder:str, grouping:str = "month", logger=None) -
     else:
         metadata["Month_Year"] = metadata["Date"].dt.strftime("%m_%Y")
     
-    # crm: not relevant to general user
     # add a sitecode column to metadata if not already present (older metadata files don't have this column)
     if "SiteCode" not in metadata.columns:
         metadata["SiteCode"] = pd.NA
@@ -170,8 +169,6 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
     if len(unknown_cities) > 0:
         raise ValueError(f"Unknown cities found: {unknown_cities}. Please update the dictionary to include these cities.")
     else:
-        # crm: need to adjust this, they may not be assigning cities to regions
-        
         print("\nAll cities in the metadata were successfully assigned to regions!\n")
     return metadata
 
@@ -337,9 +334,6 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
         for all_file in all_files:
             filename = os.path.basename(all_file)
 
-            # crm: this could be an issue if they have these single reads in folders by poolID (not in the name of the fastq)
-            # crm: may need to adjust for files that are not in folders with the p####
-
             # extract pool_id from filename
             parts = filename.split(".")
             pool_id = None
@@ -347,7 +341,6 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
                 if re.match(r'^p\d{4}$', part):
                     pool_id = part
                     break
-            # crm: only processes files that have a valid pool_id
             if pool_id:            
                 if pool_id not in reads_by_pool:
                     reads_by_pool[pool_id] = []
@@ -420,7 +413,6 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
         if isinstance(read_file, tuple):
             r1_file, r2_file = read_file
 
-            # crm: only works if the first item is the sampleid, need to confirm naming
             # get sample_ID
             filename = os.path.basename(r1_file)
             sample_name = filename.split(".")[0]

@@ -7,7 +7,9 @@ A framework for comparing the mutational spectra of pathogen sequencing data acr
 
 ## Inputs
 1. **Wastewater metadata** — one or more `.xlsx` files, each requiring columns: `SampleID`, `Date` (YYYY-MM-DD, YYYY-MM, or YYYY), `City`
-2. **Wastewater reads** — paired-end or single-end reads (fastq/fasta, optionally gzipped); file names must contain the pathogen name (e.g. `sample.H1N1.R1.fastq`)
+2. **Wastewater reads** — paired-end or single-end reads (fastq/fasta, optionally gzipped); file names must contain the pathogen name. Pool IDs must follow the format `p####` (e.g. `p0001`):
+   - **Single reads**: pool ID must be embedded in the filename — `<sample>.<p####>.<pathogen>.fastq` (e.g. `sample.p0001.H1N1.fastq`)
+   - **Paired reads**: R1/R2 files must be inside a directory named with the pool ID — `p0001/<sample>.<pathogen>.R1.fastq`
 3. **Reference genome** — a folder containing one `.fna`/`.fna.gz` and one `.gff`/`.gff.gz` file
 4. **Clinical sequences** *(optional)* — a folder containing `.fasta` files named by accession, plus a `.csv` metadata file with columns: `Accession`, `Collection_Date`
 

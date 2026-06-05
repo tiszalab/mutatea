@@ -32,6 +32,7 @@ test_input_data/clinical_input_data_H1N1_USA/
 test_input_data/clinical_input_data_H1N1/
 test_input_data/clinical_input_data_H5N1/
 test_input_data/mpox_clade_2b/
+test_input_data
 
 # Output directories
 H1N1_align/

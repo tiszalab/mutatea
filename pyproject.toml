@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mutatea"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
   { name="Camille R. Mazurek", email="camillemazurek23@gmail.com" },
 ]
 description = "A framework comparing the mutational spectra of virome sequencing data between sources/cohorts."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -33,4 +33,4 @@ py-modules = ["mutatea", "mutatea_funcs"]
 mutatea = "mutatea:mutatea"
 
 [project.urls]
-"Homepage" = "https://github.com/tiszalab/flu_mutatome_pipelines/mutatea"
+"Homepage" = "https://github.com/tiszalab/mutatea"

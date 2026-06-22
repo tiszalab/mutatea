@@ -13,6 +13,10 @@ python extract_covid_reads_from_demix.py \
     --min_coverage 0.01
 """
 
+### NTF
+# crm: need to adjust to be able to exclude folders without valid poolID (e.g. "old_run")
+# crm: could remove min_len
+
 import argparse
 import re
 import shutil
@@ -86,20 +90,39 @@ def find_all_demix_files(pools_dir: Path) -> List[Path]:
     return demix_files
 
 
-def find_bam_files_for_sample(pools_dir: Path, pool_id: str, sample_id: str) -> List[Path]:
-    """Find BAM files for a specific sample in a pool"""
-    pool_dir = pools_dir / pool_id
-    bam_files = []
+def find_sample_fastq_files(pools_dir: Path, pool_id: str, sample_id: str) -> Tuple[Path, Path]:
+    """Find FASTQ files for a specific sample using SampleListRaw"""
+    samplelist_file = pools_dir / pool_id / "SampleListRaw"
     
-    for bam_path in pool_dir.rglob("virus_pathogen_database*sort.bam"):
-        # Extract sample ID from BAM filename
-        match = re.search(r"virus_pathogen_database\.mmi\.(.*?)\.p\d+", bam_path.name)
-        bam_sample_id = match.group(1) if match else "UNKNOWN"
+    if not samplelist_file.exists():
+        print(f"SampleListRaw file not found for pool {pool_id}")
+        return None, None
+    
+    try:
+        with open(samplelist_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                parts = line.split('\t')
+                if len(parts) >= 3 and parts[0] == sample_id:
+                    r1_path = Path(parts[1])
+                    r2_path = Path(parts[2])
+                    
+                    # Check if files exist
+                    if r1_path.exists() and r2_path.exists():
+                        return r1_path, r2_path
+                    else:
+                        print(f"FASTQ files not found for {sample_id}: {r1_path}, {r2_path}")
+                        return None, None
         
-        if bam_sample_id == sample_id:
-            bam_files.append(bam_path)
-    
-    return bam_files
+        print(f"Sample {sample_id} not found in SampleListRaw for pool {pool_id}")
+        return None, None
+        
+    except Exception as e:
+        print(f"Error reading SampleListRaw for pool {pool_id}: {e}")
+        return None, None
 
 
 def extract_covid_reads_from_bam(bam_path: Path, covid_ref: str, min_len: int, output_file: Path) -> int:

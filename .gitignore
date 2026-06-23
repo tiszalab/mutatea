@@ -32,7 +32,9 @@ test_input_data/clinical_input_data_H1N1_USA/
 test_input_data/clinical_input_data_H1N1/
 test_input_data/clinical_input_data_H5N1/
 test_input_data/mpox_clade_2b/
-test_input_data
+test_input_data/
+covid_reads_temp/
+covid_scripts
 
 # Output directories
 H1N1_align/

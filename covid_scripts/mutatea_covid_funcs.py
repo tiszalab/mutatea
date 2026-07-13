@@ -20,7 +20,6 @@ import pandas as pd                             # needed for metadata processing
 
 # crm: want to change
 # want it to take bam input, instead of turning the file path of the demix.out into a bam
-# will adjust in the original extract_covid_reads_from_demix.py script
 
 # process reference files
 def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,str]:

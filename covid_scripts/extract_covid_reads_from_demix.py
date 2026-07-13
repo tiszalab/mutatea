@@ -17,7 +17,7 @@ python extract_covid_reads_from_demix.py \
 ### NTF
 # crm: need to prompt user to check and exclude folders without valid poolID (e.g. "old_run")
 # crm: add check for positive demix.out having associated sort.bam files
-# crm: maybe don't make a new directory to capture this text list?
+##### crm: need to check that each bam file you're listing is real 
 
 import argparse
 import re

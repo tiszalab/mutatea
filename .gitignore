@@ -45,3 +45,4 @@ IIb_align/
 sars_cov2_align/
 slurm_scripts/
 wastewater_metadata/
+covid_scripts/covid_bam_files.txt

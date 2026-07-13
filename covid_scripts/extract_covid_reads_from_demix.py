@@ -4,13 +4,13 @@
 
 # parse Freyja demix files to identify COVID-positive samples
 # find COVID-positive BAM files from those specific samples 
-# save file paths of the BAM files in a txt file in outputdir
+# save file paths of the BAM files in a txt file
 
 """
 Executable code:
 python extract_covid_reads_from_demix.py \
     --pools_dir /data/service/Pools/EsViritu \
-    --outputdir ./covid_list \
+    --outputfile ./covid_bam_files.txt \
     --min_coverage 0.01
 """
 
@@ -31,7 +31,7 @@ import pysam
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Finding file paths of pre-aligned COVID bam files from demix samples")
     p.add_argument("--pools_dir", required=True, help="Directory containing pool folders")
-    p.add_argument("--outputdir", required=True, help="Output directory to store lists of identified COVID reads")
+    p.add_argument("--outputfile", required=True, help="Output file path for COVID-positive samples list")    
     p.add_argument("--min_coverage", type=float, default=0.01, help="Minimum coverage threshold (default: 0.01)")
     p.add_argument("--covid_ref", default="NC_045512.2", help="COVID reference accession (default: NC_045512.2)")
     return p.parse_args()
@@ -93,11 +93,7 @@ def main():
     args = parse_args()
     
     pools_dir = Path(args.pools_dir)
-    outputdir = Path(args.outputdir)
-    
-    # create output directory
-    outputdir.mkdir(parents=True, exist_ok=True)
-    print(f"Using directory: {outputdir}")
+    outputfile = Path(args.outputfile)
     
     # find all demix files
     demix_files = find_all_demix_files(pools_dir)
@@ -132,21 +128,20 @@ def main():
                 'sample_id': sample_id,
                 'pool_id': pool_id,
                 'coverage': coverage,
-                'demix_path': demix_path
-                # 'bam_file': bam_file
+                'bam_file': bam_file
             })
     
     print(f"Found COVID reads in {len(covid_positive_samples)} samples out of total {total_samples} samples")
     
     # crm: add a check to make sure that you can get the bam files from the given demix.out files
     # save list of covid samples as txt file
-    samples_file = outputdir / "covid_positive_samples.txt"
+    samples_file = outputfile
     with open(samples_file, 'w') as f:
         f.write("# COVID-positive samples identified from Freyja demix results\n")
-        f.write("# Format: sample_id pool_id coverage demix_path\n")
+        f.write("# Format: sample_id pool_id coverage bam_file\n")
         
         for sample in sorted(covid_positive_samples, key=lambda x: (x['pool_id'], x['sample_id'])):
-            f.write(f"{sample['sample_id']} {sample['pool_id']} {sample['coverage']:.4f} {sample['demix_path']}\n")
+            f.write(f"{sample['sample_id']} {sample['pool_id']} {sample['coverage']:.4f} {sample['bam_file']}\n")
         return
 
 

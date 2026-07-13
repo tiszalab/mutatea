@@ -8,7 +8,7 @@ import subprocess                               # needed for running shell comma
 import json                                     # needed for parsing json files (custom dictionaries)
 from multiprocessing import Pool                # needed for parallel processing
 from variant_funcs import met_variant_alleles   # needed for variant labelling
-import pysam                                    # needed for alingment quality filtering
+import pysam                                    # needed for alignment quality filtering
 import pandas as pd                             # needed for metadata processing
 
 # process reference files

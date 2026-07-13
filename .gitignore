@@ -44,5 +44,6 @@ slurm_outputs/
 covid_align/
 ecoli_align/
 IIb_align/
+sars_cov2_align/
 slurm_scripts/
 wastewater_metadata/

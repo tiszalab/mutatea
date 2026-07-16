@@ -14,9 +14,8 @@ from datetime import timedelta
 Executable code:
 python mutatea_covid.py \
     -m /data/tisza/analyses/crm/mutatea/wastewater_metadata \
-    -cps /data/tisza/analyses/crm/mutatea/covid_scripts/covid_list/covid_positive_samples.txt \
-    -b /data/service/Pools/EsViritu \
-    -ref /data/tisza/analyses/crm/mutatea/test_input_data/clinical_input_data_covid \
+    -wss /data/tisza/analyses/crm/mutatea/covid_scripts/covid_bam_files.txt \
+    -ref /data/tisza/analyses/crm/mutatea/test_input_data/clinical_input_data_covid
 """
 
 # CPU detection for fast mode
@@ -50,12 +49,10 @@ def mutatea_covid():
     # argument for file path to folder containing wastewater metadata files
     parser.add_argument("-m", "--wastewater_metadata", type=str, required=True, help="Path to folder containing wastewater metadata files")
 
-    # argument for file path to covid positive samples file
-    parser.add_argument("-cps", "--covid_positive_samples", type=str, required=True, help="Path to file containing COVID positive samples for targeted analysis")
+    # argument for file path to samplesheet text file
+    parser.add_argument("-wss", "--wastewater_samplesheets", type=str, required=True, help="Path to sample sheet text file")
 
-    # argument for wastewater BAM files
-    parser.add_argument("-b", "--bam_files", type=str, required=True, help="Path to directory containing wastewater BAM files")
-
+    
     # argument for file path to folder containing reference files
     parser.add_argument("-ref", "--reference_files", type=str, required=True, help="Path to folder containing the reference fasta(.gz) and gff(.gz) files")
 
@@ -107,8 +104,8 @@ def mutatea_covid():
     include_region = not args.time_only
 
     # validate covid positive samples file
-    if not os.path.exists(args.covid_positive_samples):
-        sys.exit(f"Error: COVID positive samples file not found: {args.covid_positive_samples}")
+    if not os.path.exists(args.wastewater_samplesheets):
+        sys.exit(f"Error: COVID positive samples file not found: {args.wastewater_samplesheets}")
 
     # initialize directories dictionary
     dirs = {}
@@ -194,16 +191,42 @@ def mutatea_covid():
     # find wastewater reads from covid positive samples
     section_start = time.perf_counter()
     print("")
-    logger.info(f"Finding wastewater reads from COVID positive samples")
+    logger.info(f"Finding wastewater reads from inputted wastewater sample sheet")
     
-    # find BAM files for COVID positive samples
+    # find files for different sample types
     try:
-        wastewater_bams = find_bam_files_from_covid_samples(args.covid_positive_samples, args.bam_files, min_mapq=args.mapq)
+        # process BAM files
+        wastewater_bams = find_bam_files_from_covid_samples(args.wastewater_samplesheets, sample_type_filter="bam", min_mapq=args.mapq)
+        logger.info(f"Found {len(wastewater_bams)} BAM files")
+        
+        # process single_reads files
+        wastewater_single_reads = find_bam_files_from_covid_samples(args.wastewater_samplesheets, sample_type_filter="single_read", min_mapq=args.mapq)
+        logger.info(f"Found {len(wastewater_single_reads)} single_reads files")
+        
+        # process paired_reads files
+        wastewater_paired_reads = find_bam_files_from_covid_samples(args.wastewater_samplesheets, sample_type_filter="paired_reads", min_mapq=args.mapq)
+        logger.info(f"Found {len(wastewater_paired_reads)} paired_reads files")
+        
+        # confirm that only one sample type is present in a sample sheet
+        sample_types_found = []
+        if wastewater_bams:
+            sample_types_found.append("bam")
+        if wastewater_single_reads:
+            sample_types_found.append("single_reads")
+        if wastewater_paired_reads:
+            sample_types_found.append("paired_reads")
+        
+        if len(sample_types_found) > 1:
+            sys.exit(f"Error: Multiple sample types found in wastewater sample sheet: {', '.join(sample_types_found)}. Only one sample type per file is allowed.")
+        
+        # combine all files for processing
+        all_wastewater_files = wastewater_bams + wastewater_single_reads + wastewater_paired_reads
+        
     except Exception as e:
-        sys.exit(f"Error finding the wastewater BAM files from COVID samples: {e}") 
+        sys.exit(f"Error processing inputted wastewater sample sheet: {e}") 
     logger.info(f"Finding reads (wastewater): {time.perf_counter() - section_start:.2f}s")
     
-    logger.info(f"Processing {len(wastewater_bams)} BAM files from COVID-positive pools")
+    logger.info(f"Processing {len(all_wastewater_files)} files from inputted wastewater sample sheet")
 
     # create directory for wastewater processing
     dirs["wastewater_dir"] = os.path.join(dirs["output"], "wastewater")
@@ -232,9 +255,9 @@ def mutatea_covid():
     section_start = time.perf_counter()
     try:
         if include_region:
-            month_list_dir, region_list_dir = create_wastewater_bam_groups(wastewater_bams, metadata, dirs[f"wastewater_list_{grouping}"], dirs.get("wastewater_list_region"), include_region, grouping)
+            month_list_dir, region_list_dir = create_wastewater_bam_groups(all_wastewater_files, metadata, dirs[f"wastewater_list_{grouping}"], dirs.get("wastewater_list_region"), include_region, grouping)
         else:
-            month_list_dir = create_wastewater_bam_groups(wastewater_bams, metadata, dirs[f"wastewater_list_{grouping}"], dirs.get("wastewater_list_region"), include_region, grouping)
+            month_list_dir = create_wastewater_bam_groups(all_wastewater_files, metadata, dirs[f"wastewater_list_{grouping}"], dirs.get("wastewater_list_region"), include_region, grouping)
     except Exception as e:
         sys.exit(f"Error creating the lists for merging wastewater alignment files: {e}") 
     logger.info(f"Creating BAM lists: {time.perf_counter() - section_start:.2f}s")

@@ -143,6 +143,9 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
         "Laredo, TX": "11",
         "Waco, TX": "7",
         "Fort Worth, TX": "2_3",
+        "Denton, TX": "2_3",
+        "Frisco, TX": "2_3",
+        "Arlington, TX": "2_3",
         "Palestine, TX": "4_5N",
         "Athens, TX": "4_5N",
         "Dallas, TX": "2_3",
@@ -254,9 +257,9 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
             clinical_fasta_time = os.path.join(output_dir, f"{time_group}.fasta")
             SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
-# get read paths from covid sample list
+# get read paths from wastewater sample list
 # returns a dictionary with sample_id as the key and the sample info as value
-def parse_covid_positive_samples(covid_samples_file: str) -> dict:
+def parse_covid_positive_samples(covid_samples_file: str, sample_type_filter: str = None) -> dict:
     samples_info = {}
     
     if not os.path.exists(covid_samples_file):
@@ -269,46 +272,40 @@ def parse_covid_positive_samples(covid_samples_file: str) -> dict:
             if line.startswith('#') or not line:
                 continue
             
-            # parse line: sample_id pool_id coverage demix_file
-            # crm: may need to adjust, the sample list the user inputs may not be the same as the format I'm using
-            # crm: maybe glob to find the column that has all the slashes? would indicate it contains the file paths
-            parts = line.split()
-            if len(parts) >= 4:
+            # parse tab-separated line: sample_id	sample_type	file_path_1	file_path_2
+            parts = line.split('\t')
+            if len(parts) >= 3:
                 sample_id = parts[0]
-                pool_id = parts[1]
-                coverage = float(parts[2])
-                demix_file = parts[3]
+                sample_type = parts[1]
+                bam_file = parts[2]  # file_path_1 contains the BAM path
                 
-                samples_info[sample_id] = {
-                    'pool_id': pool_id,
-                    'coverage': coverage,
-                    'demix_file': demix_file
-                }
+                # filter by sample_type if specified
+                if sample_type_filter and sample_type != sample_type_filter:
+                    continue
+                
+                # confirm BAM file exists
+                if os.path.exists(bam_file):
+                    samples_info[sample_id] = {
+                        'sample_type': sample_type,
+                        'bam_file': bam_file,
+                    }
+                else:
+                    print(f"Warning: BAM file not found for {sample_id}: {bam_file}")
     
     return samples_info
 
-# crm: there is a sort.bam and a sort.bam.bz2 for each file, should only accept one input
 # find BAM files from covid positive samples
-def find_bam_files_from_covid_samples(covid_samples_file: str, bam_base_dir: str, min_mapq: int = 0) -> list:
+def find_bam_files_from_covid_samples(covid_samples_file: str, sample_type_filter: str = None, min_mapq: int = 0) -> list:
     # get covid positive samples info
-    samples_info = parse_covid_positive_samples(covid_samples_file)
+    samples_info = parse_covid_positive_samples(covid_samples_file, sample_type_filter)
     
-    # transform demix file paths to BAM file paths
+    # use BAM paths from inputted data
     bam_files = []
     for sample_id, sample_info in samples_info.items():
-        demix_file = sample_info['demix_file']
-        # crm: try .sort.bam first, then .sort.bam.bz2
-        bam_file = demix_file.replace('.demix.out', '.sort.bam')
-        bam_file_bz2 = demix_file.replace('.demix.out', '.sort.bam.bz2')
-        
-        if os.path.exists(bam_file):
-            bam_files.append(bam_file)
-        elif os.path.exists(bam_file_bz2):
-            bam_files.append(bam_file_bz2)
-        else:
-            print(f"Warning: BAM file not found for {sample_id}: {bam_file}")
+        bam_file = sample_info['bam_file']
+        bam_files.append(bam_file)
     
-    print(f"Found {len(bam_files)} BAM files from {len(samples_info)} COVID-positive samples")
+    print(f"Found {len(bam_files)} BAM files from {len(samples_info)} inputted wastewater sample sheet")
     
     # filter BAM files by MAPQ if specified
     if min_mapq > 0:
@@ -410,7 +407,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8, min_
                 if bam_path.endswith('.bam.bz2'):
                     temp_bam = os.path.join(temp_dir, os.path.basename(bam_path[:-4]))
                     subprocess.run(f"bzip2 -dkc {bam_path} > {temp_bam}", shell=True, check=True, executable="/bin/bash")
-                    subprocess.run(["samtools", "index", temp_bam], check=True)
+                    subprocess.run(["samtools", "index", temp_bxam], check=True)
                     ready_bams.append(temp_bam)
                 else:
                     ready_bams.append(bam_path)
@@ -422,14 +419,15 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8, min_
             
             # merge and sort and index
             output_bam = os.path.join(output_dir, f"{group_name}.sort.bam")
-            cmd = f"samtools merge -@ {threads} -f -b {temp_list} - | samtools sort -@ {threads} -o {output_bam}"
+            # crm: added dev/null so it won't add a lot of print lines
+            cmd = f"samtools merge -@ {threads} -f -b {temp_list} - 2>/dev/null | samtools sort -@ {threads} -o {output_bam} 2>/dev/null"
             subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
             subprocess.run(["samtools", "index", output_bam], check=True)
             
             # filter by MAPQ if requested
             if min_mapq > 0:
                 filtered_bam = output_bam.replace(".sort.bam", f".mapq{min_mapq}.sort.bam")
-                subprocess.run(f"samtools view -b -q {min_mapq} {output_bam} | samtools sort -@ {threads} -o {filtered_bam} -", shell=True, check=True, executable="/bin/bash")
+                subprocess.run(f"samtools view -b -q {min_mapq} {output_bam} 2>/dev/null | samtools sort -@ {threads} -o {filtered_bam} - 2>/dev/null", shell=True, check=True, executable="/bin/bash")
                 subprocess.run(["samtools", "index", filtered_bam], check=True)
                 os.remove(output_bam)
                 if os.path.exists(output_bam + ".bai"):

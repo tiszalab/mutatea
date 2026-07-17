@@ -50,6 +50,7 @@ def mutatea():
     reads_group = parser.add_mutually_exclusive_group(required=True)
     reads_group.add_argument("-pr", "--paired_reads", type=str, help="Path to folders containing paired FASTQ wastewater reads (R1/R2)")
     reads_group.add_argument("-sr", "--single_reads", type=str, help="Path to folder containing single FASTQ wastewater reads")
+    reads_group.add_argument("-b", "--bam_files", type=str, help="Path to folder containing pre-aligned BAM files")
 
     # argument for file path to folder containing reference files
     parser.add_argument("-ref", "--reference_files", type=str, required=True, help="Path to folder containing the reference fasta(.gz) and gff(.gz) files")
@@ -213,6 +214,11 @@ def mutatea():
             wastewater_reads = find_wastewater_reads(args.single_reads, args.pathogen, single_reads=True)
         except Exception as e:
             return f"Error finding the wastewater reads: {e}" 
+    elif args.bam_files:
+        try:
+            bam_files = find_wastewater_reads(args.bam_files, args.pathogen, bam_files=True, min_mapq=args.mapq, logger=logger)
+        except Exception as e:
+            return f"Error finding the wastewater BAM files: {e}"
     else:
         try:
             wastewater_reads = find_wastewater_reads(args.paired_reads, args.pathogen, single_reads=False)
@@ -232,17 +238,22 @@ def mutatea():
     dirs["pools"] = os.path.join(dirs["wastewater_dir"], "pools")
     os.makedirs(dirs["pools"], exist_ok=True)
     
+    # skips alignment steps if pre-aligned bam files were given 
     # align wastewater reads to reference genome, filtering by mapq inline
-    print("")
-    logger.info("Aligning wastewater reads to given reference genome")
-    section_start = time.perf_counter()
-    if args.mapq > 0:
-        logger.info(f"Filtering alignments by MAPQ >= {args.mapq}")
-    try:
-        bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq, logger=logger)
-    except Exception as e:
-        return f"Error aligning the wastewater reads: {e}"
-    logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
+    if not args.bam_files:
+        print("")
+        logger.info("Aligning wastewater reads to given reference genome")
+        section_start = time.perf_counter()
+        if args.mapq > 0:
+            logger.info(f"Filtering alignments by MAPQ >= {args.mapq}")
+        try:
+            bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq, logger=logger)
+        except Exception as e:
+            return f"Error aligning the wastewater reads: {e}"
+        logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
+    else:
+        print("")
+        logger.info(f"Using {len(bam_files)} pre-aligned BAM files")
 
     # create directory for wastewater lists
     dirs["wastewater_lists_dir"] = os.path.join(dirs["wastewater_dir"], "lists")

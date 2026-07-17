@@ -63,6 +63,7 @@ mutatea -p <PATHOGEN> -m <METADATA_DIR> -pr <PAIRED_READS_DIR> -ref <REFERENCE_D
 One of the following read inputs is required:
 - `-pr`, `--paired_reads`: Path to folder containing paired-end wastewater reads
 - `-sr`, `--single_reads`: Path to folder containing single-end wastewater reads
+- `-b`, `--bams`: Path to folder containing pre-aligned wastewater BAM files (must contain associated index files)
 
 # Optional Arguments
 

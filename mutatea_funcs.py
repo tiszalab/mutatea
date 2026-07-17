@@ -317,9 +317,31 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
 # find wastewater reads from pools for the pathogen of interest
-def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool = True) -> dict:
+def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, logger=None):
     # create empty dictionary to store reads by pool
     reads_by_pool = {}
+
+    # for pre-aligned BAM files
+    if bam_files:
+        # look through subfolders
+        bam_file_list = sorted(glob.glob(os.path.join(pools_base_dir, "**", "*.bam"), recursive=True))
+        # stop the run if no BAM files found
+        if not bam_file_list:
+            raise FileNotFoundError(f"No BAM files found in {pools_base_dir}")
+        # filter each BAM by MAPQ if specified
+        if min_mapq > 0:
+            print(f"Filtering BAM files by MAPQ >= {min_mapq}")
+            filtered_bams = []
+            for bam_file in bam_file_list:
+                filtered_bam = bam_file.replace(".bam", f".mapq{min_mapq}.bam")
+                try:
+                    subprocess.run(["samtools", "view", "-b", "-q", str(min_mapq), "-o", filtered_bam, bam_file], check=True, capture_output=True)
+                    filtered_bams.append(filtered_bam)
+                except Exception as e:
+                    print(f"Warning: Could not filter {bam_file}: {e}")
+                    filtered_bams.append(bam_file)
+            return filtered_bams
+        return bam_file_list
 
     # for single reads
     if single_reads:

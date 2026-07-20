@@ -33,6 +33,7 @@ test_input_data/clinical_input_data_H1N1/
 test_input_data/clinical_input_data_H5N1/
 test_input_data/mpox_clade_2b/
 test_input_data/
+covid_scripts/*.txt
 
 # output directories
 H1N1_align/
@@ -42,7 +43,9 @@ slurm_outputs/
 covid_align/
 ecoli_align/
 IIb_align/
+II_align/
 sars_cov2_align/
 slurm_scripts/
 wastewater_metadata/
-covid_scripts/covid_bam_files.txt
+H1N1_align_w_pool/
+H1N1_align_wo_pool

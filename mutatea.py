@@ -203,10 +203,10 @@ def mutatea():
     logger.info(f"Metadata processing: {time.perf_counter() - section_start:.2f}s")
 
     ############################## wastewater ##############################
-    # find wastewater reads from pools
+    # find wastewater reads
     section_start = time.perf_counter()
     print("")
-    logger.info(f"Finding wastewater reads from pools")
+    logger.info(f"Finding wastewater reads")
 
     # determine which read type was provided
     if args.single_reads:
@@ -234,9 +234,9 @@ def mutatea():
     dirs["wastewater_dir"] = os.path.join(dirs["alignment_dir"], "wastewater")
     os.makedirs(dirs["wastewater_dir"], exist_ok=True)
 
-    # create directory for pools
-    dirs["pools"] = os.path.join(dirs["wastewater_dir"], "pools")
-    os.makedirs(dirs["pools"], exist_ok=True)
+    # create directory for aligned wastewater reads
+    dirs["aligned"] = os.path.join(dirs["wastewater_dir"], "aligned")
+    os.makedirs(dirs["aligned"], exist_ok=True)
     
     # skips alignment steps if pre-aligned bam files were given 
     # align wastewater reads to reference genome, filtering by mapq inline
@@ -247,7 +247,7 @@ def mutatea():
         if args.mapq > 0:
             logger.info(f"Filtering alignments by MAPQ >= {args.mapq}")
         try:
-            bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["pools"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq, logger=logger)
+            bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["aligned"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq, logger=logger)
         except Exception as e:
             return f"Error aligning the wastewater reads: {e}"
         logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")

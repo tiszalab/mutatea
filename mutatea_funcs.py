@@ -3,7 +3,6 @@ import shutil                                   # needed for copying files
 from Bio import SeqIO                           # needed for parsing fasta files
 import glob                                     # needed for finding files
 import os                                       # needed for file operations
-import re                                       # needed for regular expressions (used for pulling out poolIDs)
 import subprocess                               # needed for running shell commands
 import json                                     # needed for parsing json files (custom dictionaries)
 from multiprocessing import Pool                # needed for parallel processing
@@ -121,10 +120,6 @@ def process_metadata(metadata_folder:str, grouping:str = "month", logger=None) -
         metadata["Year"] = metadata["Date"].dt.strftime("%Y")
     else:
         metadata["Month_Year"] = metadata["Date"].dt.strftime("%m_%Y")
-    
-    # add a sitecode column to metadata if not already present (older metadata files don't have this column)
-    if "SiteCode" not in metadata.columns:
-        metadata["SiteCode"] = pd.NA
     return metadata
 
 # if include region: add region column to merged metadata
@@ -316,18 +311,18 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
-# find wastewater reads from pools for the pathogen of interest
-def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, logger=None):
-    # create empty dictionary to store reads by pool
-    reads_by_pool = {}
+# find wastewater reads for the pathogen of interest
+def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, logger=None):
+    # create empty dictionary to store reads by group
+    reads_by_group = {}
 
     # for pre-aligned BAM files
     if bam_files:
         # look through subfolders
-        bam_file_list = sorted(glob.glob(os.path.join(pools_base_dir, "**", "*.bam"), recursive=True))
+        bam_file_list = sorted(glob.glob(os.path.join(ww_input_dir, "**", "*.bam"), recursive=True))
         # stop the run if no BAM files found
         if not bam_file_list:
-            raise FileNotFoundError(f"No BAM files found in {pools_base_dir}")
+            raise FileNotFoundError(f"No BAM files found in {ww_input_dir}")
         # filter each BAM by MAPQ if specified
         if min_mapq > 0:
             print(f"Filtering BAM files by MAPQ >= {min_mapq}")
@@ -346,45 +341,34 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
     # for single reads
     if single_reads:
         # find all fasta and fastq files matching the pathogen
-        fasta_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fasta")))
-        fastq_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fastq")))
-        fastq_gz_files = sorted(glob.glob(os.path.join(pools_base_dir, f"*.{pathogen}.fastq.gz")))
+        fasta_files = sorted(glob.glob(os.path.join(ww_input_dir, f"*.{pathogen}.fasta")))
+        fastq_files = sorted(glob.glob(os.path.join(ww_input_dir, f"*.{pathogen}.fastq")))
+        fastq_gz_files = sorted(glob.glob(os.path.join(ww_input_dir, f"*.{pathogen}.fastq.gz")))
         all_files = fasta_files + fastq_files + fastq_gz_files
         
         if not all_files:
-            print(f"No FASTA, FASTQ, or FASTQ.GZ files found for {pathogen} in {pools_base_dir}")
-            return reads_by_pool
+            print(f"No FASTA, FASTQ, or FASTQ.GZ files found for {pathogen} in {ww_input_dir}")
+            return reads_by_group
         
-        # group files by pool_id (extracted from filename)
-        for all_file in all_files:
-            filename = os.path.basename(all_file)
-
-            # extract pool_id from filename
-            parts = filename.split(".")
-            pool_id = None
-            for part in parts:
-                if re.match(r'^p\d{4}$', part):
-                    pool_id = part
-                    break
-            if pool_id:            
-                if pool_id not in reads_by_pool:
-                    reads_by_pool[pool_id] = []
-                reads_by_pool[pool_id].append(all_file)
+        # store all matched single reads under a single group key
+        reads_by_group["reads"] = all_files
     # for paired reads            
     else:
         known_r1_pattern = None
         known_r2_swap = None
 
-        for pool_dir in sorted(glob.glob(os.path.join(pools_base_dir, "*"))):
-            pool_id = os.path.basename(pool_dir)
-            if not os.path.isdir(pool_dir) or not re.match(r'^p\d{4}$', pool_id):
+        # crm: maybe could replace with recursive search
+        for read_dir in sorted(glob.glob(os.path.join(ww_input_dir, "*"))):
+            group_id = os.path.basename(read_dir)
+
+            if not os.path.isdir(read_dir):
                 continue
 
             r1_files = []
 
             # if we already know the pattern, use it directly
             if known_r1_pattern:
-                r1_files = sorted(glob.glob(os.path.join(pool_dir, "**", known_r1_pattern), recursive=True))
+                r1_files = sorted(glob.glob(os.path.join(read_dir, "**", known_r1_pattern), recursive=True))
             else:
                 # try each pattern until one hits
                 r1_patterns = [
@@ -395,7 +379,7 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
                     (f"*{pathogen}_1.fastq.gz",  ("_1.fastq.gz", "_2.fastq.gz")),
                 ]
                 for pattern, swap in r1_patterns:
-                    hits = glob.glob(os.path.join(pool_dir, "**", pattern), recursive=True)
+                    hits = glob.glob(os.path.join(read_dir, "**", pattern), recursive=True)
                     if hits:
                         r1_files = sorted(hits)
                         known_r1_pattern = pattern
@@ -412,25 +396,25 @@ def find_wastewater_reads(pools_base_dir: str, pathogen: str, single_reads: bool
                     else:
                         print(f"No R2 file found for {r1_file}")
 
-                # add them to the dictionary
+                # store all paired reads under a single group key
                 if read_pairs:
-                    reads_by_pool[pool_id] = read_pairs
+                    reads_by_group[group_id] = read_pairs
 
-        # let user know if no reads were found for that pathogen in that pool
-        if not reads_by_pool:
-            print(f"No R1 files were found for {pathogen} in {pools_base_dir}")
+        # let user know if no reads were found for that pathogen in that subfolder
+        if not reads_by_group:
+            print(f"No R1 files were found for {pathogen} in {ww_input_dir}")
 
-    return reads_by_pool
+    return reads_by_group
 
 # helper function for later alignment of wastewater reads
-def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools: str, pathogen: str, threads: int, minimap_preset: str = "sr", min_mapq: int = 0) -> list:
+def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, aligned_dir: str, pathogen: str, threads: int, minimap_preset: str = "sr", min_mapq: int = 0) -> list:
     # create list to capture output BAM file paths
     bam_files = []
     removed_samples = []
 
-    # create output directory for each pool
-    pool_output_dir = os.path.join(pools, pool_id)
-    os.makedirs(pool_output_dir, exist_ok=True)
+    # create output directory for each group
+    aligned_output_dir = os.path.join(aligned_dir, group_id)
+    os.makedirs(aligned_output_dir, exist_ok=True)
 
     # align and sort wastewater reads
     for read_file in read_files:
@@ -445,6 +429,7 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             minimap_cmd = ["minimap2", "-t", str(threads), "-ax", minimap_preset, fna_path, r1_file, r2_file]
         # single reads
         else:
+            # crm: really need to confirm this sample_name extraction won't mess with general user 
             # extract sample_name from filename
             filename = os.path.basename(read_file)
             parts = filename.split(".")
@@ -452,9 +437,9 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
             # remove file extension
             parts = parts[:-1]
 
-            # remove pool ID if it's there
-            if pool_id in parts:
-                parts.remove(pool_id)
+            # remove group ID if it's there
+            if group_id in parts:
+                parts.remove(group_id)
 
             # remove pathogen if it's there
             if pathogen:
@@ -467,9 +452,9 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
 
         # create output BAM filename
         if min_mapq > 0:
-            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.mapq.sort.bam")
+            output_bam = os.path.join(aligned_output_dir, f"{sample_name}.mapq.sort.bam")
         else:
-            output_bam = os.path.join(pool_output_dir, f"{sample_name}.{pool_id}.sort.bam")
+            output_bam = os.path.join(aligned_output_dir, f"{sample_name}.sort.bam")
 
         # if output bam from a previous run exists, skip re-alignment
         if os.path.exists(output_bam):
@@ -504,33 +489,30 @@ def _align_wastewater_reads(pool_id: str, read_files: list, fna_path: str, pools
     return bam_files, removed_samples
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_pool: dict, fna_path: str, pools: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4, min_mapq: int = 0, logger = 0) -> list:
+def align_wastewater_reads(reads_by_group: dict, fna_path: str, aligned_dir: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4, min_mapq: int = 0, logger = 0) -> list:
     # create list to capture output
     bam_files = []
     
-    if not reads_by_pool:
+    if not reads_by_group:
         return bam_files
 
     # prepare tasks
     tasks = []
-    for pool_id, read_files in reads_by_pool.items():
-        tasks.append((pool_id, read_files, fna_path, pools, pathogen, threads, minimap_preset, min_mapq))
+    for group_id, read_files in reads_by_group.items():
+        tasks.append((group_id, read_files, fna_path, aligned_dir, pathogen, threads, minimap_preset, min_mapq))
 
-    print(f"Aligning wastewater reads from {len(tasks)} pools using {workers} parallel workers")
+    print(f"Aligning wastewater reads from {len(tasks)} groups using {workers} parallel workers")
 
     # run multiprocess
     with Pool(processes=workers) as pool:
         results = pool.starmap(_align_wastewater_reads, tasks)
     
-    # combine BAM files by pool; print removed samples in numerical pool order
-    pool_ids = [t[0] for t in tasks]
-    for pool_id, (pool_bam_files, removed) in sorted(
-        zip(pool_ids, results),
-        key=lambda x: int(''.join(filter(str.isdigit, x[0])) or 0)
-    ):
-        bam_files.extend(pool_bam_files)
+    # combine BAM files by group; print removed samples in sorted order
+    group_ids = [t[0] for t in tasks]
+    for group_id, (group_bam_files, removed) in sorted(zip(group_ids, results), key=lambda x: x[0]):
+        bam_files.extend(group_bam_files)
         if removed:
-            logger.debug(f"Pool {pool_id}: Samples with all reads removed: {', '.join(removed)}")
+            logger.debug(f"Group {group_id}: Samples with all reads removed: {', '.join(removed)}")
     
     return bam_files
 
@@ -546,7 +528,9 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
     sample_to_bam = {}
     for bam_file in bam_files:
         basename = os.path.basename(bam_file)
-        # extract sample_id from basename (everything before the pool_id)
+        
+        # crm: extract sample_id from basename (removes everything before the group_id)
+        # crm: again need to confirm this extraction won't mess with general user
         sample_id = basename.split(".")[0]
         sample_to_bam[sample_id] = bam_file
 

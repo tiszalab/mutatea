@@ -312,31 +312,70 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
 # find wastewater reads for the pathogen of interest
-def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, logger=None):
+def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, fna_path: str = None, logger=None):
     # create empty dictionary to store reads by group
     reads_by_group = {}
 
     # for pre-aligned BAM files
     if bam_files:
         # look through subfolders
-        bam_file_list = sorted(glob.glob(os.path.join(ww_input_dir, "**", "*.bam"), recursive=True))
+        bam_file_list = sorted(glob.glob(os.path.join(ww_input_dir, "**", "*.sort.bam"), recursive=True))
         # stop the run if no BAM files found
         if not bam_file_list:
             raise FileNotFoundError(f"No BAM files found in {ww_input_dir}")
+
+        # get reference contig names from the fna to check against actual alignments
+        ref_names = set()
+        if fna_path:
+            for record in SeqIO.parse(fna_path, "fasta"):
+                ref_names.add(record.id)
+
+        # validate each BAM by checking for actual aligned reads to the reference
+        valid_bams = []
+        for bam_file in bam_file_list:
+            if ref_names:
+                try:
+                    with pysam.AlignmentFile(bam_file, "rb") as bam:
+                        has_hits = any(
+                            not read.is_unmapped and read.reference_name in ref_names
+                            for read in bam
+                        )
+                    if not has_hits:
+                        if logger: logger.warning(f"{os.path.basename(bam_file)} has no reads aligned to the specified reference; skipping")
+                        continue
+                except Exception as e:
+                    if logger: logger.warning(f"Could not read {bam_file}: {e}")
+                    continue
+            valid_bams.append(bam_file)
+
+        if not valid_bams:
+            raise FileNotFoundError(f"No BAM files with reads aligned to the specified reference found in {ww_input_dir}")
+
         # filter each BAM by MAPQ if specified
         if min_mapq > 0:
             print(f"Filtering BAM files by MAPQ >= {min_mapq}")
             filtered_bams = []
-            for bam_file in bam_file_list:
-                filtered_bam = bam_file.replace(".bam", f".mapq{min_mapq}.bam")
+            for bam_file in valid_bams:
+                filtered_bam = bam_file.replace(".sort.bam", f".mapq.bam")
                 try:
-                    subprocess.run(["samtools", "view", "-b", "-q", str(min_mapq), "-o", filtered_bam, bam_file], check=True, capture_output=True)
-                    filtered_bams.append(filtered_bam)
+                    with pysam.AlignmentFile(bam_file, "rb") as bam_in:
+                        kept = 0
+                        with pysam.AlignmentFile(filtered_bam, "wb", header=bam_in.header) as bam_out:
+                            for read in bam_in:
+                                if read.mapping_quality >= min_mapq:
+                                    kept += 1
+                                    bam_out.write(read)
+                    if kept > 0:
+                        filtered_bams.append(filtered_bam)
+                    else:
+                        os.remove(filtered_bam)
+                        if logger:
+                            logger.debug(f"{os.path.basename(bam_file)}: no reads passed MAPQ >= {min_mapq}, skipping")
                 except Exception as e:
                     print(f"Warning: Could not filter {bam_file}: {e}")
                     filtered_bams.append(bam_file)
             return filtered_bams
-        return bam_file_list
+        return valid_bams
 
     # for single reads
     if single_reads:

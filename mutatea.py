@@ -216,7 +216,7 @@ def mutatea():
             return f"Error finding the wastewater reads: {e}" 
     elif args.bam_files:
         try:
-            bam_files = find_wastewater_reads(args.bam_files, args.pathogen, bam_files=True, min_mapq=args.mapq, logger=logger)
+            bam_files = find_wastewater_reads(args.bam_files, args.pathogen, bam_files=True, min_mapq=args.mapq, fna_path=fna_path, logger=logger)
         except Exception as e:
             return f"Error finding the wastewater BAM files: {e}"
     else:

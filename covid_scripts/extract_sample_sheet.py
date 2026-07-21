@@ -37,8 +37,9 @@ def find_wastewater_reads(input_dir: str, pathogen: str) -> List[str]:
         if any(part.startswith('test_p') for part in Path(root).parts):
             dirs.clear()
             continue
+        # crm: making sure the pathogen input is not case sensitive
         for fname in files:
-            if pathogen in fname and any(fname.endswith(ext) for ext in extensions):
+            if pathogen.lower() in fname.lower() and any(fname.endswith(ext) for ext in extensions):
                 all_files.append(os.path.join(root, fname))
     if not all_files:
         raise FileNotFoundError(f"No FASTA, FASTQ, or FASTQ.GZ files found for {pathogen} in {input_dir}")
@@ -67,7 +68,9 @@ def main():
     # pair R1 the R2 reads into same row
     pairs: dict = {}
     for file_path in sorted(valid_files):
-        sample_id = os.path.basename(file_path).split(pathogen)[0].rstrip('._-').split('.')[0]
+        # crm: making sure the pathogen input is not case sensitive
+        fname_lower = os.path.basename(file_path).lower()
+        sample_id = os.path.basename(file_path)[:fname_lower.index(pathogen.lower())].rstrip('._-').split('.')[0]
         sample_type = 'fasta' if file_path.endswith('.fasta') else 'fastq'
         key = (sample_id, sample_type)
         if key not in pairs:

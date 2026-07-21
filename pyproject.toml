@@ -8,7 +8,7 @@ version = "0.1.0"
 authors = [
   { name="Camille R. Mazurek", email="camillemazurek23@gmail.com" },
 ]
-description = "A framework comparing the mutational spectra of virome sequencing data between sources/cohorts."
+description = "A framework comparing the mutational spectra of virome sequencing data between sources & cohorts."
 readme = "README.md"
 requires-python = ">=3.13"
 
@@ -23,7 +23,7 @@ dependencies = [
     "openpyxl",
     "polars",
     "pysam",
-    "varmint @ git+https://github.com/tiszalab/varmint.git"
+    "varmint @ git+https://github.com/tiszalab/varmint.git@v0.2.0"
     ]
 
 [tool.setuptools]

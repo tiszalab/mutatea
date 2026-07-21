@@ -9,6 +9,8 @@ from multiprocessing import Pool                # needed for parallel processing
 from variant_funcs import met_variant_alleles   # needed for variant labelling
 import pysam                                    # needed for alignment quality filtering
 import pandas as pd                             # needed for metadata processing
+import logging                                  # needed for logging
+logger = logging.getLogger("mutatea_logger")    # load the logger in for downstream use
 
 # process reference files
 def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,str]:
@@ -82,7 +84,7 @@ def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,
     return fna_path, gff_path
 
 # load in and merge metadata files
-def process_metadata(metadata_folder:str, grouping:str = "month", logger=None) -> pd.DataFrame:
+def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFrame:
     metadata_files=glob.glob(os.path.join(metadata_folder,"*.xlsx"))
     if not metadata_files:
         return pd.DataFrame()
@@ -109,7 +111,7 @@ def process_metadata(metadata_folder:str, grouping:str = "month", logger=None) -
     # raise warning for rows with unparseable date formats
     bad_dates = metadata[metadata["Date"].isna()]
     if not bad_dates.empty:
-        if logger: logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Date")
+        logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Date")
 
     # add time unit column to metadata based on grouping
     if grouping == "day":
@@ -171,7 +173,7 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
     return metadata
 
 # if include clinical: load in clinical metadata and fasta
-def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=None) -> tuple[pd.DataFrame, str]:
+def load_clinical_files(clinical_file_path: str, grouping:str = "month") -> tuple[pd.DataFrame, str]:
     # find the csv in the clinical_metadata_path
     csv_file = glob.glob(os.path.join(clinical_file_path, "*.csv"))
     
@@ -230,8 +232,8 @@ def load_clinical_files(clinical_file_path: str, grouping:str = "month", logger=
     # raise warning for rows with unparseable date formats
     bad_dates = clinical_metadata[clinical_metadata["Collection_Date"].isna()]
     if not bad_dates.empty:
-        if logger: logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Collection_Date")
-        if logger: logger.debug(f"Dropped Collection_Date value counts:\n{raw_dates.loc[bad_dates.index].value_counts(dropna=False).to_string()}")
+        logger.warning(f"{len(bad_dates)} rows dropped due to unparseable Collection_Date")
+        logger.debug(f"Dropped Collection_Date value counts:\n{raw_dates.loc[bad_dates.index].value_counts(dropna=False).to_string()}")
 
     # add unit of time column to the clinical metadata
     if grouping == "day":
@@ -278,7 +280,7 @@ def create_grouped_accession_lists(clinical_metadata: pd.DataFrame, output_dir: 
         group["Accession"].to_csv(out_path, index=False, header=False)
 
 # if include clinical: split clinical FASTA file by unit of time
-def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, output_dir: str, logger=None) -> None:
+def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, output_dir: str) -> None:
     # load clinical fasta as dictionary
     records_by_id = SeqIO.to_dict(SeqIO.parse(clinical_fasta_path, "fasta"))
 
@@ -304,7 +306,7 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
 
         # skip if no accessions matched the fasta records
         if not time_accessions:
-            if logger: logger.debug(f"Skipping {time}: no matching sequences found in clinical FASTA")
+            logger.debug(f"Skipping {time}: no matching sequences found in clinical FASTA")
             continue
 
         # export clinical fasta by unit of time
@@ -312,7 +314,7 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
 # find wastewater reads for the pathogen of interest
-def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, fna_path: str = None, logger=None):
+def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, fna_path: str = None):
     # create empty dictionary to store reads by group
     reads_by_group = {}
 
@@ -341,10 +343,10 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
                             for read in bam
                         )
                     if not has_hits:
-                        if logger: logger.warning(f"{os.path.basename(bam_file)} has no reads aligned to the specified reference; skipping")
+                        logger.warning(f"{os.path.basename(bam_file)} has no reads aligned to the specified reference; skipping")
                         continue
                 except Exception as e:
-                    if logger: logger.warning(f"Could not read {bam_file}: {e}")
+                    logger.warning(f"Could not read {bam_file}: {e}")
                     continue
             valid_bams.append(bam_file)
 
@@ -369,8 +371,7 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
                         filtered_bams.append(filtered_bam)
                     else:
                         os.remove(filtered_bam)
-                        if logger:
-                            logger.debug(f"{os.path.basename(bam_file)}: no reads passed MAPQ >= {min_mapq}, skipping")
+                        logger.debug(f"{os.path.basename(bam_file)}: no reads passed MAPQ >= {min_mapq}, skipping")
                 except Exception as e:
                     print(f"Warning: Could not filter {bam_file}: {e}")
                     filtered_bams.append(bam_file)
@@ -495,11 +496,6 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
         else:
             output_bam = os.path.join(aligned_output_dir, f"{sample_name}.sort.bam")
 
-        # if output bam from a previous run exists, skip re-alignment
-        if os.path.exists(output_bam):
-            bam_files.append(output_bam)
-            continue
-
         try:
             # pipe minimap2 stdout into pysam, filter by mapq, write sorted BAM
             with subprocess.Popen(minimap_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as mini2_proc:
@@ -528,7 +524,7 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
     return bam_files, removed_samples
 
 # align wastewater reads to reference files
-def align_wastewater_reads(reads_by_group: dict, fna_path: str, aligned_dir: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4, min_mapq: int = 0, logger = 0) -> list:
+def align_wastewater_reads(reads_by_group: dict, fna_path: str, aligned_dir: str, pathogen: str, minimap_preset: str = "sr", threads: int = 8, workers: int = 4, min_mapq: int = 0) -> list:
     # create list to capture output
     bam_files = []
     
@@ -707,11 +703,6 @@ def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, minimap_pre
     else:
         output_bam = os.path.join(output_dir, f"{time}.sort.bam")
 
-    if os.path.exists(output_bam):
-        with pysam.AlignmentFile(output_bam, "rb") as bam_cached:
-            kept = bam_cached.count(until_eof=True)
-        return output_bam if kept > 0 else None
-
     try:
         minimap_cmd = ["minimap2", "-ax", minimap_preset, fna_path, fasta_file]
 
@@ -772,7 +763,7 @@ def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str,
     return bam_files
 
 # optional statistics to get depth and breadth of genome coverage
-def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
+def run_stats(bam_files:list, output_dir:str) -> list:
     stats_files = []
 
     for bam_file in bam_files:
@@ -798,7 +789,7 @@ def run_stats(bam_files:list, output_dir:str, logger=None) -> list:
                 subprocess.run(cmd_stats, shell=True, check=True)
                 stats_files.append(output_stats)
             else:
-                if logger: logger.info(f"Skipping {merge_name}: contained no aligned reads")
+                logger.info(f"Skipping {merge_name}: contained no aligned reads")
                 continue
                 
         # error

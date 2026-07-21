@@ -3,13 +3,24 @@
 </p>
 
 # mutatea
-A framework for comparing the mutational spectra of pathogen sequencing data across sources and cohorts. mutatea aligns wastewater (and optionally clinical) reads to a reference genome, groups samples by time and/or region, and annotates all detected variants with coding effects using [varmint](https://github.com/tiszalab/varmint).
+A framework for comparing the mutational spectra of pathogen sequencing data across sources and cohorts. Aligns  wastewater (and optionally clinical) reads to a reference genome, groups samples by time and/or region, and annotates all detected variants with coding effects using [varmint](https://github.com/tiszalab/varmint).
 
 ## Inputs
 1. **Wastewater metadata** — one or more `.xlsx` files, each requiring columns: `SampleID`, `Date` (YYYY-MM-DD, YYYY-MM, or YYYY), `City`
-2. **Wastewater reads** — paired-end or single-end reads (fastq/fasta, optionally gzipped); file names must contain the pathogen name. Pool IDs must follow the format `p####` (e.g. `p0001`):
-   - **Single reads**: pool ID must be embedded in the filename — `<sample>.<p####>.<pathogen>.fastq` (e.g. `sample.p0001.H1N1.fastq`)
-   - **Paired reads**: R1/R2 files must be inside a directory named with the pool ID — `p0001/<sample>.<pathogen>.R1.fastq`
+2. **Wastewater reads** — accepted pre-aligned BAM files, paired-end reads, or single reads
+
+# crm: clean up
+paired-end or single-end reads (fastq/fasta, optionally gzipped) file names must contain the pathogen name
+
+
+the pre-aligned BAM file does not require the pathogen name, but must have been aligned to the inputted reference genome
+
+   - **Single read**: reads can have any of the following patterns — `<pathogen>.fasta`, `<pathogen>.fastq`, `<pathogen>.fastq.gz` 
+     - Example: `sample.H1N1.fastq.gz`
+   - **Paired reads**: R1/R2 files can be any of the following patterns  — `<pathogen>.R1.fastq.gz`, `<pathogen>.R1.fasta`, `<pathogen>_1.fastq`, `<pathogen>_1.fastq.gz`
+     - Example: `sampleid.sars_cov2_R1.fastq`
+   - **Pre-aligned BAM files**: The BAM file must have been aligned against the same reference genome, will only be returned if it contains reads found to have been aligned to contigs of the inputted reference genome
+     - Example: `sampleid.sort.bam`
 3. **Reference genome** — a folder containing one `.fna`/`.fna.gz` and one `.gff`/`.gff.gz` file
 4. **Clinical sequences** *(optional)* — a folder containing `.fasta` files named by accession, plus a `.csv` metadata file with columns: `Accession`, `Collection_Date`
 
@@ -20,14 +31,15 @@ A framework for comparing the mutational spectra of pathogen sequencing data acr
 | `tsv_output/clinical/` | Per-group variant TSVs for clinical sequences |
 | `alignment_files/` | Merged BAMs per time group (and region) |
 | `metadata_files/` | Processed wastewater and clinical metadata CSVs |
+| `*_mutatea.log` | Detailed run log |
 | `statistics/` *(optional)* | samtools stats output per group |
-| `*_mutatea.log` *(optional)* | Detailed run log |
 
 ### Output TSV columns
+# crm: needs to be updated to reflect the new columns added with the varmint update
 `contig`, `pos`, `var_type` (SNV/INS/DEL), `allele_type`, `ref_seq`, `alt_seq`, `depth`, `allele_count`, `allele_avgq`, `allele_avgmq`, `strand_bias_p`, `VCF_PASS`, `is_coding`, `gene`, `transcript_id`, `strand`, `codon_ref`, `codon_alt`, `aa_ref`, `aa_alt`, `codon_index`, `codon_pos`, `effect`
 
 # Installation
-
+# crm: need to update to reflect the yaml and toml options
 ## Option A — conda environment (recommended)
 ```bash
 git clone https://github.com/tiszalab/mutatea.git
@@ -79,8 +91,7 @@ One of the following read inputs is required:
 ## Output and Performance
 - `-o`, `--output`: Path to output directory (default: current directory)
 - `-f`, `--fast`: Use all available CPUs for parallel processing
-- `-a`, `--all`: Keep all intermediate alignment files (pool-level BAMs are deleted by default after merging)
-- `-l`, `--logger`: Write a detailed log file to the output directory
+- `-a`, `--all`: Keep all intermediate alignment files (group-level BAMs are deleted by default after merging)
 - `-s`, `--statistics`: Output per-group genome depth and coverage statistics
 
 ## Information

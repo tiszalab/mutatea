@@ -80,9 +80,6 @@ def mutatea():
     # argument to input personal dictionary (default is mapping Texas city to Texas public health region)
     parser.add_argument("-d", "--dictionary", type=str, help="Path to JSON file containing city-to-region mapping")
 
-    # argument to save detailed loggger file
-    parser.add_argument("-l", "--logger", action='store_true', help="Export a detailed logger file")
-
     # argument to save statistics of the groupings
     parser.add_argument("-s", "--statistics", action='store_true', help="Export a file detailing the genome depth and coverage for each grouping") 
     
@@ -115,10 +112,14 @@ def mutatea():
 
     # initialize directories dictionary
     dirs = {}
-    
+
     # create main output directory with pathogen-specific subfolder
     dirs["output"] = os.path.join(args.output_dir, f"{args.pathogen}_align")
-    os.makedirs(dirs["output"], exist_ok=True)
+
+    # delete output from previous runs if they are in the same output folder
+    if os.path.exists(dirs["output"]):
+        shutil.rmtree(dirs["output"])
+    os.makedirs(dirs["output"])
 
     # define logger
     logger = logging.getLogger("mutatea_logger")
@@ -129,13 +130,12 @@ def mutatea():
 
     logger.addHandler(stream_handler)
 
-    # save detailed log file if user requested
-    if args.logger:
-        log_file = os.path.join(dirs["output"], f"{args.pathogen}_mutatea.log")
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-        logger.addHandler(file_handler)
+    # save detailed log file 
+    log_file = os.path.join(dirs["output"], f"{args.pathogen}_mutatea.log")
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(file_handler)
     
     ############################## process reference and metadata files ##############################
     # optionally give current version
@@ -159,7 +159,7 @@ def mutatea():
     # process wastewater metadata
     section_start = time.perf_counter()
     try:
-        metadata = process_metadata(args.wastewater_metadata, grouping, logger=logger)
+        metadata = process_metadata(args.wastewater_metadata, grouping)
     except Exception as e:
         return f"Error processing metadata: {e}"
     
@@ -194,7 +194,7 @@ def mutatea():
     # load in clinical metadata and fasta
     if include_clinical:
         try:
-            clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files, grouping, logger=logger)
+            clinical_metadata, clinical_fasta = load_clinical_files(args.clinical_files, grouping)
 
             # export processed clinical metadata
             clinical_metadata.to_csv(os.path.join(dirs["metadata_dir"], f"metadata_clinical_{args.pathogen}.csv"), index=False)
@@ -216,7 +216,7 @@ def mutatea():
             return f"Error finding the wastewater reads: {e}" 
     elif args.bam_files:
         try:
-            bam_files = find_wastewater_reads(args.bam_files, args.pathogen, bam_files=True, min_mapq=args.mapq, fna_path=fna_path, logger=logger)
+            bam_files = find_wastewater_reads(args.bam_files, args.pathogen, bam_files=True, min_mapq=args.mapq, fna_path=fna_path)
         except Exception as e:
             return f"Error finding the wastewater BAM files: {e}"
     else:
@@ -247,7 +247,7 @@ def mutatea():
         if args.mapq > 0:
             logger.info(f"Filtering alignments by MAPQ >= {args.mapq}")
         try:
-            bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["aligned"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq, logger=logger)
+            bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["aligned"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq)
         except Exception as e:
             return f"Error aligning the wastewater reads: {e}"
         logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
@@ -342,13 +342,13 @@ def mutatea():
                 os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"], logger=logger)
-                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"], logger=logger)
+                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"])
+                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
                 try:
-                    statistics = run_stats(merged_bams_time, dirs["stats_wastewater"], logger=logger)
+                    statistics = run_stats(merged_bams_time, dirs["stats_wastewater"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
 
@@ -360,13 +360,13 @@ def mutatea():
                 os.makedirs(dirs[f"statistics_{grouping}_region"], exist_ok=True)
                 
                 try:
-                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"], logger=logger)
-                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"], logger=logger)
+                    statistics = run_stats(merged_bams_time, dirs[f"statistics_{grouping}"])
+                    statistics = run_stats(merged_bams_time_region, dirs[f"statistics_{grouping}_region"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}" 
             else:
                 try:
-                    statistics = run_stats(merged_bams_time, dirs["statistics"], logger=logger)
+                    statistics = run_stats(merged_bams_time, dirs["statistics"])
                 except Exception as e:
                     return f"Error getting coverage statistics of wastewater BAMs with samtools: {e}"
         logger.info(f"Running statistics on merged BAMs (wastewater): {time.perf_counter() - section_start:.2f}s")
@@ -447,7 +447,7 @@ def mutatea():
         logger.info(f"Splitting clinical FASTA by {grouping}")
         section_start = time.perf_counter()
         try:
-            split_clinical_fasta_by_time(clinical_fasta, dirs[f"lists_{grouping}"], dirs[f"fastas_{grouping}"], logger=logger)
+            split_clinical_fasta_by_time(clinical_fasta, dirs[f"lists_{grouping}"], dirs[f"fastas_{grouping}"])
         except Exception as e:
             return f"Error splitting clinical FASTA by {grouping}: {e}" 
         logger.info(f"Splitting FASTA (clinical): {time.perf_counter() - section_start:.2f}s")
@@ -476,7 +476,7 @@ def mutatea():
             logger.info("Getting coverage statistics of clinical BAMs with samtools")
             section_start = time.perf_counter()
             try:
-                statistics = run_stats(bam_files, dirs["stats_clinical"], logger=logger)
+                statistics = run_stats(bam_files, dirs["stats_clinical"])
             except Exception as e:
                 return f"Error getting coverage statistics of clinical BAMs with samtools: {e}"
             logger.info(f"Creating coverage statistics from BAMs (clinical): {time.perf_counter() - section_start:.2f}s")

@@ -126,30 +126,6 @@ def process_metadata(metadata_folder:str, grouping:str = "month") -> pd.DataFram
 
 # if include region: add region column to merged metadata
 def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFrame:
-    # added filter for if there is not yet a city_region dictionary
-    default_city_region = {
-        "Houston, TX": "6_5S",
-        "El Paso, TX": "9_10",
-        "Lubbock, TX": "1",
-        "Brownsville, TX": "11",
-        "Wichita Falls, TX": "2_3",
-        "Baytown, TX": "6_5S",
-        "Humble, TX": "6_5S",
-        "Missouri City, TX": "6_5S",
-        "Austin, TX": "7",
-        "Laredo, TX": "11",
-        "Waco, TX": "7",
-        "Fort Worth, TX": "2_3",
-        "Denton, TX": "2_3",
-        "Frisco, TX": "2_3",
-        "Arlington, TX": "2_3",
-        "Palestine, TX": "4_5N",
-        "Athens, TX": "4_5N",
-        "Dallas, TX": "2_3",
-        "DFW Airport, TX": "DFW_Airport",
-        "Katy, TX": "6_5S",
-        "San Antonio, TX": "8"
-    }
 
     # use custom mapping if user inputted
     if region_map_file and os.path.exists(region_map_file):

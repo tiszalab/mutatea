@@ -1,4 +1,4 @@
-name: mutatea
+name: mutatea_env
 channels:
   - conda-forge
   - bioconda
@@ -9,8 +9,8 @@ dependencies:
   - biopython
   - openpyxl
   - minimap2
-  - samtools
+  - samtools>=1.24 
   - pysam
   - pip
   - pip:
-    - git+https://github.com/tiszalab/varmint.git
+    - https://github.com/tiszalab/varmint/archive/refs/tags/v0.2.0.tar.gz

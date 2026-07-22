@@ -55,6 +55,10 @@ def mutatea():
     # argument for file path to folder containing reference files
     parser.add_argument("-ref", "--reference_files", type=str, required=True, help="Path to folder containing the reference fasta(.gz) and gff(.gz) files")
 
+    # argument to input dictionary
+    parser.add_argument("-d", "--dictionary", type=str, required=True, help="Path to JSON file containing city-to-region mapping")
+
+
     ## optional arguments
     # argument for file path to folder containing clinical files
     parser.add_argument("-c", "--clinical_files", type=str, help="Path to folder containing the clinical fasta and csv files")
@@ -76,9 +80,6 @@ def mutatea():
 
     # argument to override default number for parallel workers
     parser.add_argument("-f", "--fast", action='store_true', help="Override default number of parallel workers to run with all available cpus")
-
-    # argument to input personal dictionary (default is mapping Texas city to Texas public health region)
-    parser.add_argument("-d", "--dictionary", type=str, help="Path to JSON file containing city-to-region mapping")
 
     # argument to save statistics of the groupings
     parser.add_argument("-s", "--statistics", action='store_true', help="Export a file detailing the genome depth and coverage for each grouping") 
@@ -136,7 +137,10 @@ def mutatea():
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(file_handler)
-    
+
+    # save the command used to run mutatea to the top of the output log
+    logger.debug(f"Command: mutatea {' '.join(sys.argv[1:])}")
+
     ############################## process reference and metadata files ##############################
     # optionally give current version
     if args.version:

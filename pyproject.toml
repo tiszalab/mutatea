@@ -23,7 +23,7 @@ dependencies = [
     "openpyxl",
     "polars",
     "pysam",
-    "varmint @ git+https://github.com/tiszalab/varmint.git@v0.2.0"
+    "varmint @ https://github.com/tiszalab/varmint/archive/refs/tags/v0.2.0.tar.gz"
     ]
 
 [tool.setuptools]

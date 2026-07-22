@@ -169,7 +169,7 @@ def add_region(metadata: pd.DataFrame, region_map_file: str = None) -> pd.DataFr
     if len(unknown_cities) > 0:
         raise ValueError(f"Unknown cities found: {unknown_cities}. Please update the dictionary to include these cities.")
     else:
-        print("\nAll cities in the metadata were successfully assigned to regions!\n")
+        print("\nAll cities in the metadata were successfully assigned to the given geographic regions!\n")
     return metadata
 
 # if include clinical: load in clinical metadata and fasta

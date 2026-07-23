@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 # crm: need to add bam file extraction
-# crm: need to add a filter to only allow one type of sample per sample sheet
-# crm: need to adjust so if there is only one read of a read pair it doesn't report it as a single read
 
 # parse given file directories to identify file paths of associated reads
 # save file paths of the reads as a txt file in specified sample sheet format
@@ -10,7 +8,7 @@
 """
 Executable code:
 python extract_sample_sheet.py \
-    --pathogen H1N1 \
+    --pathogen _I \
     --input_dir /data/contract/TEPHI
 """
 
@@ -29,34 +27,33 @@ def parse_args() -> argparse.Namespace:
 
 # recursive search for all fasta/fastq files matching the pathogen name
 def find_wastewater_reads(input_dir: str, pathogen: str) -> List[str]:
-    extensions = ('.fasta', '.fastq', '.fastq.gz')
+    extensions = ('.fasta', '.fastq', '.fastq.gz', '.sort.bam')
 
-    # crm: excluding folders I know contain junk reads
+    # excluding folders I know contain junk reads
     excluded_dirs = {'smk_v016_oldrun', 'smk_v016_undetermined', 'smk_v016_undetermined_samples'}
 
     all_files = []
     for root, dirs, files in os.walk(input_dir):
-        # crm: want to exclude that random test folder from the pools
+        # want to exclude the random test folder from the pools
         if any(part.startswith('test_p') for part in Path(root).parts):
             dirs.clear()
             continue
         if any(part in excluded_dirs for part in Path(root).parts):
             dirs.clear()
             continue
-        # crm: making sure the pathogen input is not case sensitive
         for fname in files:
-            if pathogen.lower() in fname.lower() and any(fname.endswith(ext) for ext in extensions):
+            if pathogen in fname and any(fname.endswith(ext) for ext in extensions):
                 all_files.append(os.path.join(root, fname))
     if not all_files:
-        raise FileNotFoundError(f"No FASTA, FASTQ, or FASTQ.GZ files found for {pathogen} in {input_dir}")
+        raise FileNotFoundError(f"No FASTA, FASTQ, FASTQ.GZ, or SORT.BAM files found for {pathogen} in {input_dir}")
     return sorted(all_files)
 
 
 def main():
     args = parse_args()
 
-    input_dir  = args.input_dir
-    pathogen   = args.pathogen
+    input_dir = args.input_dir
+    pathogen = args.pathogen
     # set default output file 
     outputfile = Path(f"./{pathogen}_sample_sheet.txt")
 
@@ -71,25 +68,57 @@ def main():
         for f in missing:
             print(f"  {f}")
 
-    # pair R1 the R2 reads into same row
+    # identify sample type, organize file paths into rows (different by sample type)
     pairs: dict = {}
     for file_path in sorted(valid_files):
-        # crm: making sure the pathogen input is not case sensitive
-        fname_lower = os.path.basename(file_path).lower()
-        sample_id = os.path.basename(file_path)[:fname_lower.index(pathogen.lower())].rstrip('._-').split('.')[0]
-        sample_type = 'fasta' if file_path.endswith('.fasta') else 'fastq'
+        fname = os.path.basename(file_path)
+        sample_id = fname[:fname.index(pathogen)].rstrip('._-').split('.')[0]
+        if file_path.endswith('.fasta'):
+            sample_type = 'fasta'
+        elif file_path.endswith('.sort.bam'):
+            sample_type = 'bam'
+        elif file_path.endswith('.fastq'):
+            sample_type = 'fastq'
+        elif file_path.endswith('.fastq.gz'):
+            sample_type = 'fastq.gz'
+        
+        # organize the samples into key (bam, single, or r1 are first value in key, r2 is second value in key)
         key = (sample_id, sample_type)
         if key not in pairs:
             pairs[key] = [None, None]
-        if '.R1.' in os.path.basename(file_path) or '_R1.' in os.path.basename(file_path):
+        if sample_type == 'bam':
             pairs[key][0] = file_path
-        elif '.R2.' in os.path.basename(file_path) or '_R2.' in os.path.basename(file_path):
+        elif '.R1.' in os.path.basename(file_path) or '_R1.' in os.path.basename(file_path) or '_1.' in os.path.basename(file_path):
+            pairs[key][0] = file_path
+        elif '.R2.' in os.path.basename(file_path) or '_R2.' in os.path.basename(file_path) or '_2.' in os.path.basename(file_path):
             pairs[key][1] = file_path
         else:
             pairs[key][0] = file_path
 
-    n_paired = sum(1 for r1, r2 in pairs.values() if r1 and r2)
-    n_single = sum(1 for r1, r2 in pairs.values() if not (r1 and r2))
+    # check for duplicate sample_ids
+    sample_ids = [sid for (sid, _) in pairs]
+    seen = set()
+    duplicates = [sid for sid in sample_ids if sid in seen or seen.add(sid)]
+    if duplicates:
+        raise ValueError(f"Duplicate sample_id(s) found: {', '.join(sorted(set(duplicates)))}")
+
+    # filter to only allow one type of sample per sample sheet
+    n_bam    = sum(1 for (_, st), _        in pairs.items() if st == 'bam')
+    n_paired = sum(1 for (_, st), (r1, r2) in pairs.items() if st != 'bam' and r1 and r2)
+    n_single = sum(1 for (_, st), (r1, r2) in pairs.items() if st != 'bam' and not (r1 and r2))
+
+    read_types_present = []
+    if n_bam > 0:
+        read_types_present.append('bam')
+    if n_paired > 0:
+        read_types_present.append('paired')
+    if n_single > 0:
+        read_types_present.append('single')
+    if len(read_types_present) > 1:
+        print(f"WARNING: Mixed sample types found: {n_bam} BAM files, {n_paired} paired reads, {n_single} single reads. The sample sheet should only contain one sample type.")
+
+    if n_bam:
+        print(f"Found {n_bam} BAM files for {pathogen} from input directory: {input_dir}")
     if n_paired:
         print(f"Found {n_paired} paired reads for {pathogen} from input directory: {input_dir}")
     if n_single:
@@ -100,8 +129,11 @@ def main():
         f.write(f"{pathogen} samples identified from input directory: {input_dir}\n")
         f.write("# sample_id\tsample_type\tfile_path_1\tfile_path_2\n")
         # crm: need to test to make sure if there is one paired read it isn't read as as single read
-        for (sample_id, _), (r1, r2) in sorted(pairs.items()):
-            sample_type = 'paired' if r1 and r2 else 'single'
+        for (sample_id, stype), (r1, r2) in sorted(pairs.items()):
+            if stype == 'bam':
+                sample_type = 'bam'
+            else:
+                sample_type = 'paired' if r1 and r2 else 'single'
             f.write(f"{sample_id}\t{sample_type}\t{r1 or ''}\t{r2 or ''}\n")
 
     print("Please check the outputted file to confirm you are only including samples you want processed")

@@ -442,6 +442,7 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
             filename = os.path.basename(r1_file)
             sample_name = filename.split(".")[0]
 
+            # crm: why am I doing the minimap_preset like this? shouldn't it just be minimap_preset with default of "-ax"? look into this
             minimap_cmd = ["minimap2", "-t", str(threads), "-ax", minimap_preset, fna_path, r1_file, r2_file]
         # single reads
         else:
@@ -464,6 +465,7 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
             # get sample name
             sample_name = ".".join(parts) if parts else "unknown"
 
+            # crm: same question about this minimap preset arg
             minimap_cmd = ["minimap2", "-t", str(threads), "-ax", minimap_preset, fna_path, read_file]
 
         # create output BAM filename
@@ -489,6 +491,7 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
                 pysam.index(output_bam)
                 bam_files.append(output_bam)
             if kept == 0:
+                logger.debug(f"No reads aligned for {read_file}")
                 removed_samples.append(sample_name)
 
             os.remove(unsorted_bam)
@@ -522,8 +525,6 @@ def align_wastewater_reads(reads_by_group: dict, fna_path: str, aligned_dir: str
     group_ids = [t[0] for t in tasks]
     for group_id, (group_bam_files, removed) in sorted(zip(group_ids, results), key=lambda x: x[0]):
         bam_files.extend(group_bam_files)
-        if removed:
-            logger.debug(f"Group {group_id}: Samples with all reads removed: {', '.join(removed)}")
     
     return bam_files
 
@@ -754,13 +755,13 @@ def run_stats(bam_files:list, output_dir:str) -> list:
 
             if aligned_reads > 0:
                 # create coverage file
-                output_cov = os.path.join(output_dir, f"{merge_name}coverage.out")
+                output_cov = os.path.join(output_dir, f"{merge_name}.coverage.out")
                 cmd_cov = ["samtools", "coverage", bam_file, "-o", output_cov]
                 subprocess.run(cmd_cov, check=True, capture_output=True)
                 stats_files.append(output_cov)
                 
                 # create stats file
-                output_stats = os.path.join(output_dir, f"{merge_name}stats.out")
+                output_stats = os.path.join(output_dir, f"{merge_name}.stats.out")
                 cmd_stats = f"samtools stats {bam_file} > {output_stats}"
                 subprocess.run(cmd_stats, shell=True, check=True)
                 stats_files.append(output_stats)

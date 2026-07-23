@@ -2,7 +2,7 @@
 
 # crm: need to add bam file extraction
 # crm: need to add a filter to only allow one type of sample per sample sheet
-# crm: change all inputs for pathogen to not be case-sensitive
+# crm: need to adjust so if there is only one read of a read pair it doesn't report it as a single read
 
 # parse given file directories to identify file paths of associated reads
 # save file paths of the reads as a txt file in specified sample sheet format
@@ -31,10 +31,16 @@ def parse_args() -> argparse.Namespace:
 def find_wastewater_reads(input_dir: str, pathogen: str) -> List[str]:
     extensions = ('.fasta', '.fastq', '.fastq.gz')
 
+    # crm: excluding folders I know contain junk reads
+    excluded_dirs = {'smk_v016_oldrun', 'smk_v016_undetermined', 'smk_v016_undetermined_samples'}
+
     all_files = []
     for root, dirs, files in os.walk(input_dir):
         # crm: want to exclude that random test folder from the pools
         if any(part.startswith('test_p') for part in Path(root).parts):
+            dirs.clear()
+            continue
+        if any(part in excluded_dirs for part in Path(root).parts):
             dirs.clear()
             continue
         # crm: making sure the pathogen input is not case sensitive

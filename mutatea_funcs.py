@@ -453,7 +453,7 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
             # remove file extension
             parts = parts[:-1]
 
-            # remove group ID if it's there
+            # remove group ID if it's in the filename
             if group_id in parts:
                 parts.remove(group_id)
 

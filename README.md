@@ -22,15 +22,18 @@ the pre-aligned BAM file does not require the pathogen name, but must have been 
    - **Pre-aligned BAM files**: The BAM file must have been aligned against the same reference genome, will only be returned if it contains reads found to have been aligned to contigs of the inputted reference genome
      - Example: `sampleID.sort.bam`
 3. **Reference genome** — a folder containing one `.fna`/`.fna.gz` and one `.gff`/`.gff.gz` file
-4. **Clinical sequences** *(optional)* — a folder containing `.fasta` files named by accession, plus a `.csv` metadata file with columns: `Accession`, `Collection_Date`
+4. **Dictionary json** — a `.json` file mapping city names to chosen region (e.g. `"Houston, TX": "Harris"`, or `"Houston, TX"; "USA"`)
+5. **Clinical sequences** *(optional)* — a folder containing `.fasta` files named by accession, plus a `.csv` metadata file with columns: `Accession`, `Collection_Date`
 
 ## Outputs
 | Path | Description |
 |------|-------------|
-| `tsv_output/wastewater` | Per-group variant TSVs for wastewater sequences (time; time+region) |
-| `tsv_output/clinical` | Per-group variant TSVs for clinical sequences |
-| `alignment_files` | Merged BAMs per time group (and region) |
-| `metadata_files` | Processed wastewater and clinical metadata CSVs |
+| `tsv_output/wastewater` | Per-group variant TSVs for wastewater sequences (time; optionally: time+region) |
+| `tsv_output/clinical` *(optional)* | Per-group variant TSVs for clinical sequences |
+| `alignment_files/groups` | List of samples found in each folder |
+| `alignment_files/lists` | List of BAMS that were merged for each unit of time (optionally: time+region) |
+| `alignment_files/bams_merged` | BAMs merged by unit of time (optionally: time+region) |
+| `metadata_files` | Processed wastewater metadata CSV (optionally: clinical metadata CSV) |
 | `<pathogen>_mutatea.log` | Detailed run log |
 | `statistics` *(optional)* | samtools stats output per group |
 
@@ -91,7 +94,6 @@ One of the following read inputs is required:
 ## Output and Performance
 - `-o`, `--output`: Path to output directory (default: current directory)
 - `-f`, `--fast`: Use all available CPUs for parallel processing (recommended)
-- `-a`, `--all`: Keep all intermediate alignment files (group-level BAMs are deleted by default after merging)
 - `-s`, `--statistics`: Output per-group genome depth and coverage statistics
 
 ## Information

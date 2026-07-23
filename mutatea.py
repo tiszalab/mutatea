@@ -75,9 +75,6 @@ def mutatea():
     # argument to view current version
     parser.add_argument("-v", "--version", action='store_true', help="View current version")
 
-    # argument to keep all output
-    parser.add_argument("-a", "--all", action='store_true', help="Keep all intermediate files")
-
     # argument to override default number for parallel workers
     parser.add_argument("-f", "--fast", action='store_true', help="Override default number of parallel workers to run with all available cpus")
 
@@ -239,8 +236,8 @@ def mutatea():
     os.makedirs(dirs["wastewater_dir"], exist_ok=True)
 
     # create directory for aligned wastewater reads
-    dirs["aligned"] = os.path.join(dirs["wastewater_dir"], "aligned")
-    os.makedirs(dirs["aligned"], exist_ok=True)
+    dirs["groups"] = os.path.join(dirs["wastewater_dir"], "aligned")
+    os.makedirs(dirs["groups"], exist_ok=True)
     
     # skips alignment steps if pre-aligned bam files were given 
     # align wastewater reads to reference genome, filtering by mapq inline
@@ -251,7 +248,7 @@ def mutatea():
         if args.mapq > 0:
             logger.info(f"Filtering alignments by MAPQ >= {args.mapq}")
         try:
-            bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["aligned"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq)
+            bam_files = align_wastewater_reads(wastewater_reads, fna_path, dirs["groups"], pathogen=args.pathogen, minimap_preset=args.minimap_wastewater, workers=cpu_count if args.fast else 4, min_mapq=args.mapq)
         except Exception as e:
             return f"Error aligning the wastewater reads: {e}"
         logger.info(f"Aligning reads to reference genome (wastewater): {time.perf_counter() - section_start:.2f}s")
@@ -495,14 +492,6 @@ def mutatea():
         except Exception as e:
             return f"Error running varmint on the alignment files: {e}"  
         logger.info(f"Varmint (clinical): {time.perf_counter() - section_start:.2f}s")
-
-    # delete alignment files if not requested
-    if not args.all:
-        section_start = time.perf_counter()
-        shutil.rmtree(dirs["alignment_dir"])
-        shutil.rmtree(dirs["reference_dir"])
-        logger.info(f"\nRemoved intermediate files")
-        logger.info(f"Deleting intermediate files: {time.perf_counter() - section_start:.2f}s")
 
     # print run time
     cli_end_time = time.perf_counter()

@@ -111,12 +111,12 @@ def mutatea():
     # initialize directories dictionary
     dirs = {}
 
-    # create main output directory with pathogen-specific subfolder
-    dirs["output"] = os.path.join(args.output_dir, f"{args.pathogen}_align")
+    # create main output directory with pathogen-specific subfolder of a created "mutatea" folder
+    dirs["output"] = os.path.join(args.output_dir, "mutatea", f"{args.pathogen}_align")
 
-    # delete output from previous runs if they are in the same output folder
+    # if the pathogen_align folder already exists in the chosen output directory then stop run and raise error
     if os.path.exists(dirs["output"]):
-        shutil.rmtree(dirs["output"])
+        raise FileExistsError(f"Previous run found in chosen output directory: {dirs['output']}. Please move it or choose a different output directory.")
     os.makedirs(dirs["output"])
 
     # define logger

@@ -368,6 +368,7 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
         
         # store all matched single reads under a single group key
         reads_by_group["reads"] = all_files
+ 
     # for paired reads            
     else:
         known_r1_pattern = None
@@ -409,8 +410,20 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
                     r2_file = r1_file.replace(known_r2_swap[0], known_r2_swap[1])
                     if os.path.exists(r2_file):
                         read_pairs.append((r1_file, r2_file))
+                # report orphan R1 reads
                     else:
-                        print(f"No R2 file found for {r1_file}")
+                        log.debug(f"No R2 file found for {r1_file}, {r1_file} was dropped")
+                # report orphan R2 reads
+                # crm: create search term for r2 reads using the detected read pattern
+                r2_pattern = known_r1_pattern.replace(known_r2_swap[0], known_r2_swap[1])
+                # crm: recursive search for those r2 reads
+                r2_files = sorted(glob.glob(os.path.join(read_dir, "**", r2_pattern), recursive=True))
+                # crm: make a set of every r2 already accounted for in a read pair
+                paired_r2s = {r2 for _, r2 in read_pairs}
+                for r2_file in r2_files:
+                    # crm: if the r2 file is not accounted for in a read pair, report that it was dropped
+                    if r2_file not in paired_r2s:
+                        log.debug(f"No R1 file found for {r2_file}, {r2_file} was dropped")
 
                 # store all paired reads under a single group key
                 if read_pairs:
@@ -419,6 +432,27 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
         # let user know if no reads were found for that pathogen in that subfolder
         if not reads_by_group:
             print(f"No R1 files were found for {pathogen} in {ww_input_dir}")
+
+    # raise an error if there are duplicate sample_ids in wastewater reads
+    sample_ids = []
+    for group_files in reads_by_group.values():
+        for read_file in group_files:
+            # if paired reads, get sample_id from r1_file
+            if isinstance(read_file, tuple):
+                r1_file, _ = read_file
+                sample_id = os.path.basename(r1_file).split(".")[0]
+            # if single reads or pre-aligned BAM files, get sample_ID from read_file
+            else:
+                sample_id = os.path.basename(read_file).split(".")[0]
+            # save all sample_ids to list
+            sample_ids.append(sample_id)
+    observed_ids = set()
+    # find any sample_ids that were reported
+    # crm: when sid not already in observed_ids, then it adds the sid to the observed_ids, if sid is in observed_ids then add to duplicates
+    duplicates = [sid for sid in sample_ids if sid in observed_ids or observed_ids.add(sid)]
+    # raise error if duplicates exist
+    if duplicates:
+        raise ValueError(f"Duplicate sample_id(s) found: {', '.join(sorted(set(duplicates)))}")
 
     return reads_by_group
 

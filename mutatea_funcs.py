@@ -680,13 +680,13 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
             bam_paths_region = []
 
             # loop through each row in the group and get the sample_id
+            unique_file_paths_region = set()
             for sample_id in group["Sample_ID"]:
-                # look up the bam path from the dictionary
-                bam_path = sample_to_bam.get(sample_id)
-                
-                # make sure the file exists before adding
-                if bam_path and os.path.exists(bam_path):
-                    bam_paths_region.append(bam_path)
+                # look up all bam paths for this sample_id (may be multiple from duplicate sources)
+                for bam_path in sample_to_bam.get(sample_id, []):
+                    if os.path.exists(bam_path) and bam_path not in unique_file_paths_region:
+                        bam_paths_region.append(bam_path)
+                        unique_file_paths_region.add(bam_path)
 
             # create a combination time_region
             time_region = f"{time}_{region}"

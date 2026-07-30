@@ -8,7 +8,7 @@
 """
 Executable code:
 python extract_sample_sheet.py \
-    --pathogen H1N1 \
+    --pathogen sars_cov2 \
     --input_dir /data/contract/TEPHI
 """
 

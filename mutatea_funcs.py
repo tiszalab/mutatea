@@ -462,7 +462,7 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
                         read_pairs.append((r1_file, r2_file))
                 # report orphan R1 reads
                     else:
-                        log.debug(f"No R2 file found for {r1_file}, {r1_file} was dropped")
+                        logger.debug(f"No R2 file found for {r1_file}, {r1_file} was dropped")
                 # report orphan R2 reads
                 # crm: create search term for r2 reads using the detected read pattern
                 r2_pattern = known_r1_pattern.replace(known_r2_swap[0], known_r2_swap[1])
@@ -473,7 +473,7 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
                 for r2_file in r2_files:
                     # crm: if the r2 file is not accounted for in a read pair, report that it was dropped
                     if r2_file not in paired_r2s:
-                        log.debug(f"No R1 file found for {r2_file}, {r2_file} was dropped")
+                        logger.debug(f"No R1 file found for {r2_file}, {r2_file} was dropped")
 
                 # store all paired reads under a single group key
                 if read_pairs:

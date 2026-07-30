@@ -289,6 +289,56 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
+# crm: parse a wastewater sample sheet and return reads + detected sample type
+def parse_sample_sheet(sample_sheet: str):
+    # crm: parse sample sheet, skip comment or header lines (lines that start with # or have no tabs)
+    rows = []
+    with open(sample_sheet, 'r') as f:
+        for line in f:
+            line = line.rstrip('\n')
+            if line.startswith('#') or not line.strip():
+                continue
+            parts = line.split('\t')
+            if len(parts) < 3:
+                continue
+            rows.append(parts)
+
+    if not rows:
+        raise ValueError(f"No valid sample entries found in sample sheet: {sample_sheet}")
+
+    # check for mixed sample types; raise error if more than one type is found
+    sample_types = set(row[1] for row in rows)
+    if len(sample_types) > 1:
+        raise ValueError(f"Mixed sample types found in sample sheet: {', '.join(sorted(sample_types))}. Sample sheet must contain only one sample type.")
+
+    detected_type = next(iter(sample_types))
+
+    # for pre-aligned BAM files: return list of file paths
+    if detected_type == 'bam':
+        return [row[2] for row in rows if row[2]], detected_type
+
+    # for paired reads: group by source directory
+    reads_by_group = {}
+    if detected_type == 'paired':
+        for row in rows:
+            if len(row) > 3 and row[2] and row[3]:
+                group_id = os.path.basename(os.path.dirname(row[2]))
+                if group_id not in reads_by_group:
+                    reads_by_group[group_id] = []
+                reads_by_group[group_id].append((row[2], row[3]))
+
+    # for single reads: group by source directory
+    elif detected_type == 'single':
+        for row in rows:
+            if row[2]:
+                group_id = os.path.basename(os.path.dirname(row[2]))
+                if group_id not in reads_by_group:
+                    reads_by_group[group_id] = []
+                reads_by_group[group_id].append(row[2])
+
+    return reads_by_group, detected_type
+
+
 # find wastewater reads for the pathogen of interest
 def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool = True, bam_files: bool = False, min_mapq: int = 0, fna_path: str = None):
     # create empty dictionary to store reads by group
@@ -450,9 +500,9 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
     # find any sample_ids that were reported
     # crm: when sid not already in observed_ids, then it adds the sid to the observed_ids, if sid is in observed_ids then add to duplicates
     duplicates = [sid for sid in sample_ids if sid in observed_ids or observed_ids.add(sid)]
-    # raise error if duplicates exist
+    # warn if duplicates exist
     if duplicates:
-        raise ValueError(f"Duplicate sample_id(s) found: {', '.join(sorted(set(duplicates)))}")
+        logger.warning(f"Duplicate sample_id(s) found: {', '.join(sorted(set(duplicates)))}")
 
     return reads_by_group
 
@@ -570,15 +620,13 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
     # get bam directory from the inputted bam_files
     bam_dir = os.path.dirname(os.path.dirname(bam_files[0]))
     
-    # build a sample_id -> bam_path lookup dictionary (once, instead of scanning per sample)
+    # build a sample_id -> bam_paths lookup (list to handle duplicate sample_ids from multiple sources)
     sample_to_bam = {}
     for bam_file in bam_files:
-        basename = os.path.basename(bam_file)
-        
-        # crm: extract sample_id from basename (removes everything before the group_id)
-        # crm: again need to confirm this extraction won't mess with general user
-        sample_id = basename.split(".")[0]
-        sample_to_bam[sample_id] = bam_file
+        sample_id = os.path.basename(bam_file).split(".")[0]
+        if sample_id not in sample_to_bam:
+            sample_to_bam[sample_id] = []
+        sample_to_bam[sample_id].append(bam_file)
 
     # map grouping types to their corresponding column names
     grouping_columns = {
@@ -598,16 +646,17 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
 
     for time, group in metadata.groupby(group_column):
         # create empty list for the bam paths
-        bam_paths=[]
+        bam_paths = []
+        unique_file_paths = set()
 
         # loop through each row in the group and get the sample_id
         for sample_id in group["Sample_ID"]:
-            # look up the bam path from the dictionary
-            bam_path = sample_to_bam.get(sample_id)
-            
-            # make sure the file exists before adding
-            if bam_path and os.path.exists(bam_path):
-                bam_paths.append(bam_path)
+            # look up all bam paths for this sample_id (may be multiple from duplicate sources)
+            # crm: considering unique_file_paths so duplicate sample_ids won't be flattened
+            for bam_path in sample_to_bam.get(sample_id, []):
+                if os.path.exists(bam_path) and bam_path not in unique_file_paths:
+                    bam_paths.append(bam_path)
+                    unique_file_paths.add(bam_path)
 
         # add the list to the dictionary
         bam_path_lists[time] = bam_paths

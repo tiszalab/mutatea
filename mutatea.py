@@ -16,11 +16,11 @@ cpu_count = os.cpu_count() or 4
 # load in functions from mutatea.funcs
 try:
     from .mutatea_funcs import (process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, 
-    split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
+    split_clinical_fasta_by_time, parse_sample_sheet, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
     run_stats, varmint, print_mutatea_banner)
 except:
     from mutatea_funcs import (process_reference_files, process_metadata, add_region, load_clinical_files, create_grouped_accession_lists, 
-    split_clinical_fasta_by_time, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
+    split_clinical_fasta_by_time, parse_sample_sheet, find_wastewater_reads, align_wastewater_reads, create_wastewater_bam_groups, merge_wastewater_bams, align_clinical_reads, 
     run_stats, varmint, print_mutatea_banner)
 
 # entry point function for the CLI
@@ -51,6 +51,7 @@ def mutatea():
     reads_group.add_argument("-pr", "--paired_reads", type=str, help="Path to folders containing paired FASTQ wastewater reads (R1/R2)")
     reads_group.add_argument("-sr", "--single_reads", type=str, help="Path to folder containing single FASTQ wastewater reads")
     reads_group.add_argument("-b", "--bam_files", type=str, help="Path to folder containing pre-aligned BAM files")
+    reads_group.add_argument("-wss", "--wastewater_sample_sheet", type=str, help="Path to a folder containing the wastewater sample sheet (.txt)")
 
     # argument for file path to folder containing reference files
     parser.add_argument("-ref", "--reference_files", type=str, required=True, help="Path to folder containing the reference fasta(.gz) and gff(.gz) files")
@@ -209,8 +210,27 @@ def mutatea():
     print("")
     logger.info(f"Finding wastewater reads")
 
+    # crm: flags for determining which processing path was taken
+    use_bam_files = False
+    use_paired_reads = False
+    use_single_reads = False
+
     # determine which read type was provided
-    if args.single_reads:
+    if args.wastewater_sample_sheet:
+        try:
+            wss_result, detected_type = parse_sample_sheet(args.wastewater_sample_sheet)
+            if detected_type == 'bam':
+                bam_files = wss_result
+                use_bam_files = True
+            elif detected_type == 'paired':
+                paired_reads = wss_result
+                use_paired_reads = True            
+            else:
+                single_reads = wss_result
+                use_single_reads = True
+        except Exception as e:
+            return f"Error finding the wastewater reads: {e}"
+    elif args.single_reads:
         try:
             wastewater_reads = find_wastewater_reads(args.single_reads, args.pathogen, single_reads=True)
         except Exception as e:
@@ -220,7 +240,7 @@ def mutatea():
             bam_files = find_wastewater_reads(args.bam_files, args.pathogen, bam_files=True, min_mapq=args.mapq, fna_path=fna_path)
         except Exception as e:
             return f"Error finding the wastewater BAM files: {e}"
-    else:
+    elif args.paired_reads:
         try:
             wastewater_reads = find_wastewater_reads(args.paired_reads, args.pathogen, single_reads=False)
         except Exception as e:
@@ -239,9 +259,15 @@ def mutatea():
     dirs["groups"] = os.path.join(dirs["wastewater_dir"], "aligned")
     os.makedirs(dirs["groups"], exist_ok=True)
     
+    # resolve wastewater_reads from sample sheet paths if wss was used
+    if use_paired_reads:
+        wastewater_reads = paired_reads
+    elif use_single_reads:
+        wastewater_reads = single_reads
+    
     # skips alignment steps if pre-aligned bam files were given 
     # align wastewater reads to reference genome, filtering by mapq inline
-    if not args.bam_files:
+    if not use_bam_files:
         print("")
         logger.info("Aligning wastewater reads to given reference genome")
         section_start = time.perf_counter()

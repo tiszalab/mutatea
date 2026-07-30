@@ -8,7 +8,7 @@
 """
 Executable code:
 python extract_sample_sheet.py \
-    --pathogen _I \
+    --pathogen H1N1 \
     --input_dir /data/contract/TEPHI
 """
 
@@ -82,8 +82,8 @@ def main():
         elif file_path.endswith('.fastq.gz'):
             sample_type = 'fastq.gz'
         
-        # organize the samples into key (bam, single, or r1 are first value in key, r2 is second value in key)
-        key = (sample_id, sample_type)
+        # organize the samples into key; include source directory so a duplicate sample ID from a different dir can be kept as a separate row
+        key = (sample_id, sample_type, os.path.dirname(file_path))
         if key not in pairs:
             pairs[key] = [None, None]
         if sample_type == 'bam':
@@ -95,17 +95,17 @@ def main():
         else:
             pairs[key][0] = file_path
 
-    # check for duplicate sample_ids
-    sample_ids = [sid for (sid, _) in pairs]
+    # check for duplicate sample_ids (same id from multiple directories) and warn
+    sample_ids = [sid for (sid, _st, _src) in pairs]
     seen = set()
     duplicates = [sid for sid in sample_ids if sid in seen or seen.add(sid)]
     if duplicates:
-        raise ValueError(f"Duplicate sample_id(s) found: {', '.join(sorted(set(duplicates)))}")
+        print(f"WARNING: Duplicate sample_id(s) found: {', '.join(sorted(set(duplicates)))}")
 
     # filter to only allow one type of sample per sample sheet
-    n_bam    = sum(1 for (_, st), _        in pairs.items() if st == 'bam')
-    n_paired = sum(1 for (_, st), (r1, r2) in pairs.items() if st != 'bam' and r1 and r2)
-    n_single = sum(1 for (_, st), (r1, r2) in pairs.items() if st != 'bam' and not (r1 and r2))
+    n_bam    = sum(1 for (_, st, _src), _        in pairs.items() if st == 'bam')
+    n_paired = sum(1 for (_, st, _src), (r1, r2) in pairs.items() if st != 'bam' and r1 and r2)
+    n_single = sum(1 for (_, st, _src), (r1, r2) in pairs.items() if st != 'bam' and not (r1 and r2))
 
     read_types_present = []
     if n_bam > 0:
@@ -129,7 +129,7 @@ def main():
         f.write(f"{pathogen} samples identified from input directory: {input_dir}\n")
         f.write("# sample_id\tsample_type\tfile_path_1\tfile_path_2\n")
         # crm: need to test to make sure if there is one paired read it isn't read as as single read
-        for (sample_id, stype), (r1, r2) in sorted(pairs.items()):
+        for (sample_id, stype, _src_dir), (r1, r2) in sorted(pairs.items()):
             if stype == 'bam':
                 sample_type = 'bam'
             else:

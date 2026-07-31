@@ -8,6 +8,7 @@ import json                                     # needed for parsing json files 
 from multiprocessing import Pool                # needed for parallel processing
 from variant_funcs import met_variant_alleles   # needed for variant labelling
 import pysam                                    # needed for alignment quality filtering
+from collections import Counter                 # needed for detecting duplicate sample IDs
 import pandas as pd                             # needed for metadata processing
 import logging                                  # needed for logging
 logger = logging.getLogger("mutatea_logger")    # load the logger in for downstream use
@@ -18,7 +19,7 @@ def process_reference_files(input_folder: str, reference_dir: str) -> tuple[str,
     os.makedirs(reference_dir, exist_ok=True)
     output_paths=[]
 
-    # set empty strings to catch output
+    # set paths to None to catch output later
     fna_path = None
     gff_path = None
 
@@ -289,9 +290,9 @@ def split_clinical_fasta_by_time(clinical_fasta_path: str, lists_dir: str, outpu
         clinical_fasta_time = os.path.join(output_dir, f"{time}.fasta")
         SeqIO.write(time_accessions, clinical_fasta_time, "fasta")
 
-# crm: parse a wastewater sample sheet and return reads + detected sample type
+# parse given wastewater sample sheet and return the detected sample type and associated reads
 def parse_sample_sheet(sample_sheet: str):
-    # crm: parse sample sheet, skip comment or header lines (lines that start with # or have no tabs)
+    # skip comment or header lines (lines that start with #, don't have enough tabs, or are empty)
     rows = []
     with open(sample_sheet, 'r') as f:
         for line in f:
@@ -320,18 +321,40 @@ def parse_sample_sheet(sample_sheet: str):
     # for paired reads: group by source directory
     reads_by_group = {}
     if detected_type == 'paired':
+        pairs = [(os.path.basename(os.path.dirname(row[2])), row[0]) for row in rows if len(row) > 3 and row[2]]
+        use_two_levels = len(pairs) != len(set(pairs))
+        if use_two_levels:
+            dup_pairs = [p for p, c in Counter(pairs).items() if c > 1]
+            print(f"WARNING: {len(dup_pairs)} sample ID(s) appear more than once in similarly named source folders. "
+                  f"Output directories will be shifted up one level to avoid overwriting.")
+            for folder, sid in sorted(dup_pairs):
+                print(f"  sample '{sid}' has duplicate entries under folder '{folder}'")
         for row in rows:
             if len(row) > 3 and row[2] and row[3]:
-                group_id = os.path.basename(os.path.dirname(row[2]))
+                if use_two_levels:
+                    group_id = os.path.basename(os.path.dirname(os.path.dirname(row[2])))
+                else:
+                    group_id = os.path.basename(os.path.dirname(row[2]))
                 if group_id not in reads_by_group:
                     reads_by_group[group_id] = []
                 reads_by_group[group_id].append((row[2], row[3]))
 
     # for single reads: group by source directory
     elif detected_type == 'single':
+        pairs = [(os.path.basename(os.path.dirname(row[2])), row[0]) for row in rows if row[2]]
+        use_two_levels = len(pairs) != len(set(pairs))
+        if use_two_levels:
+            dup_pairs = [p for p, c in Counter(pairs).items() if c > 1]
+            print(f"WARNING: {len(dup_pairs)} sample ID(s) appear more than once in similary named source folders. "
+                  f"Output directories will be shifted up one level to avoid overwriting.")
+            for folder, sid in sorted(dup_pairs):
+                print(f"  sample '{sid}' has duplicate entries under folder '{folder}'")
         for row in rows:
             if row[2]:
-                group_id = os.path.basename(os.path.dirname(row[2]))
+                if use_two_levels:
+                    group_id = os.path.basename(os.path.dirname(os.path.dirname(row[2])))
+                else:
+                    group_id = os.path.basename(os.path.dirname(row[2]))
                 if group_id not in reads_by_group:
                     reads_by_group[group_id] = []
                 reads_by_group[group_id].append(row[2])
@@ -424,7 +447,7 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
         known_r1_pattern = None
         known_r2_swap = None
 
-        # crm: maybe could replace with recursive search
+        # recursive search through given read_dir
         for read_dir in sorted(glob.glob(os.path.join(ww_input_dir, "*"))):
             group_id = os.path.basename(read_dir)
 
@@ -464,14 +487,14 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
                     else:
                         logger.debug(f"No R2 file found for {r1_file}, {r1_file} was dropped")
                 # report orphan R2 reads
-                # crm: create search term for r2 reads using the detected read pattern
+                # create search term for r2 reads using the detected read pattern
                 r2_pattern = known_r1_pattern.replace(known_r2_swap[0], known_r2_swap[1])
-                # crm: recursive search for those r2 reads
+                # recursive search for those r2 reads
                 r2_files = sorted(glob.glob(os.path.join(read_dir, "**", r2_pattern), recursive=True))
-                # crm: make a set of every r2 already accounted for in a read pair
+                # collect the r2 reads already accounted for in read pairs
                 paired_r2s = {r2 for _, r2 in read_pairs}
                 for r2_file in r2_files:
-                    # crm: if the r2 file is not accounted for in a read pair, report that it was dropped
+                    # if  r2 file is not accounted for in a read pair then report that it was dropped
                     if r2_file not in paired_r2s:
                         logger.debug(f"No R1 file found for {r2_file}, {r2_file} was dropped")
 
@@ -497,8 +520,7 @@ def find_wastewater_reads(ww_input_dir: str, pathogen: str, single_reads: bool =
             # save all sample_ids to list
             sample_ids.append(sample_id)
     observed_ids = set()
-    # find any sample_ids that were reported
-    # crm: when sid not already in observed_ids, then it adds the sid to the observed_ids, if sid is in observed_ids then add to duplicates
+    # find duplicate sample_ids
     duplicates = [sid for sid in sample_ids if sid in observed_ids or observed_ids.add(sid)]
     # warn if duplicates exist
     if duplicates:
@@ -526,11 +548,10 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
             filename = os.path.basename(r1_file)
             sample_name = filename.split(".")[0]
 
-            # crm: why am I doing the minimap_preset like this? shouldn't it just be minimap_preset with default of "-ax"? look into this
             minimap_cmd = ["minimap2", "-t", str(threads), "-ax", minimap_preset, fna_path, r1_file, r2_file]
+
         # single reads
         else:
-            # crm: really need to confirm this sample_name extraction won't mess with general user 
             # extract sample_name from filename
             filename = os.path.basename(read_file)
             parts = filename.split(".")
@@ -549,7 +570,6 @@ def _align_wastewater_reads(group_id: str, read_files: list, fna_path: str, alig
             # get sample name
             sample_name = ".".join(parts) if parts else "unknown"
 
-            # crm: same question about this minimap preset arg
             minimap_cmd = ["minimap2", "-t", str(threads), "-ax", minimap_preset, fna_path, read_file]
 
         # create output BAM filename
@@ -605,7 +625,7 @@ def align_wastewater_reads(reads_by_group: dict, fna_path: str, aligned_dir: str
     with Pool(processes=workers) as pool:
         results = pool.starmap(_align_wastewater_reads, tasks)
     
-    # combine BAM files by group; print removed samples in sorted order
+    # combine BAM files by group
     group_ids = [t[0] for t in tasks]
     for group_id, (group_bam_files, removed) in sorted(zip(group_ids, results), key=lambda x: x[0]):
         bam_files.extend(group_bam_files)
@@ -652,7 +672,7 @@ def create_wastewater_bam_groups(bam_files: list, metadata: pd.DataFrame, time_o
         # loop through each row in the group and get the sample_id
         for sample_id in group["Sample_ID"]:
             # look up all bam paths for this sample_id (may be multiple from duplicate sources)
-            # crm: considering unique_file_paths so duplicate sample_ids won't be flattened
+            # considering unique_file_paths means duplicate sample_ids won't be flattened
             for bam_path in sample_to_bam.get(sample_id, []):
                 if os.path.exists(bam_path) and bam_path not in unique_file_paths:
                     bam_paths.append(bam_path)
@@ -754,7 +774,7 @@ def merge_wastewater_bams(list_dir: str, output_dir: str, threads: int = 8, min_
 # helper function for later alignment of clinical reads
 def _align_clinical_reads(fasta_file, fna_path, output_dir, threads, minimap_preset: str = "asm10", min_mapq: int = 0):
 
-    # get the base name by removing the extension (can be for either time or time_region)
+    # get the base name by removing the extension
     time = os.path.basename(fasta_file).replace(".fasta", "")
 
     # catch output bam
@@ -803,7 +823,6 @@ def align_clinical_reads(clinical_fasta_time:str, fna_path:str, output_dir: str,
         # for all clinical reads, append the arguments to the tasks
         tasks.append((fasta_file, fna_path, output_dir, threads, minimap_preset, min_mapq))
 
-    # print line is now saying number of tasks run with number of workers
     print(f"Aligning {len(tasks)} clinical fasta files using {workers} parallel workers")
 
     # run multiprocess 

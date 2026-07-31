@@ -210,7 +210,7 @@ def mutatea():
     print("")
     logger.info(f"Finding wastewater reads")
 
-    # crm: flags for determining which processing path was taken
+    # flags for determining which processing path was taken
     use_bam_files = False
     use_paired_reads = False
     use_single_reads = False
@@ -238,6 +238,7 @@ def mutatea():
     elif args.bam_files:
         try:
             bam_files = find_wastewater_reads(args.bam_files, args.pathogen, bam_files=True, min_mapq=args.mapq, fna_path=fna_path)
+            use_bam_files = True
         except Exception as e:
             return f"Error finding the wastewater BAM files: {e}"
     elif args.paired_reads:
@@ -266,7 +267,7 @@ def mutatea():
         wastewater_reads = single_reads
     
     # skips alignment steps if pre-aligned bam files were given 
-    # align wastewater reads to reference genome, filtering by mapq inline
+    # aligns wastewater reads to reference genome and optionally filters by given minimum mapq value
     if not use_bam_files:
         print("")
         logger.info("Aligning wastewater reads to given reference genome")

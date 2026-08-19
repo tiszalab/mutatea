@@ -3,17 +3,13 @@
 </p>
 
 # mutatea
-A framework for comparing the mutational spectra of pathogen sequencing data across sources and cohorts. Aligns  wastewater (and optionally clinical) reads to a reference genome, groups samples by time and/or region, and annotates all detected variants with coding effects using [varmint](https://github.com/tiszalab/varmint).
+A framework for comparing the mutational spectra of pathogen sequencing data across sources and cohorts. Aligns wastewater (and optionally clinical) reads to a reference genome, groups samples by time and/or region, and annotates all detected variants with coding effects using [varmint](https://github.com/tiszalab/varmint).
 
 ## Inputs
 1. **Wastewater metadata** — one or more `.xlsx` files, each requires the following columns: `SampleID`, `City`, `Date` (YYYY-MM-DD, YYYY-MM, or YYYY)
-2. **Wastewater reads** — accepted pre-aligned BAM files, paired reads, or single reads
+2. **Wastewater reads** — file path to folders containing paired reads, single reads, or pre-aligned BAMs; or file path to a tab-delimited .txt sample sheet listing the file paths to the paired reads, single reads, or pre-aligned BAMs
 
-# crm: clean up
-paired-end or single-end reads (fastq/fasta, optionally gzipped) file names must contain the pathogen name
-
-
-the pre-aligned BAM file does not require the pathogen name, but must have been aligned to the inputted reference genome
+Paired-end or single-end read file names (fastq/fasta, optionally gzipped) must contain the pathogen name. Pre-aligned BAM files do not need the pathogen name, but must have been aligned to the inputted reference genome.
 
    - **Single read**: reads can have any of the following patterns — `<pathogen>.fasta`, `<pathogen>.fastq`, `<pathogen>.fastq.gz` 
      - Example: `sampleID.H1N1.fastq.gz`
@@ -21,8 +17,12 @@ the pre-aligned BAM file does not require the pathogen name, but must have been 
      - Example: `sampleID.sars_cov2_R1.fastq`
    - **Pre-aligned BAM files**: The BAM file must have been aligned against the same reference genome, will only be returned if it contains reads found to have been aligned to contigs of the inputted reference genome
      - Example: `sampleID.sort.bam`
+   - **Sample sheet**: A tab-delimited `.txt` file listing samples with columns `sample_id`, `sample_type`, `file_path_1`, and `file_path_2` (optionally). Lines starting with `#` and the header line are ignored.
+     - `sample_type` must be `paired` or `single`
+     - `file_path_2` can be left empty for single reads
+     - Example: `ELHC2S	paired	/path/to/ELHC2S.R1.fastq	/path/to/ELHC2S.R2.fastq`
 3. **Reference genome** — a folder containing one `.fna`/`.fna.gz` and one `.gff`/`.gff.gz` file
-4. **Dictionary json** — a `.json` file mapping city names to chosen region (e.g. `"Houston, TX": "Harris"`, or `"Houston, TX"; "USA"`)
+4. **Dictionary JSON** — a `.json` file mapping city names to chosen region (e.g. `"Houston, TX": "Harris"` or `"Houston, TX": "USA"`)
 5. **Clinical sequences** *(optional)* — a folder containing `.fasta` files named by accession, plus a `.csv` metadata file with columns: `Accession`, `Collection_Date`
 
 ## Outputs
@@ -67,7 +67,11 @@ mutatea -h
 
 # Usage
 ```bash
+# using paired reads
 mutatea -p <PATHOGEN> -m <METADATA_DIR> -ref <REFERENCE_DIR> -d <DICTIONARY_JSON> -pr <PAIRED_READS_DIR>
+
+# using a sample sheet
+mutatea -p <PATHOGEN> -m <METADATA_DIR> -ref <REFERENCE_DIR> -d <DICTIONARY_JSON> -wss <SAMPLE_SHEET_TXT>
 ```
 
 # Required Arguments
@@ -80,6 +84,7 @@ One of the following read inputs is required:
 - `-pr`, `--paired_reads`: Path to folder containing paired-end wastewater reads
 - `-sr`, `--single_reads`: Path to folder containing single-end wastewater reads
 - `-b`, `--bams`: Path to folder containing pre-aligned wastewater BAM files (must have been aligned to contigs of the reference genome you're running with)
+- `-wss`, `--wastewater_sample_sheet`: Path to a tab-delimited sample sheet listing file paths to pre-aligned BAMs, paired reads, or single read files
 
 # Optional Arguments
 
@@ -98,7 +103,7 @@ One of the following read inputs is required:
 
 ## Information
 - `-tr`, `--timerange`: Print the date range covered by the wastewater samples
-- `-v`, `--version`: Print the current version of mutatea
+- `-v`, `--version`: Print the current version of mutatea and exit. Other arguments are ignored when this flag is used.
 
 # Example
 ```bash

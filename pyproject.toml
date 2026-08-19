@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mutatea"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
   { name="Camille R. Mazurek", email="camillemazurek23@gmail.com" },
 ]
@@ -23,6 +23,7 @@ dependencies = [
     "openpyxl",
     "polars",
     "pysam",
+    "pyyaml",
     "varmint @ https://github.com/tiszalab/varmint/archive/refs/tags/v0.2.0.tar.gz"
     ]
 

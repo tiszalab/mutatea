@@ -9,7 +9,8 @@ import pysam
 import shutil
 import time                         
 import yaml
-from datetime import timedelta      
+from datetime import timedelta
+from importlib.metadata import version      
 
 # CPU detection for fast mode
 cpu_count = os.cpu_count() or 4
@@ -26,6 +27,11 @@ except:
 
 # entry point function for the CLI
 def mutatea():
+    # if only the version was requested then print version and exit without the banner
+    if any(arg in ("-v", "--version") for arg in sys.argv[1:]):
+        print(f"Current version is {version('mutatea')}")
+        return
+
     # print ASCII art over time
     for line in print_mutatea_banner().splitlines():
         print(line)
@@ -75,7 +81,7 @@ def mutatea():
     parser.add_argument("-tr", "--timerange", action='store_true', help="View time range covered by wastewater sample collection")
 
     # argument to view current version
-    parser.add_argument("-v", "--version", action='store_true', help="View current version")
+    parser.add_argument("-v", "--version", action='version', version=f"Current version is {version('mutatea')}", help="View current version")
 
     # argument to override default number for parallel workers
     parser.add_argument("-f", "--fast", action='store_true', help="Override default number of parallel workers to run with all available cpus")
@@ -150,10 +156,6 @@ def mutatea():
         logger.error(f"Failed to save parameters YAML: {e}")
 
     ############################## process reference and metadata files ##############################
-    # optionally give current version
-    if args.version:
-        logger.info(f"Current version is {version('mutatea')}")
-
     # create directory for unzipped reference files
     dirs["reference_dir"] = os.path.join(dirs["output"], "reference_files")
     os.makedirs(dirs["reference_dir"], exist_ok=True)

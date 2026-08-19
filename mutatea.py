@@ -8,6 +8,7 @@ import logging
 import pysam
 import shutil
 import time                         
+import yaml
 from datetime import timedelta      
 
 # CPU detection for fast mode
@@ -136,8 +137,17 @@ def mutatea():
     file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(file_handler)
 
-    # save the command used to run mutatea to the top of the output log
-    logger.debug(f"Command: mutatea {' '.join(sys.argv[1:])}")
+    # save parameters to yaml in output directory
+    params_dict = vars(args).copy()
+    params_dict['log_file'] = log_file
+
+    params_yaml_path = os.path.join(dirs["output"], "params.yaml")
+    try:
+        with open(params_yaml_path, 'w') as yaml_file:
+            yaml.dump(params_dict, yaml_file, default_flow_style=False)
+        logger.info(f"Saved parameters to YAML: {params_yaml_path}")
+    except Exception as e:
+        logger.error(f"Failed to save parameters YAML: {e}")
 
     ############################## process reference and metadata files ##############################
     # optionally give current version

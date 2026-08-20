@@ -9,7 +9,8 @@
 Executable code:
 python extract_sample_sheet.py \
     --pathogen sars_cov2 \
-    --input_dir /data/contract/TEPHI
+    --input_dir /data/contract/TEPHI \
+    --output /data/tisza/analyses/crm/mutatea/covid_scripts/new_samplesheet/
 """
 
 import argparse
@@ -56,7 +57,14 @@ def main():
     input_dir = args.input_dir
     pathogen = args.pathogen
     # set output file
-    outputfile = Path(args.output) if args.output else Path(f"./{pathogen}_sample_sheet.txt")
+    if args.output:
+        output_path = Path(args.output)
+        if output_path.is_dir():
+            outputfile = output_path / f"{pathogen}_sample_sheet.txt"
+        else:
+            outputfile = output_path
+    else:
+        outputfile = Path(f"./{pathogen}_sample_sheet.txt")
 
     # find all matching read files
     all_files = find_wastewater_reads(input_dir, pathogen)

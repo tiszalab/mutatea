@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Finding file paths of pathogen reads")
     p.add_argument("--pathogen", required=True, help="Pathogen name")
     p.add_argument("--input_dir", required=True, help="Directory containing pathogen reads")
+    p.add_argument("--output", "-o", default=None, help="Output sample sheet filename (default: ./<pathogen>_sample_sheet.txt)")
     return p.parse_args()
 
 
@@ -54,8 +55,8 @@ def main():
 
     input_dir = args.input_dir
     pathogen = args.pathogen
-    # set default output file 
-    outputfile = Path(f"./{pathogen}_sample_sheet.txt")
+    # set output file
+    outputfile = Path(args.output) if args.output else Path(f"./{pathogen}_sample_sheet.txt")
 
     # find all matching read files
     all_files = find_wastewater_reads(input_dir, pathogen)

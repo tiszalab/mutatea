@@ -40,6 +40,10 @@ def find_wastewater_reads(input_dir: str, pathogen: str) -> List[str]:
         if any(part.startswith('test_p') for part in Path(root).parts):
             dirs.clear()
             continue
+        # want to remove the "old" runs being kept in TEPHI data for some reason
+        if any(part.startswith('old') for part in Path(root).parts):
+            dirs.clear()
+            continue
         if any(part in excluded_dirs for part in Path(root).parts):
             dirs.clear()
             continue

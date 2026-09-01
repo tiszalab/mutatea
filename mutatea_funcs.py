@@ -318,43 +318,23 @@ def parse_sample_sheet(sample_sheet: str):
     if detected_type == 'bam':
         return [row[2] for row in rows if row[2]], detected_type
 
-    # for paired reads: group by source directory
+    # for paired reads: group by pool ID (second part of parent folder name, e.g. "p1585" from "22-28764.p1585")
     reads_by_group = {}
     if detected_type == 'paired':
-        pairs = [(os.path.basename(os.path.dirname(row[2])), row[0]) for row in rows if len(row) > 3 and row[2]]
-        use_two_levels = len(pairs) != len(set(pairs))
-        if use_two_levels:
-            dup_pairs = [p for p, c in Counter(pairs).items() if c > 1]
-            print(f"WARNING: {len(dup_pairs)} sample ID(s) appear more than once in similarly named source folders. "
-                  f"Output directories will be shifted up one level to avoid overwriting.")
-            for folder, sid in sorted(dup_pairs):
-                print(f"  sample '{sid}' has duplicate entries under folder '{folder}'")
         for row in rows:
             if len(row) > 3 and row[2] and row[3]:
-                if use_two_levels:
-                    group_id = os.path.basename(os.path.dirname(os.path.dirname(row[2])))
-                else:
-                    group_id = os.path.basename(os.path.dirname(row[2]))
+                folder = os.path.basename(os.path.dirname(row[2]))
+                group_id = folder.split('.', 1)[1] if '.' in folder else folder
                 if group_id not in reads_by_group:
                     reads_by_group[group_id] = []
                 reads_by_group[group_id].append((row[2], row[3]))
 
-    # for single reads: group by source directory
+    # for single reads: group by pool ID (second part of parent folder name)
     elif detected_type == 'single':
-        pairs = [(os.path.basename(os.path.dirname(row[2])), row[0]) for row in rows if row[2]]
-        use_two_levels = len(pairs) != len(set(pairs))
-        if use_two_levels:
-            dup_pairs = [p for p, c in Counter(pairs).items() if c > 1]
-            print(f"WARNING: {len(dup_pairs)} sample ID(s) appear more than once in similary named source folders. "
-                  f"Output directories will be shifted up one level to avoid overwriting.")
-            for folder, sid in sorted(dup_pairs):
-                print(f"  sample '{sid}' has duplicate entries under folder '{folder}'")
         for row in rows:
             if row[2]:
-                if use_two_levels:
-                    group_id = os.path.basename(os.path.dirname(os.path.dirname(row[2])))
-                else:
-                    group_id = os.path.basename(os.path.dirname(row[2]))
+                folder = os.path.basename(os.path.dirname(row[2]))
+                group_id = folder.split('.', 1)[1] if '.' in folder else folder
                 if group_id not in reads_by_group:
                     reads_by_group[group_id] = []
                 reads_by_group[group_id].append(row[2])

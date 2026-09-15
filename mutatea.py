@@ -455,7 +455,8 @@ def mutatea():
     else:
         try:
             print(f"Running varmint (time) using {cpu_count if args.fast else 4} parallel workers")
-            varmint(merged_bams_time, fna_path, gff_path, dirs["tsv_output"], workers=cpu_count if args.fast else 4)
+            wastewater_tsv_dir = dirs["tsv_wastewater"] if include_clinical else dirs["tsv_output"]
+            varmint(merged_bams_time, fna_path, gff_path, wastewater_tsv_dir, workers=cpu_count if args.fast else 4)
         except Exception as e:
             return f"Error running varmint: {e}"
     

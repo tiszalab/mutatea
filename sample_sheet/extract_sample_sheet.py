@@ -8,9 +8,9 @@
 """
 Executable code:
 python extract_sample_sheet.py \
-    --pathogen sars_cov2 \
+    --pathogen H5N1 \
     --input_dir /data/contract/TEPHI \
-    --output /data/tisza/analyses/crm/mutatea/covid_scripts/new_samplesheet/
+    --output /data/tisza/analyses/crm/mutatea/sample_sheet
 """
 
 import argparse

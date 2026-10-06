@@ -50,3 +50,6 @@ wastewater_metadata/
 H1N1_align_w_pool/
 H1N1_align_wo_pool/
 test_runs
+
+# figure generation
+mirror_cave_figures
